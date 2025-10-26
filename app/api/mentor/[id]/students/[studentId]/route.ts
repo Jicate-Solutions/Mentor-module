@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // In-memory storage for mentor-student assignments (same as parent route)
-const mentorStudents: Record<string, string[]> = {
-  'M001': ['S001', 'S002', 'S004'],
-  'M002': ['S003', 'S005'],
-  'M003': ['S007'],
-};
+// Changed to store full student objects instead of just IDs
+const mentorStudents: Record<string, any[]> = {};
 
 /**
  * DELETE /api/mentor/[id]/students/[studentId]
@@ -39,7 +36,7 @@ export async function DELETE(
 
     // Remove student from mentor's list
     mentorStudents[mentorId] = mentorStudents[mentorId].filter(
-      id => id !== studentId
+      student => student.id !== studentId
     );
 
     return NextResponse.json({

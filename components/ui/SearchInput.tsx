@@ -38,6 +38,12 @@ export default function SearchInput({
     }
   };
 
+  const handleSearchClick = () => {
+    if (onSearch) {
+      onSearch();
+    }
+  };
+
   return (
     <div className={`relative flex items-center ${className}`}>
       {/* Search Icon */}
@@ -76,7 +82,7 @@ export default function SearchInput({
       {/* Optional Search Button */}
       {onSearch && (
         <button
-          onClick={onSearch}
+          onClick={handleSearchClick}
           disabled={loading}
           className="
             ml-2 px-6 py-3 bg-brand-green text-brand-cream font-semibold rounded-lg

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useToast } from '@/components/providers/ToastProvider';
 import useConfirm from '@/lib/hooks/useConfirm';
@@ -18,7 +18,7 @@ interface StudentsTabProps {
 
 export default function StudentsTab({ mentorId }: StudentsTabProps) {
   const { accessToken } = useAuth();
-  const { toast } = useToast();
+  const toast = useToast();
   const { ConfirmationDialog, confirm } = useConfirm();
 
   const [assignedStudents, setAssignedStudents] = useState<Student[]>([]);
@@ -29,37 +29,38 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Student[]>([]);
   const [searching, setSearching] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
   const [assigning, setAssigning] = useState(false);
 
-  // Fetch assigned students
-  useEffect(() => {
+  // Fetch assigned students (extracted for reuse)
+  const fetchStudents = useCallback(async () => {
     if (!accessToken) return;
 
-    const fetchStudents = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/mentor/${mentorId}/students`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/mentor/${mentorId}/students`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
 
-        if (response.ok) {
-          const data = await response.json();
-          setAssignedStudents(data.students || []);
-        } else {
-          toast.error('Failed to load students', 'Could not fetch assigned students');
-        }
-      } catch (error) {
-        toast.error('Error loading students', 'An unexpected error occurred');
-      } finally {
-        setLoading(false);
+      if (response.ok) {
+        const data = await response.json();
+        setAssignedStudents(data.students || []);
+      } else {
+        toast.error('Failed to load students', 'Could not fetch assigned students');
       }
-    };
+    } catch (error) {
+      toast.error('Error loading students', 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, mentorId, toast]);
 
+  // Fetch assigned students on mount
+  useEffect(() => {
     fetchStudents();
-  }, [accessToken, mentorId]);
+  }, [fetchStudents]);
 
   // Search for students
   const handleSearch = async () => {
@@ -94,35 +95,92 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     }
   };
 
-  // Assign student to mentor
-  const handleAssignStudent = async () => {
-    if (!selectedStudent || !accessToken) return;
+  // Toggle student selection
+  const toggleStudentSelection = (student: Student) => {
+    setSelectedStudents((prev) => {
+      const isSelected = prev.some(s => s.id === student.id);
+      if (isSelected) {
+        return prev.filter(s => s.id !== student.id);
+      } else {
+        return [...prev, student];
+      }
+    });
+  };
+
+  // Assign students to mentor
+  const handleAssignStudents = async () => {
+    if (selectedStudents.length === 0 || !accessToken) return;
 
     try {
       setAssigning(true);
-      const response = await fetch(`/api/mentor/${mentorId}/students`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ studentId: selectedStudent.id }),
-      });
 
-      if (response.ok) {
-        // Add to assigned students list
-        setAssignedStudents([...assignedStudents, selectedStudent]);
-        toast.success('Student assigned', `${selectedStudent.name} has been assigned successfully`);
-        // Close modal and reset
-        setShowAddModal(false);
-        setSearchQuery('');
-        setSearchResults([]);
-        setSelectedStudent(null);
-      } else {
-        const errorData = await response.json();
-        toast.error('Failed to assign student', errorData.error || 'An error occurred');
+      // Assign each student
+      let successCount = 0;
+      let failCount = 0;
+      const failedStudents: string[] = [];
+
+      for (const student of selectedStudents) {
+        try {
+          const response = await fetch(`/api/mentor/${mentorId}/students`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ student }),
+          });
+
+          if (response.ok) {
+            successCount++;
+          } else {
+            failCount++;
+            failedStudents.push(student.name);
+            try {
+              const errorData = await response.json();
+              console.error(`Failed to assign ${student.name}:`, errorData.error);
+            } catch (e) {
+              console.error(`Failed to assign ${student.name}`);
+            }
+          }
+        } catch (error) {
+          failCount++;
+          failedStudents.push(student.name);
+          console.error(`Error assigning ${student.name}:`, error);
+        }
       }
+
+      // Refetch assigned students list from API to sync with backend
+      if (successCount > 0) {
+        await fetchStudents();
+      }
+
+      // Show results
+      if (successCount > 0 && failCount === 0) {
+        toast.success(
+          'Students assigned',
+          `Successfully assigned ${successCount} student${successCount > 1 ? 's' : ''}`
+        );
+      } else if (successCount > 0 && failCount > 0) {
+        toast.warning(
+          'Partial success',
+          `Assigned ${successCount}, failed ${failCount}. Already assigned: ${failedStudents.join(', ')}`
+        );
+      } else {
+        toast.error(
+          'Assignment failed',
+          failedStudents.length > 0
+            ? `Could not assign: ${failedStudents.join(', ')}. They may already be assigned.`
+            : 'Could not assign any students'
+        );
+      }
+
+      // Close modal and reset
+      setShowAddModal(false);
+      setSearchQuery('');
+      setSearchResults([]);
+      setSelectedStudents([]);
     } catch (error) {
+      console.error('[StudentsTab] Assignment error:', error);
       toast.error('Assignment error', 'An unexpected error occurred. Please try again');
     } finally {
       setAssigning(false);
@@ -284,9 +342,9 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
           setShowAddModal(false);
           setSearchQuery('');
           setSearchResults([]);
-          setSelectedStudent(null);
+          setSelectedStudents([]);
         }}
-        title="Add Student"
+        title="Add Students"
         size="lg"
       >
         <div className="space-y-4">
@@ -302,54 +360,69 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
           {/* Search Results */}
           {searchResults.length > 0 ? (
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {searchResults.map((student) => (
-                <Card
-                  key={student.id}
-                  variant={selectedStudent?.id === student.id ? 'bordered' : 'default'}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setSelectedStudent(student)}
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Avatar */}
-                    {student.avatar ? (
-                      <img
-                        src={student.avatar}
-                        alt={student.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center font-bold">
-                        {student.name.charAt(0).toUpperCase()}
+              {searchResults.map((student) => {
+                const isSelected = selectedStudents.some(s => s.id === student.id);
+                return (
+                  <Card
+                    key={student.id}
+                    variant={isSelected ? 'bordered' : 'default'}
+                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => toggleStudentSelection(student)}
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Checkbox */}
+                      <div className="flex-shrink-0">
+                        <div className={`
+                          w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
+                          ${isSelected
+                            ? 'bg-brand-green border-brand-green'
+                            : 'border-neutral-300 bg-white'
+                          }
+                        `}>
+                          {isSelected && (
+                            <svg
+                              className="w-4 h-4 text-white"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={3}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </div>
                       </div>
-                    )}
 
-                    {/* Info */}
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-brand-green">
-                        {student.name}
-                      </h4>
-                      <p className="text-sm text-neutral-600">
-                        {student.rollNumber} • {student.year} • {student.department}
-                      </p>
-                    </div>
-
-                    {/* Selected Indicator */}
-                    {selectedStudent?.id === student.id && (
-                      <svg
-                        className="w-6 h-6 text-brand-green"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
+                      {/* Avatar */}
+                      {student.avatar ? (
+                        <img
+                          src={student.avatar}
+                          alt={student.name}
+                          className="w-10 h-10 rounded-full object-cover"
                         />
-                      </svg>
-                    )}
-                  </div>
-                </Card>
-              ))}
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center font-bold">
+                          {student.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+
+                      {/* Info */}
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-brand-green">
+                          {student.name}
+                        </h4>
+                        <p className="text-sm text-neutral-600">
+                          {student.rollNumber} • {student.year} • {student.department}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           ) : searchQuery && !searching ? (
             <div className="text-center py-8 text-neutral-600">
@@ -365,17 +438,22 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
                 setShowAddModal(false);
                 setSearchQuery('');
                 setSearchResults([]);
-                setSelectedStudent(null);
+                setSelectedStudents([]);
               }}
             >
               Cancel
             </Button>
             <Button
               variant="primary"
-              onClick={handleAssignStudent}
-              disabled={!selectedStudent || assigning}
+              onClick={handleAssignStudents}
+              disabled={selectedStudents.length === 0 || assigning}
             >
-              {assigning ? 'Assigning...' : 'Assign Student'}
+              {assigning
+                ? 'Assigning...'
+                : `Assign Student${selectedStudents.length !== 1 ? 's' : ''} ${
+                    selectedStudents.length > 0 ? `(${selectedStudents.length})` : ''
+                  }`
+              }
             </Button>
           </ModalFooter>
         </div>

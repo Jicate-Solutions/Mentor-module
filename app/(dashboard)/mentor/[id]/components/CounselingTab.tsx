@@ -17,7 +17,7 @@ interface CounselingTabProps {
 
 export default function CounselingTab({ mentorId }: CounselingTabProps) {
   const { accessToken, user } = useAuth();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const [sessions, setSessions] = useState<CounselingSession[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -27,13 +27,15 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [formData, setFormData] = useState({
-    studentId: '',
+    selectedStudentIds: [] as string[],
     sessionName: '',
     date: '',
     time: '',
     notes: '',
     attachment: ''
   });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectAll, setSelectAll] = useState(false);
 
   // View Session Modal
   const [showViewModal, setShowViewModal] = useState(false);
@@ -90,11 +92,49 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Toggle student selection
+  const toggleStudentSelection = (studentId: string) => {
+    setFormData(prev => {
+      const isSelected = prev.selectedStudentIds.includes(studentId);
+      const newSelectedIds = isSelected
+        ? prev.selectedStudentIds.filter(id => id !== studentId)
+        : [...prev.selectedStudentIds, studentId];
+
+      // Update select all state
+      setSelectAll(newSelectedIds.length === students.length);
+
+      return {
+        ...prev,
+        selectedStudentIds: newSelectedIds
+      };
+    });
+  };
+
+  // Toggle select all
+  const handleSelectAll = () => {
+    const newSelectAll = !selectAll;
+    setSelectAll(newSelectAll);
+    setFormData(prev => ({
+      ...prev,
+      selectedStudentIds: newSelectAll ? students.map(s => s.id) : []
+    }));
+  };
+
+  // Filter students based on search query
+  const filteredStudents = students.filter(student => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      student.name.toLowerCase().includes(query) ||
+      student.rollNumber.toLowerCase().includes(query)
+    );
+  });
+
   // Create new session
   const handleCreateSession = async () => {
     // Validate required fields
-    if (!accessToken || !formData.studentId || !formData.sessionName || !formData.date || !formData.time) {
-      toast.warning('Missing fields', 'Please fill in all required fields');
+    if (!accessToken || formData.selectedStudentIds.length === 0 || !formData.sessionName || !formData.date || !formData.time) {
+      toast.warning('Missing fields', 'Please select at least one student and fill in all required fields');
       return;
     }
 
@@ -108,35 +148,86 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
     try {
       setCreating(true);
-      const response = await fetch(`/api/mentor/${mentorId}/counseling`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-        setSessions([data.session, ...sessions]);
+      // Create a session for each selected student
+      let successCount = 0;
+      let failCount = 0;
+      const newSessions: CounselingSession[] = [];
+
+      for (const studentId of formData.selectedStudentIds) {
+        try {
+          // Find the full student object
+          const student = students.find(s => s.id === studentId);
+          if (!student) continue; // Skip if student not found
+
+          const response = await fetch(`/api/mentor/${mentorId}/counseling`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              student: {
+                id: student.id,
+                name: student.name,
+                rollNumber: student.rollNumber,
+                email: student.email,
+                department: student.department,
+                year: student.year
+              },
+              sessionName: formData.sessionName,
+              date: formData.date,
+              time: formData.time,
+              notes: formData.notes,
+              attachment: formData.attachment
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            newSessions.push(data.session);
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          failCount++;
+        }
+      }
+
+      // Update sessions list
+      if (newSessions.length > 0) {
+        setSessions([...newSessions, ...sessions]);
+      }
+
+      // Show results
+      if (successCount > 0 && failCount === 0) {
+        toast.success(
+          'Sessions created',
+          `Successfully created ${successCount} counseling session${successCount > 1 ? 's' : ''}`
+        );
         setShowCreateModal(false);
-        toast.success('Session created', 'Counseling session has been scheduled successfully');
         // Reset form
         setFormData({
-          studentId: '',
+          selectedStudentIds: [],
           sessionName: '',
           date: '',
           time: '',
           notes: '',
           attachment: ''
         });
+        setSearchQuery('');
+        setSelectAll(false);
+      } else if (successCount > 0 && failCount > 0) {
+        toast.warning(
+          'Partial success',
+          `Created ${successCount} session${successCount > 1 ? 's' : ''}, ${failCount} failed`
+        );
       } else {
-        const errorData = await response.json();
-        toast.error('Failed to create session', errorData.error || 'An error occurred');
+        toast.error('Failed to create sessions', 'Could not create any counseling sessions');
       }
     } catch (error) {
-      toast.error('Error creating session', 'An unexpected error occurred. Please try again');
+      toast.error('Error creating sessions', 'An unexpected error occurred. Please try again');
     } finally {
       setCreating(false);
     }
@@ -226,7 +317,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
     <div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-brand-green">
+        <h2 className="text-xl font-semibold text-brand-green">
           Counseling Sessions ({sessions.length})
         </h2>
         <Button
@@ -372,24 +463,80 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         size="lg"
       >
         <div className="space-y-4">
-          {/* Student Selection */}
+          {/* Student Selection with Search and Checkboxes */}
           <div>
             <label className="block text-sm font-medium text-brand-green mb-2">
-              Select Student <span className="text-red-500">*</span>
+              Select Students <span className="text-red-500">*</span>
             </label>
-            <select
-              value={formData.studentId}
-              onChange={(e) => handleInputChange('studentId', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-colors bg-white"
-              required
-            >
-              <option value="">Choose a student...</option>
-              {students.map((student) => (
-                <option key={student.id} value={student.id}>
-                  {student.name} - {student.rollNumber}
-                </option>
-              ))}
-            </select>
+
+            {/* Search Input */}
+            <div className="mb-3">
+              <div className="relative">
+                <div className="absolute left-3 top-3 text-neutral-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search with student ID or name"
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Select All Checkbox */}
+            <div className="mb-2 pb-2 border-b border-neutral-200">
+              <label className="flex items-center gap-3 cursor-pointer hover:bg-neutral-50 p-2 rounded-lg transition-colors">
+                <input
+                  type="checkbox"
+                  checked={selectAll}
+                  onChange={handleSelectAll}
+                  className="w-5 h-5 text-brand-green focus:ring-brand-green rounded border-neutral-300"
+                />
+                <span className="font-medium text-brand-green">
+                  All Students ({students.length})
+                </span>
+              </label>
+            </div>
+
+            {/* Student List with Checkboxes */}
+            <div className="max-h-64 overflow-y-auto space-y-1 border border-neutral-200 rounded-lg p-2">
+              {filteredStudents.length === 0 ? (
+                <div className="text-center py-8 text-neutral-500">
+                  {searchQuery ? 'No students found matching your search' : 'No students assigned'}
+                </div>
+              ) : (
+                filteredStudents.map((student) => (
+                  <label
+                    key={student.id}
+                    className="flex items-center gap-3 p-3 cursor-pointer hover:bg-neutral-50 rounded-lg transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.selectedStudentIds.includes(student.id)}
+                      onChange={() => toggleStudentSelection(student.id)}
+                      className="w-5 h-5 text-brand-green focus:ring-brand-green rounded border-neutral-300"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-brand-green">{student.name}</div>
+                      <div className="text-sm text-neutral-600">
+                        {student.rollNumber} • {student.department}
+                      </div>
+                    </div>
+                  </label>
+                ))
+              )}
+            </div>
+
+            {/* Selected count */}
+            {formData.selectedStudentIds.length > 0 && (
+              <div className="mt-2 text-sm text-neutral-600">
+                {formData.selectedStudentIds.length} student{formData.selectedStudentIds.length > 1 ? 's' : ''} selected
+              </div>
+            )}
           </div>
 
           {/* Session Name */}
@@ -469,7 +616,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               <div className="flex items-start gap-3 mb-4">
                 <div className="text-3xl">💬</div>
                 <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-brand-green mb-2">
+                  <h3 className="text-xl font-semibold text-brand-green mb-2">
                     {selectedSession.sessionName}
                   </h3>
                   <Badge

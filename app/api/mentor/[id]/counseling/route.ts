@@ -111,37 +111,112 @@ export async function POST(
 
     const { id: mentorId } = await params;
     const body = await request.json();
-    const { studentId, sessionName, date, time, notes, attachment } = body;
+    const { student, sessionName, date, time, notes, attachment } = body;
+
+    console.log('[Counseling API POST] Starting session creation:', {
+      mentorId,
+      studentId: student?.id,
+      studentName: student?.name,
+      sessionName
+    });
 
     // Validation
-    if (!studentId || !sessionName || !date || !time) {
+    if (!student || !student.id || !sessionName || !date || !time) {
       return NextResponse.json(
-        { error: 'Missing required fields: studentId, sessionName, date, time' },
+        { error: 'Missing required fields: student (with id), sessionName, date, time' },
         { status: 400 }
       );
     }
 
-    // Get student details
-    const { data: student, error: studentError } = await supabaseAdmin
-      .from('students')
-      .select('id, name, roll_number')
-      .eq('id', studentId)
+    // Get mentor's department and institution for student record
+    console.log('[Counseling API POST] Querying mentor:', mentorId);
+    const { data: mentor, error: mentorError } = await supabaseAdmin
+      .from('mentors')
+      .select('department_id, institution_id')
+      .eq('id', mentorId)
       .single();
 
-    if (studentError || !student) {
-      console.error('[Counseling API] Student not found:', studentError);
-      return NextResponse.json(
-        { error: 'Student not found' },
-        { status: 404 }
-      );
+    console.log('[Counseling API POST] Mentor query result:', {
+      found: !!mentor,
+      mentor,
+      error: mentorError
+    });
+
+    if (mentorError || !mentor) {
+      console.error('[Counseling API] Mentor not found in Supabase. Using FALLBACK values.');
+      console.error('[Counseling API] This means the mentor from JKKN API is not in Supabase mentors table.');
+      console.error('[Counseling API] Error details:', mentorError);
+    }
+
+    // Use actual mentor or fallback values
+    const departmentId = mentor?.department_id || '00000000-0000-0000-0000-000000000001';
+    const institutionId = mentor?.institution_id || '00000000-0000-0000-0000-000000000001';
+
+    // Verify student exists in Supabase (should exist from assignment)
+    console.log('[Counseling API] Checking if student exists:', student.id);
+    const { data: studentData, error: studentError } = await supabaseAdmin
+      .from('students')
+      .select('id, name, roll_number')
+      .eq('id', student.id)
+      .single();
+
+    console.log('[Counseling API] Student query result:', {
+      found: !!studentData,
+      studentData,
+      error: studentError
+    });
+
+    // If student not found, create them (fallback)
+    if (studentError || !studentData) {
+      console.log('[Counseling API] Student not in DB, creating from request data with values:', {
+        id: student.id,
+        name: student.name,
+        department_id: departmentId,
+        institution_id: institutionId
+      });
+
+      const { error: createError } = await supabaseAdmin
+        .from('students')
+        .upsert({
+          id: student.id,
+          name: student.name,
+          email: student.email || `${student.id}@student.jkkn.ac.in`,
+          roll_number: student.rollNumber || student.id,
+          department_id: departmentId,
+          institution_id: institutionId,
+          year: student.year || null,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'id',
+        });
+
+      if (createError) {
+        console.error('[Counseling API] Failed to create student:', createError);
+        console.error('[Counseling API] Full error:', JSON.stringify(createError, null, 2));
+        return NextResponse.json(
+          { error: 'Failed to store student data', details: createError.message },
+          { status: 500 }
+        );
+      }
+
+      console.log(`[Counseling API] ✅ Successfully upserted student ${student.id} into students table`);
     }
 
     // Insert new session into Supabase
+    console.log('[Counseling API] Creating counseling session with data:', {
+      mentor_id: mentorId,
+      student_id: student.id,
+      session_name: sessionName,
+      date,
+      time
+    });
+
     const { data: newSession, error: insertError } = await supabaseAdmin
       .from('counseling_sessions')
       .insert({
         mentor_id: mentorId,
-        student_id: studentId,
+        student_id: student.id,
         session_name: sessionName,
         date: date,
         time: time,
@@ -155,18 +230,21 @@ export async function POST(
 
     if (insertError) {
       console.error('[Counseling API] Error creating session:', insertError);
+      console.error('[Counseling API] Full error:', JSON.stringify(insertError, null, 2));
       return NextResponse.json(
         { error: 'Failed to create counseling session', details: insertError.message },
         { status: 500 }
       );
     }
 
+    console.log(`[Counseling API] ✅ Successfully created counseling session ${newSession.id}`);
+
     // Transform to frontend interface
     const transformedSession: CounselingSession = {
       id: newSession.id,
       mentorId: newSession.mentor_id,
       studentId: newSession.student_id,
-      studentName: student.name,
+      studentName: studentData?.name || student.name || 'Unknown Student',
       sessionName: newSession.session_name,
       date: newSession.date,
       time: newSession.time,

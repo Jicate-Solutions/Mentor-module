@@ -249,7 +249,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         className={`
           fixed top-0 left-0 z-50 h-full
           ${isCollapsed ? 'lg:w-20' : 'w-80'}
-          bg-brand-cream border-r border-neutral-200 shadow-sm
+          bg-white border-r border-neutral-100
           transform transition-all duration-300 ease-in-out
           lg:translate-x-0 lg:fixed
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -258,9 +258,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         aria-label="Main navigation"
       >
         {/* Header */}
-        <div className={`border-b border-neutral-200 ${isCollapsed ? 'lg:p-3' : 'p-6'} transition-all duration-300`}>
-          <div className={`flex items-center ${isCollapsed ? 'lg:justify-center' : 'justify-between'} mb-4`}>
-            <h1 className={`text-2xl font-bold text-brand-green flex items-center gap-2 ${isCollapsed ? 'lg:gap-0' : ''}`}>
+        <div className={`border-b border-neutral-100 ${isCollapsed ? 'lg:p-3' : 'p-4'} transition-all duration-300`}>
+          <div className={`flex items-center ${isCollapsed ? 'lg:justify-center' : 'justify-between'} mb-3`}>
+            <h1 className={`text-xl font-semibold text-brand-green flex items-center gap-2 ${isCollapsed ? 'lg:gap-0' : ''}`}>
               <span>🎓</span>
               <span className={isCollapsed ? 'lg:hidden' : ''}>JKKN Mentor</span>
             </h1>
@@ -278,12 +278,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
 
           {/* User Profile */}
           {user && (
-            <div className={`flex items-center gap-3 p-3 bg-white rounded-lg border border-brand-green ${isCollapsed ? 'lg:justify-center lg:p-2' : ''}`}>
-              <div className="w-12 h-12 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center text-xl font-bold flex-shrink-0">
+            <div className={`flex items-center gap-3 p-3 bg-neutral-50 rounded-lg ${isCollapsed ? 'lg:justify-center lg:p-2' : ''}`}>
+              <div className="w-10 h-10 rounded-full bg-brand-green/10 text-brand-green flex items-center justify-center text-lg font-medium flex-shrink-0">
                 {user.full_name.charAt(0).toUpperCase()}
               </div>
               <div className={`flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                <p className="font-semibold text-brand-green truncate">
+                <p className="font-medium text-brand-green truncate">
                   {user.full_name}
                 </p>
                 <p className="text-sm text-neutral-600 truncate">
@@ -416,12 +416,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         </nav>
 
         {/* Footer - Logout */}
-        <div className={`border-t border-neutral-200 ${isCollapsed ? 'lg:p-2' : 'p-4'} transition-all duration-300`}>
+        <div className={`border-t border-neutral-100 ${isCollapsed ? 'lg:p-2' : 'p-4'} transition-all duration-300`}>
           <button
             onClick={handleLogout}
             className={`
               w-full flex items-center justify-center rounded-lg
-              bg-brand-green text-brand-cream font-semibold
+              bg-brand-green text-white font-medium
               hover:bg-primary-700 transition-colors
               focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2
               ${isCollapsed ? 'lg:gap-0 lg:px-2 lg:py-3' : 'gap-3 px-4 py-3'}

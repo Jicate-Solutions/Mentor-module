@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get API key from environment (server-side only)
@@ -23,7 +23,7 @@ export async function GET(
       );
     }
 
-    const courseId = params.id;
+    const { id: courseId } = await params;
 
     // Call JKKN API
     const url = `${baseUrl}/api-management/organizations/courses/${courseId}`;

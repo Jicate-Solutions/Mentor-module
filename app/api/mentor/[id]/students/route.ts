@@ -32,7 +32,11 @@ export async function GET(
           name,
           email,
           roll_number,
-          year
+          year,
+          department_id,
+          departments (
+            name
+          )
         )
       `)
       .eq('mentor_id', mentorId)
@@ -52,7 +56,7 @@ export async function GET(
       name: assignment.student?.name || 'Unknown Student',
       email: assignment.student?.email || '',
       rollNumber: assignment.student?.roll_number || '',
-      department: assignment.student?.department || '',
+      department: assignment.student?.departments?.name || 'Unknown',
       year: assignment.student?.year || '',
       assignedAt: assignment.assigned_at,
       notes: assignment.notes || undefined,

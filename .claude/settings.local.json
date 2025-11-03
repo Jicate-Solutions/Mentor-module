@@ -17,7 +17,10 @@
       "Bash(done)",
       "Read(//c/Users/brabu/Pictures/Screenshots/**)",
       "Bash(ls:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(cp:*)",
+      "Bash(find:*)",
+      "Bash(nul)"
     ],
     "deny": [],
     "ask": []

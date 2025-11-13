@@ -166,7 +166,7 @@ export default function MentorListingPage() {
 
           {/* Initial State - No Search */}
           {!hasSearched && !loading && !error && (
-            <Card variant="bordered" className="text-center py-16">
+            <Card variant="outline" className="text-center py-16">
               <div className="max-w-md mx-auto">
                 <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-brand-cream flex items-center justify-center">
                   <svg className="w-10 h-10 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,7 +209,7 @@ export default function MentorListingPage() {
                   {mentors.map((mentor) => (
                   <Card
                     key={mentor.id}
-                    variant="bordered"
+                    variant="outline"
                     hoverable
                     className="cursor-pointer transition-all flex flex-col h-full group relative"
                     onClick={() => handleMentorClick(mentor.id)}

@@ -88,7 +88,7 @@ export default function ApiManagementTab() {
   return (
     <div className="space-y-6">
       {/* API Status */}
-      <Card variant="bordered">
+      <Card variant="outline">
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-xl font-bold text-brand-green mb-2">

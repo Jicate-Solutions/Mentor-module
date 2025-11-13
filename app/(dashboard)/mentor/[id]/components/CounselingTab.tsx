@@ -311,7 +311,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
     );
   }
 
-  const selectedStudent = students.find(s => s.id === formData.studentId);
+  const selectedStudent = students.find(s => s.id === formData.selectedStudentIds[0]);
 
   return (
     <div>
@@ -344,7 +344,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
       {/* No Students Warning */}
       {students.length === 0 && (
-        <Card variant="cream" className="mb-6">
+        <Card variant="subtle" className="mb-6">
           <div className="text-center py-6">
             <div className="text-4xl mb-3">⚠️</div>
             <p className="text-brand-green font-medium mb-2">No Students Assigned</p>
@@ -357,7 +357,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
       {/* Sessions List */}
       {sessions.length === 0 ? (
-        <Card variant="cream">
+        <Card variant="subtle">
           <div className="text-center py-12">
             <div className="text-6xl mb-4">💬</div>
             <h3 className="text-xl font-semibold text-brand-green mb-2">
@@ -612,7 +612,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         >
           <div className="space-y-6">
             {/* Session Information */}
-            <Card variant="cream">
+            <Card variant="subtle">
               <div className="flex items-start gap-3 mb-4">
                 <div className="text-3xl">💬</div>
                 <div className="flex-1">
@@ -691,7 +691,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               </h3>
 
               {selectedSession.feedback ? (
-                <Card variant="bordered">
+                <Card variant="outline">
                   <div className="space-y-4">
                     <div className="bg-brand-cream p-4 rounded-lg">
                       <p className="text-sm font-semibold text-brand-green mb-2">
@@ -718,7 +718,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   </div>
                 </Card>
               ) : (
-                <Card variant="default">
+                <Card variant="subtle">
                   <div className="space-y-4">
                     <p className="text-neutral-600 mb-4">
                       Please provide feedback for this counseling session:

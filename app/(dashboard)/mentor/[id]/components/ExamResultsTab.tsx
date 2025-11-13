@@ -16,7 +16,7 @@ export default function ExamResultsTab({ mentorId }: ExamResultsTabProps) {
       </h2>
 
       {/* Coming Soon Card */}
-      <Card variant="cream" className="text-center py-16">
+      <Card variant="subtle" className="text-center py-16">
         <div className="max-w-2xl mx-auto">
           {/* Icon */}
           <div className="inline-flex items-center justify-center w-24 h-24 bg-brand-yellow rounded-full mb-6">

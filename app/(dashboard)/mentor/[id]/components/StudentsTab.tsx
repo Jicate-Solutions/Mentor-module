@@ -309,7 +309,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
 
       {/* Students List */}
       {assignedStudents.length === 0 ? (
-        <Card variant="cream">
+        <Card variant="subtle">
           <div className="text-center py-8">
             <div className="text-6xl mb-4">👨‍🎓</div>
             <h3 className="text-xl font-semibold text-brand-green mb-2">
@@ -411,7 +411,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
                 return (
                   <Card
                     key={student.id}
-                    variant={isSelected ? 'bordered' : 'default'}
+                    variant={isSelected ? 'outline' : 'default'}
                     className={`
                       transition-shadow
                       ${isAssignedToOther

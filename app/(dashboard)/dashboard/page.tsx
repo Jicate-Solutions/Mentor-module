@@ -53,6 +53,7 @@ interface TopMentor {
 interface DepartmentData {
   name: string;
   value: number;
+  [key: string]: string | number;
 }
 
 interface DepartmentProgress {

@@ -20,7 +20,12 @@
       "Bash(xargs:*)",
       "Bash(cp:*)",
       "Bash(find:*)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(taskkill:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": []

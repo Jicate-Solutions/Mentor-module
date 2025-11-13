@@ -10,7 +10,7 @@ export default function GeneralSettingsTab() {
   return (
     <div className="space-y-6">
       {/* Profile Information */}
-      <Card variant="bordered">
+      <Card variant="outline">
         <h3 className="text-xl font-bold text-brand-green mb-4">
           Profile Information
         </h3>

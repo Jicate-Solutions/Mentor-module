@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface ConfirmOptions {
@@ -12,7 +12,7 @@ interface ConfirmOptions {
 }
 
 interface UseConfirmReturn {
-  ConfirmationDialog: () => JSX.Element;
+  ConfirmationDialog: () => React.ReactElement;
   confirm: (options: ConfirmOptions) => Promise<boolean>;
   isConfirming: boolean;
 }

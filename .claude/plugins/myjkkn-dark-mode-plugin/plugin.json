@@ -1,0 +1,57 @@
+{
+  "name": "myjkkn-dark-mode-plugin",
+  "version": "1.0.0",
+  "description": "Automated dark mode analysis and styling plugin for MyJKKN application. Analyzes the entire codebase, identifies modules without proper dark mode support, and systematically applies dark mode styles across all pages and components.",
+  "author": "BOOBALAN A",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JKKN-Institutions/Claude-Code-plugins"
+  },
+  "keywords": [
+    "dark-mode",
+    "next-themes",
+    "tailwind",
+    "styling",
+    "automation",
+    "myjkkn"
+  ],
+  "license": "MIT",
+  "engines": {
+    "claude-code": ">=1.0.0"
+  },
+  "skills": [
+    "dark-mode-analyzer",
+    "dark-mode-styler",
+    "progress-tracker"
+  ],
+  "commands": [
+    "analyze-dark-mode",
+    "apply-dark-mode",
+    "check-progress"
+  ],
+  "configuration": {
+    "tracking_file": ".dark-mode-progress.json",
+    "modules_to_analyze": [
+      "academic",
+      "admissions",
+      "billing",
+      "dashboard",
+      "organizations",
+      "resource-management",
+      "staff",
+      "students",
+      "application-hub",
+      "users",
+      "audit-trail",
+      "bug-leaderboard",
+      "notifications",
+      "profile"
+    ],
+    "theme_config": {
+      "provider": "next-themes",
+      "strategy": "class",
+      "css_variables": true,
+      "tailwind_config": "tailwind.config.ts"
+    }
+  }
+}

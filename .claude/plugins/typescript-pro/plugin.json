@@ -1,0 +1,11 @@
+{
+  "name": "typescript-pro",
+  "version": "1.0.0",
+  "description": "Advanced TypeScript development with type system mastery and strict typing patterns",
+  "author": {
+    "name": "JKKN Engineering",
+    "email": "aiengineering@jkkn.ac.in"
+  },
+  "homepage": "https://github.com/JKKN-Institutions/Claude-Code-plugins",
+  "keywords": ["typescript", "types", "type-safety", "generics", "strict-mode"]
+}

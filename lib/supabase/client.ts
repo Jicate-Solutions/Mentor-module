@@ -1,9 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase client configuration
+// Supabase client configuration for browser/client-side use
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
@@ -18,18 +17,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: false, // We manage sessions via JKKN OAuth
     detectSessionInUrl: false,
-  },
-});
-
-/**
- * Server-side Supabase client with service role
- * Bypasses RLS for admin operations
- * Only use in API routes, never expose to client
- */
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
   },
 });
 

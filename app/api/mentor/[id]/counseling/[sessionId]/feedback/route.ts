@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/server';
 import type { CounselingSession } from '@/lib/types/mentor';
 
 /**
@@ -32,6 +32,9 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    // Create admin client for this request
+    const supabaseAdmin = createAdminClient();
 
     // Verify session exists and belongs to this mentor
     const { data: session, error: sessionError } = await supabaseAdmin

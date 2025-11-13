@@ -69,73 +69,93 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
 
-    // Call JKKN API - Try correct endpoint first (matching programs structure)
-    const url = `${baseUrl}/api-management/organizations/staff?page=${page}&limit=${limit}`;
+    // Try multiple possible endpoints (staff endpoint location varies by API)
+    const possibleEndpoints = [
+      `${baseUrl}/api-management/staff?page=${page}&limit=${limit}`,
+      `${baseUrl}/api-management/organizations/staff?page=${page}&limit=${limit}`,
+      `${baseUrl}/api-management/organizations/employees?page=${page}&limit=${limit}`,
+      `${baseUrl}/api/staff?page=${page}&limit=${limit}`,
+    ];
 
-    console.log('[Staff API] Fetching from URL:', url);
+    console.log('[Staff API] Trying multiple endpoints to find working one...');
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      // Add cache control for better performance
-      next: { revalidate: 60 }, // Cache for 60 seconds
-    });
+    let data: any = null;
+    let successfulEndpoint: string | null = null;
+    let lastError: string = '';
 
-    console.log('[Staff API] Response status:', response.status);
-    console.log('[Staff API] Response headers:', Object.fromEntries(response.headers.entries()));
-
-    if (!response.ok) {
-      // Try to get error details - handle both JSON and non-JSON responses
-      const contentType = response.headers.get('content-type');
-      let errorData: any = {};
-      let responseBody = '';
+    // Try each endpoint until one works
+    for (const url of possibleEndpoints) {
+      console.log(`[Staff API] Trying endpoint: ${url}`);
 
       try {
-        responseBody = await response.text();
-        console.log('[Staff API] Error response body:', responseBody);
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          // Add cache control for better performance
+          next: { revalidate: 60 }, // Cache for 60 seconds
+        });
 
-        if (contentType?.includes('application/json')) {
-          errorData = JSON.parse(responseBody);
+        console.log(`[Staff API] Response status for ${url}: ${response.status}`);
+
+        // Check if response is successful
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+
+          // Verify it's JSON, not HTML
+          if (contentType && contentType.includes('application/json')) {
+            const responseText = await response.text();
+
+            try {
+              data = JSON.parse(responseText);
+              successfulEndpoint = url;
+              console.log(`[Staff API] ✓ SUCCESS! Endpoint works: ${url}`);
+              break; // Exit loop on success
+            } catch (parseError) {
+              console.error(`[Staff API] ✗ Failed to parse JSON from ${url}:`, parseError);
+              lastError = 'Invalid JSON response';
+              continue; // Try next endpoint
+            }
+          } else {
+            console.log(`[Staff API] ✗ Got non-JSON response from ${url}`);
+            lastError = 'Got HTML instead of JSON';
+            continue; // Try next endpoint
+          }
         } else {
-          errorData = { rawResponse: responseBody };
+          // Log failure and try next endpoint
+          const errorText = await response.text();
+          const isHtml = errorText.includes('<!DOCTYPE') || errorText.includes('<html');
+          console.log(`[Staff API] ✗ Failed with ${response.status}: ${isHtml ? 'HTML 404 page' : errorText.substring(0, 100)}`);
+          lastError = `${response.status} ${response.statusText}`;
+          continue; // Try next endpoint
         }
-      } catch (parseError) {
-        console.error('[Staff API] Error parsing response:', parseError);
-        errorData = { rawResponse: responseBody };
+      } catch (fetchError: any) {
+        console.error(`[Staff API] ✗ Network error for ${url}:`, fetchError.message);
+        lastError = fetchError.message;
+        continue; // Try next endpoint
       }
+    }
 
+    // If no endpoint worked, return error
+    if (!data || !successfulEndpoint) {
+      console.error('[Staff API] ❌ All endpoints failed. Last error:', lastError);
       return NextResponse.json(
         {
           success: false,
-          error: errorData.message || `JKKN API Error: ${response.statusText}`,
-          status: response.status,
-          details: errorData,
-          endpoint: url,
+          error: `JKKN API Error: ${lastError}`,
+          details: {
+            message: 'All staff API endpoints returned errors',
+            triedEndpoints: possibleEndpoints,
+            lastError: lastError,
+          },
         },
-        { status: response.status }
+        { status: 404 }
       );
     }
 
-    const responseText = await response.text();
-    console.log('[Staff API] Raw response (first 500 chars):', responseText.substring(0, 500));
-
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('[Staff API] Failed to parse JSON:', parseError);
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid JSON response from JKKN API',
-          details: { rawResponse: responseText.substring(0, 200) },
-        },
-        { status: 500 }
-      );
-    }
+    console.log(`[Staff API] Using successful endpoint: ${successfulEndpoint}`);
 
     // Debug: Log the actual API response to see field names
     console.log('=== STAFF API RESPONSE DEBUG ===');

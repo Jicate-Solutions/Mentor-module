@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/server';
 
 /**
  * GET /api/mentor/[id]
@@ -23,6 +23,9 @@ export async function GET(
     const { id: mentorId } = await params;
 
     console.log(`[Mentor Detail] Fetching mentor ${mentorId} from JKKN API`);
+
+    // Create admin client for this request
+    const supabaseAdmin = createAdminClient();
 
     // Get API credentials
     const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;

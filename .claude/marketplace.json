@@ -1,0 +1,53 @@
+{
+  "name": "jkkn-engineering-standards",
+  "owner": {
+    "name": "Boobalan A",
+    "email": "boobalan.a@jkkn.ac.in"
+  },
+  "metadata": {
+    "description": "Official engineering workflows and standards for JKKN. Institutional knowledge as executable infrastructure.",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "pr-review-checklist",
+      "source": "./plugins/pr-review-checklist",
+      "description": "Standardized PR review workflow - ensures consistent merge criteria across all teams",
+      "version": "1.0.0",
+      "category": "code-quality",
+      "keywords": ["pr", "review", "quality", "standards"],
+      "author": {
+        "name": "Boobalan A"
+      }
+    },
+    {
+      "name": "typescript-pro",
+      "source": "./plugins/typescript-pro",
+      "description": "Advanced TypeScript development with type system mastery and strict typing patterns",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": [
+        "typescript",
+        "types",
+        "type-safety",
+        "generics",
+        "strict-mode"
+      ],
+      "author": {
+        "name": "Boobalan A"
+      }
+    },
+    {
+      "name": "myjkkn-dark-mode-plugin",
+      "source": "./plugins/myjkkn-dark-mode-plugin",
+      "description": "Dark mode plugin for JKKN",
+      "version": "1.0.0",
+      "category": "theme",
+      "keywords": ["dark-mode", "theme", "jkkn"],
+      "author": {
+        "name": "Boobalan A"
+      }
+    }
+  ]
+}

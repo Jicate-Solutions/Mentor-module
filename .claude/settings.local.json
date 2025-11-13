@@ -20,7 +20,13 @@
       "Bash(xargs:*)",
       "Bash(cp:*)",
       "Bash(find:*)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(dir /b:*)"
     ],
     "deny": [],
     "ask": []

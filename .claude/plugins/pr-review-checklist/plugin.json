@@ -1,0 +1,11 @@
+{
+  "name": "pr-review-checklist",
+  "version": "1.0.0",
+  "description": "Standardized PR review workflow for JKKN engineering standards",
+  "author": {
+    "name": "JKKN Engineering",
+    "email": "aiengineering@jkkn.ac.in"
+  },
+  "homepage": "https://github.com/JKKN-Institutions/Claude-Code-plugins",
+  "keywords": ["pr", "review", "quality", "checklist"]
+}

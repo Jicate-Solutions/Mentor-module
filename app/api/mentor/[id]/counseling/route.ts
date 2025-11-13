@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/server';
 import type { CounselingSession } from '@/lib/types/mentor';
 
 /**
@@ -22,6 +22,9 @@ export async function GET(
     }
 
     const { id: mentorId } = await params;
+
+    // Create admin client for this request
+    const supabaseAdmin = createAdminClient();
 
     // Fetch sessions from Supabase with student details and feedback
     const { data: sessions, error } = await supabaseAdmin
@@ -127,6 +130,9 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    // Create admin client for this request
+    const supabaseAdmin = createAdminClient();
 
     // Get mentor's department and institution for student record
     console.log('[Counseling API POST] Querying mentor:', mentorId);

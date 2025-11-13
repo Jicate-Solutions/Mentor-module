@@ -117,6 +117,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     const authUrl = `${process.env.NEXT_PUBLIC_AUTH_SERVER_URL}/api/auth/authorize?${params}`;
+
+    // Debug logging
+    console.log('========================================');
+    console.log('OAuth Authorization Request:');
+    console.log('========================================');
+    console.log('Client ID:', process.env.NEXT_PUBLIC_APP_ID);
+    console.log('Redirect URI:', process.env.NEXT_PUBLIC_REDIRECT_URI);
+    console.log('Full Auth URL:', authUrl);
+    console.log('========================================');
+
     window.location.href = authUrl;
   }, []);
 

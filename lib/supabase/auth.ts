@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './client';
+import { createAdminClient } from './server';
 import type { JKKNUser } from '../auth/token-validation';
 
 /**
@@ -12,6 +12,8 @@ export async function upsertUser(jkknUser: JKKNUser & {
   profile_completed?: boolean;
 }) {
   try {
+    const supabaseAdmin = createAdminClient();
+
     const { data, error } = await supabaseAdmin
       .from('users')
       .upsert(
@@ -64,6 +66,8 @@ async function ensureMentorRecord(
   designation?: string
 ) {
   try {
+    const supabaseAdmin = createAdminClient();
+
     const { error } = await supabaseAdmin
       .from('mentors')
       .upsert(
@@ -99,6 +103,8 @@ export async function createUserSession(
   expiresIn: number
 ) {
   try {
+    const supabaseAdmin = createAdminClient();
+
     const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
     const { data, error } = await supabaseAdmin
@@ -129,6 +135,8 @@ export async function createUserSession(
  */
 export async function getUserByJkknId(jkknUserId: string) {
   try {
+    const supabaseAdmin = createAdminClient();
+
     const { data, error } = await supabaseAdmin
       .from('users')
       .select('*')
@@ -156,6 +164,8 @@ export async function getUserByJkknId(jkknUserId: string) {
  */
 export async function getUserSession(accessToken: string) {
   try {
+    const supabaseAdmin = createAdminClient();
+
     const { data, error} = await supabaseAdmin
       .from('user_sessions')
       .select(`
@@ -182,6 +192,8 @@ export async function getUserSession(accessToken: string) {
  */
 export async function cleanupExpiredSessions() {
   try {
+    const supabaseAdmin = createAdminClient();
+
     const { error } = await supabaseAdmin
       .from('user_sessions')
       .delete()
@@ -200,6 +212,8 @@ export async function cleanupExpiredSessions() {
  */
 export async function logoutUser(userId: string) {
   try {
+    const supabaseAdmin = createAdminClient();
+
     const { error } = await supabaseAdmin
       .from('user_sessions')
       .delete()

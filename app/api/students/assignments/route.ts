@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/server';
 
 /**
  * GET /api/students/assignments
@@ -15,6 +15,9 @@ export async function GET(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Create admin client for this request
+    const supabaseAdmin = createAdminClient();
 
     // Fetch all mentor-student assignments with mentor details
     const { data: assignments, error: queryError } = await supabaseAdmin

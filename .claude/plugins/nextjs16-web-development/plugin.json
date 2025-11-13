@@ -1,0 +1,23 @@
+{
+  "name": "nextjs16-web-development",
+  "version": "1.0.0",
+  "description": "Comprehensive Next.js 16 web development with Cache Components, Server Actions, Turbopack, React 19.2, and modern full-stack patterns",
+  "author": {
+    "name": "JKKN Engineering",
+    "email": "aiengineering@jkkn.ac.in"
+  },
+  "homepage": "https://github.com/JKKN-Institutions/Claude-Code-plugins",
+  "keywords": [
+    "nextjs",
+    "nextjs16",
+    "react19",
+    "cache-components",
+    "server-actions",
+    "turbopack",
+    "ppr",
+    "full-stack",
+    "web-development",
+    "typescript",
+    "supabase"
+  ]
+}

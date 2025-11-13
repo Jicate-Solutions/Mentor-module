@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/server';
 
 /**
  * GET /api/mentor/[id]/students
@@ -22,6 +22,9 @@ export async function GET(
 
     const { id: mentorId } = await params;
 
+    // Create admin client for this request
+    const supabaseAdmin = createAdminClient();
+
     // Fetch student assignments from Supabase with student details
     const { data: assignments, error } = await supabaseAdmin
       .from('mentor_students')
@@ -33,10 +36,7 @@ export async function GET(
           email,
           roll_number,
           year,
-          department_id,
-          departments (
-            name
-          )
+          department_id
         )
       `)
       .eq('mentor_id', mentorId)
@@ -56,7 +56,7 @@ export async function GET(
       name: assignment.student?.name || 'Unknown Student',
       email: assignment.student?.email || '',
       rollNumber: assignment.student?.roll_number || '',
-      department: assignment.student?.departments?.name || 'Unknown',
+      department: assignment.student?.department_id || 'Unknown',
       year: assignment.student?.year || '',
       assignedAt: assignment.assigned_at,
       notes: assignment.notes || undefined,
@@ -112,6 +112,9 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    // Create admin client for this request
+    const supabaseAdmin = createAdminClient();
 
     // Get mentor's department and institution for student record
     console.log('[Students API POST] Querying mentor:', mentorId);
@@ -265,6 +268,9 @@ export async function DELETE(
         { status: 400 }
       );
     }
+
+    // Create admin client for this request
+    const supabaseAdmin = createAdminClient();
 
     // Delete student assignment from Supabase
     const { error: deleteError } = await supabaseAdmin

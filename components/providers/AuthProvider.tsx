@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { JKKNUser, isTokenExpired, calculateExpiryTime } from '@/lib/auth/token-validation';
+import { authConfig } from '@/lib/auth/config';
 
 interface AuthContextType {
   user: JKKNUser | null;
@@ -109,14 +110,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('oauth_state', state);
 
     const params = new URLSearchParams({
-      client_id: process.env.NEXT_PUBLIC_APP_ID!,
-      redirect_uri: process.env.NEXT_PUBLIC_REDIRECT_URI!,
+      client_id: authConfig.clientId,
+      redirect_uri: authConfig.redirectUri,
       response_type: 'code',
-      scope: 'read write profile',
+      scope: authConfig.scopes,
       state: state,
     });
 
-    const authUrl = `${process.env.NEXT_PUBLIC_AUTH_SERVER_URL}/api/auth/authorize?${params}`;
+    const authUrl = `${authConfig.authServerUrl}/api/auth/authorize?${params}`;
     window.location.href = authUrl;
   }, []);
 

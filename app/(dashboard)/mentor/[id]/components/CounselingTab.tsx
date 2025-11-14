@@ -46,6 +46,46 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
   });
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
+  // Group sessions by session details (same session name, date, time = same group session)
+  const groupSessionsByDetails = () => {
+    const grouped = new Map<string, {
+      sessionName: string;
+      date: string;
+      time: string;
+      notes?: string;
+      attachment?: string;
+      status: string;
+      students: Array<{
+        id: string;
+        session: CounselingSession;
+      }>;
+    }>();
+
+    sessions.forEach(session => {
+      // Create a unique key based on session details
+      const key = `${session.sessionName}-${session.date}-${session.time}`;
+
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          sessionName: session.sessionName,
+          date: session.date,
+          time: session.time,
+          notes: session.notes,
+          attachment: session.attachment,
+          status: session.status,
+          students: []
+        });
+      }
+
+      grouped.get(key)!.students.push({
+        id: session.studentId,
+        session: session
+      });
+    });
+
+    return Array.from(grouped.values());
+  };
+
   // Fetch sessions and students
   useEffect(() => {
     if (!accessToken) return;
@@ -355,7 +395,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         </Card>
       )}
 
-      {/* Sessions List */}
+      {/* Sessions List with Students Inside */}
       {sessions.length === 0 ? (
         <Card variant="cream">
           <div className="text-center py-12">
@@ -369,86 +409,142 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
           </div>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {sessions.map((session) => (
-            <Card key={session.id} variant="default" className="hover:shadow-lg transition-shadow">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="space-y-6">
+          {groupSessionsByDetails().map((groupedSession, index) => (
+            <Card key={index} variant="default" className="border-2 border-brand-green">
+              {/* Session Header */}
+              <div className="flex items-start gap-3 mb-4 pb-4 border-b border-neutral-200">
+                <div className="text-3xl">💬</div>
                 <div className="flex-1">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="text-3xl">💬</div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-brand-green mb-1">
-                        {session.sessionName}
-                      </h3>
-                      <p className="text-neutral-600 mb-2">
-                        Student: <span className="font-medium text-brand-green">{session.studentName}</span>
-                      </p>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        <Badge
-                          variant={
-                            session.status === 'completed' ? 'success' :
-                            session.status === 'scheduled' ? 'info' : 'default'
-                          }
-                          size="sm"
-                        >
-                          {session.status.toUpperCase()}
-                        </Badge>
-                        {session.feedback && (
-                          <Badge variant="success" size="sm">
-                            ✓ Feedback Submitted
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
-                        <div className="flex items-center gap-2">
-                          <svg
-                            className="w-4 h-4 text-brand-green"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                            />
-                          </svg>
-                          {new Date(session.date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <svg
-                            className="w-4 h-4 text-brand-green"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          {session.time}
-                        </div>
-                      </div>
+                  <h3 className="text-2xl font-bold text-brand-green mb-2">
+                    {groupedSession.sessionName}
+                  </h3>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <Badge
+                      variant={
+                        groupedSession.status === 'completed' ? 'success' :
+                        groupedSession.status === 'scheduled' ? 'info' : 'default'
+                      }
+                      size="sm"
+                    >
+                      {groupedSession.status.toUpperCase()}
+                    </Badge>
+                    <Badge variant="info" size="sm">
+                      {groupedSession.students.length} Student{groupedSession.students.length !== 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
+                    <div className="flex items-center gap-2">
+                      <svg
+                        className="w-4 h-4 text-brand-green"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      {new Date(groupedSession.date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <svg
+                        className="w-4 h-4 text-brand-green"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      {groupedSession.time}
                     </div>
                   </div>
+                  {groupedSession.notes && (
+                    <div className="mt-3 p-3 bg-neutral-50 rounded-lg">
+                      <p className="text-sm text-neutral-700">
+                        <span className="font-medium text-brand-green">Notes:</span> {groupedSession.notes}
+                      </p>
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleViewSession(session)}
-                  className="self-start lg:self-center"
-                >
-                  View Details
-                </Button>
+              {/* Students List Inside Session */}
+              <div>
+                <h4 className="text-sm font-semibold text-brand-green mb-3 uppercase tracking-wide">
+                  Students in this session
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {groupedSession.students.map(({ session }) => (
+                    <div
+                      key={session.id}
+                      className="bg-brand-cream p-4 rounded-lg border-2 border-brand-yellow hover:border-brand-green transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Student Avatar */}
+                        <div className="flex-shrink-0">
+                          {session.student?.avatar ? (
+                            <img
+                              src={session.student.avatar}
+                              alt={session.student.name}
+                              className="w-12 h-12 rounded-full object-cover border-2 border-brand-green"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center text-lg font-bold border-2 border-brand-green">
+                              {session.studentName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Student Info */}
+                        <div className="flex-1 min-w-0">
+                          <h5 className="font-bold text-brand-green mb-1 truncate">
+                            {session.studentName}
+                          </h5>
+                          {session.student?.rollNumber && (
+                            <p className="text-xs text-neutral-600 mb-1">
+                              Roll: {session.student.rollNumber}
+                            </p>
+                          )}
+                          <div className="flex gap-1 flex-wrap">
+                            {session.student?.year && (
+                              <Badge variant="info" size="sm">
+                                {session.student.year}
+                              </Badge>
+                            )}
+                            {session.feedback && (
+                              <Badge variant="success" size="sm">
+                                ✓ Feedback
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* View Details Button */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewSession(session)}
+                          className="flex-shrink-0"
+                        >
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </Card>
           ))}
@@ -602,17 +698,75 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         </div>
       </Modal>
 
-      {/* View Session Modal with Feedback Form */}
+      {/* View Session Modal with Student Profile & Feedback Form */}
       {selectedSession && (
         <Modal
           isOpen={showViewModal}
           onClose={() => setShowViewModal(false)}
-          title="Session Details & Feedback"
+          title="Session Details & Student Profile"
           size="xl"
         >
           <div className="space-y-6">
+            {/* Student Profile Card */}
+            {selectedSession.student && (
+              <Card variant="cream" className="border-2 border-brand-green">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-16 h-16 rounded-full bg-brand-green flex items-center justify-center text-white text-2xl font-bold">
+                    {selectedSession.student.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-brand-green mb-1">
+                      {selectedSession.student.name}
+                    </h3>
+                    <p className="text-neutral-600 flex items-center gap-2">
+                      <span className="font-medium">Roll No:</span> {selectedSession.student.rollNumber}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-200">
+                  <div>
+                    <p className="text-sm font-medium text-brand-green mb-1 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Email
+                    </p>
+                    <p className="text-neutral-700">{selectedSession.student.email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-brand-green mb-1 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      Department
+                    </p>
+                    <p className="text-neutral-700">{selectedSession.student.department || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-brand-green mb-1 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                      Year
+                    </p>
+                    <p className="text-neutral-700">{selectedSession.student.year || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-brand-green mb-1 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Status
+                    </p>
+                    <p className="text-neutral-700">{selectedSession.student.isActive ? 'Active' : 'Inactive'}</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {/* Session Information */}
-            <Card variant="cream">
+            <Card variant="default">
               <div className="flex items-start gap-3 mb-4">
                 <div className="text-3xl">💬</div>
                 <div className="flex-1">
@@ -632,11 +786,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p className="text-sm font-medium text-brand-green mb-1">Student</p>
-                  <p className="text-neutral-700">{selectedSession.studentName}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-brand-green mb-1">Date</p>
+                  <p className="text-sm font-medium text-brand-green mb-1">Session Date</p>
                   <p className="text-neutral-700">
                     {new Date(selectedSession.date).toLocaleDateString('en-US', {
                       weekday: 'long',
@@ -651,7 +801,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   <p className="text-neutral-700">{selectedSession.time}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-brand-green mb-1">Created</p>
+                  <p className="text-sm font-medium text-brand-green mb-1">Created On</p>
                   <p className="text-neutral-700">
                     {new Date(selectedSession.createdAt).toLocaleDateString()}
                   </p>
@@ -660,8 +810,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
               {selectedSession.notes && (
                 <div className="mb-4 pt-4 border-t border-neutral-200">
-                  <p className="text-sm font-medium text-brand-green mb-2">Notes</p>
-                  <p className="text-neutral-700 whitespace-pre-wrap">{selectedSession.notes}</p>
+                  <p className="text-sm font-medium text-brand-green mb-2">Session Notes</p>
+                  <p className="text-neutral-700 whitespace-pre-wrap bg-brand-cream p-3 rounded-lg">{selectedSession.notes}</p>
                 </div>
               )}
 

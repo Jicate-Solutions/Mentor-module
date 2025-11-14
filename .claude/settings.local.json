@@ -26,7 +26,11 @@
       "Bash(findstr:*)",
       "Bash(curl:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(dir /b:*)"
+      "Bash(dir /b:*)",
+      "Skill(advanced-debugging)",
+      "Skill(supabase-expert)",
+      "mcp__filesystem__list_directory",
+      "Skill(ui-ux-designer)"
     ],
     "deny": [],
     "ask": []

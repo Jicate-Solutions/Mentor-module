@@ -18,6 +18,7 @@ interface Mentor {
   designation: string;
   avatar?: string | null;
   totalStudents: number;
+  pendingFeedback?: number;
 }
 
 type TabType = 'students' | 'counseling' | 'attendance' | 'examResults';
@@ -45,8 +46,8 @@ export default function MentorDetailPage() {
           return;
         }
 
-        // Fetch mentor basic info from list endpoint (filter by ID)
-        const mentorResponse = await fetch(`/api/mentor/list?search=${mentorId}`, {
+        // Fetch mentor details from dedicated endpoint (includes real student count)
+        const mentorResponse = await fetch(`/api/mentor/${mentorId}`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
           },
@@ -58,18 +59,32 @@ export default function MentorDetailPage() {
 
         const mentorData = await mentorResponse.json();
 
-        if (mentorData.success && mentorData.mentors && mentorData.mentors.length > 0) {
-          const foundMentor = mentorData.mentors.find((m: Mentor) => m.id === mentorId);
-          if (foundMentor) {
-            setMentor(foundMentor);
-          } else {
-            throw new Error('Mentor not found');
+        if (mentorData.success && mentorData.mentor) {
+          // Fetch counseling sessions to calculate pending feedback
+          const counselingResponse = await fetch(`/api/mentor/${mentorId}/counseling`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+
+          let pendingFeedback = 0;
+          if (counselingResponse.ok) {
+            const counselingData = await counselingResponse.json();
+            if (counselingData.success && counselingData.sessions) {
+              // Count completed sessions without feedback
+              pendingFeedback = counselingData.sessions.filter(
+                (session: any) => session.status === 'completed' && !session.feedback
+              ).length;
+            }
           }
+
+          setMentor({
+            ...mentorData.mentor,
+            pendingFeedback,
+          });
         } else {
           throw new Error('Mentor not found');
         }
-
-
       } catch (err) {
         console.error('Error fetching mentor details:', err);
         setError(err instanceof Error ? err.message : 'Failed to load mentor details');
@@ -199,7 +214,7 @@ export default function MentorDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 font-semibold mb-2">Pending Feedback</p>
-                <p className="text-4xl font-bold text-brand-green">0</p>
+                <p className="text-4xl font-bold text-brand-green">{mentor.pendingFeedback || 0}</p>
               </div>
               <div className="w-16 h-16 bg-brand-yellow rounded-full flex items-center justify-center">
                 <MessageSquare className="w-8 h-8 text-brand-green" />

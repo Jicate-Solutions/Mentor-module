@@ -94,11 +94,12 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Get department-wise session distribution
+    // Get department-wise session distribution with completion data
     const { data: departmentSessions } = await supabase
       .from('counseling_sessions')
       .select(`
         id,
+        status,
         mentors:mentor_id (
           department_id,
           departments(name)
@@ -106,17 +107,28 @@ export async function GET(request: NextRequest) {
       `)
       .gte('date', startDate.toISOString().split('T')[0]);
 
-    const departmentCounts: { [key: string]: number } = {};
+    const departmentCounts: { [key: string]: { total: number; completed: number } } = {};
 
     departmentSessions?.forEach((session: any) => {
       const deptName = session.mentors?.departments?.name || 'Unknown';
-      departmentCounts[deptName] = (departmentCounts[deptName] || 0) + 1;
+
+      if (!departmentCounts[deptName]) {
+        departmentCounts[deptName] = { total: 0, completed: 0 };
+      }
+
+      departmentCounts[deptName].total++;
+
+      if (session.status === 'completed') {
+        departmentCounts[deptName].completed++;
+      }
     });
 
     const departmentDistribution = Object.entries(departmentCounts)
-      .map(([name, count]) => ({
+      .map(([name, counts]) => ({
         name,
-        value: count,
+        value: counts.total,
+        completed: counts.completed,
+        total: counts.total,
       }))
       .sort((a, b) => b.value - a.value);
 

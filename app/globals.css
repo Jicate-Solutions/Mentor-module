@@ -15,16 +15,16 @@
   --font-heading: var(--font-poppins);
   --font-mono: var(--font-geist-mono);
 
-  /* Typography Scale - Compact Professional */
+  /* Typography Scale - Lightweight & Balanced */
   --font-size-xs: 0.75rem;      /* 12px */
   --font-size-sm: 0.875rem;     /* 14px */
-  --font-size-base: 0.875rem;   /* 14px - reduced for compact UI */
-  --font-size-lg: 1rem;         /* 16px - reduced from 18px */
-  --font-size-xl: 1.125rem;     /* 18px - reduced from 20px */
+  --font-size-base: 0.875rem;   /* 14px */
+  --font-size-lg: 1rem;         /* 16px */
+  --font-size-xl: 1.125rem;     /* 18px */
   --font-size-2xl: 1.25rem;     /* 20px */
-  --font-size-3xl: 1.5rem;      /* 24px */
-  --font-size-4xl: 1.875rem;    /* 30px */
-  --font-size-5xl: 2.25rem;     /* 36px */
+  --font-size-3xl: 1.5rem;      /* 24px - reduced for lighter feel */
+  --font-size-4xl: 1.75rem;     /* 28px - reduced from 30px */
+  --font-size-5xl: 2rem;        /* 32px - reduced from 36px */
 
   /* Line Heights */
   --line-height-tight: 1.25;
@@ -140,13 +140,13 @@
   --color-border-strong: #d4d4d4;
   --color-border-brand: var(--color-brand-green);
 
-  /* Shadows */
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-base: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  /* Shadows - Lightweight & Subtle */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.02);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-base: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -1px rgb(0 0 0 / 0.04);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -2px rgb(0 0 0 / 0.04);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 10px 10px -5px rgb(0 0 0 / 0.02);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -193,36 +193,36 @@ h1, h2, h3, h4, h5, h6 {
 
 .heading-1 {
   font-family: var(--font-poppins), var(--font-heading), sans-serif;
-  font-size: var(--font-size-4xl);
-  font-weight: 600; /* Professional weight, not too bold */
+  font-size: var(--font-size-3xl);
+  font-weight: 600; /* Balanced weight */
   line-height: var(--line-height-tight);
   letter-spacing: var(--letter-spacing-tight);
-  color: #111827; /* Neutral-900 - Professional black */
+  color: #1f2937; /* Softer dark gray */
 }
 
 .heading-2 {
   font-family: var(--font-poppins), var(--font-heading), sans-serif;
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: 600;
   line-height: var(--line-height-tight);
   letter-spacing: var(--letter-spacing-tight);
-  color: #111827; /* Neutral-900 - Professional black */
+  color: #1f2937; /* Softer dark gray */
 }
 
 .heading-3 {
   font-family: var(--font-poppins), var(--font-heading), sans-serif;
-  font-size: var(--font-size-2xl);
-  font-weight: 600;
+  font-size: var(--font-size-xl);
+  font-weight: 500;
   line-height: var(--line-height-snug);
-  color: #1f2937; /* Professional dark gray */
+  color: #374151; /* Lighter gray */
 }
 
 .heading-4 {
   font-family: var(--font-poppins), var(--font-heading), sans-serif;
-  font-size: var(--font-size-xl);
-  font-weight: 500; /* Medium weight for smaller headings */
+  font-size: var(--font-size-lg);
+  font-weight: 500; /* Medium weight */
   line-height: var(--line-height-snug);
-  color: #1f2937;
+  color: #374151;
 }
 
 .body-lg {
@@ -386,13 +386,13 @@ h1, h2, h3, h4, h5, h6 {
   /* Professional Accent (Minimal Yellow) */
   --gradient-accent-subtle: linear-gradient(135deg, #fffef0 0%, #ffffff 100%);
 
-  /* Professional Shadows (Gray - Not Colored) */
-  --shadow-professional: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-elevated: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-strong: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  /* Professional Shadows (Ultra-Light) */
+  --shadow-professional: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-elevated: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-strong: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
 
-  /* Subtle Green Shadow (Institutional) */
-  --shadow-green-subtle: 0 4px 12px rgba(11, 109, 65, 0.08), 0 2px 4px rgba(11, 109, 65, 0.04);
+  /* Subtle Green Shadow (Minimal) */
+  --shadow-green-subtle: 0 1px 3px rgba(11, 109, 65, 0.04), 0 1px 2px rgba(11, 109, 65, 0.02);
 }
 
 /* Professional Background Utilities */

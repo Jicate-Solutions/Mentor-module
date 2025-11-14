@@ -266,6 +266,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     }
   };
 
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -321,58 +322,58 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {assignedStudents.map((student) => (
             <Card key={student.id} variant="default">
-              <div className="flex items-start gap-3">
-                {/* Avatar */}
-                <div className="flex-shrink-0">
-                  {student.avatar ? (
-                    <img
-                      src={student.avatar}
-                      alt={student.name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center text-lg font-bold">
-                      {student.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-
-                {/* Student Info */}
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-brand-green mb-1 truncate">
-                    {student.name}
-                  </h4>
-                  <p className="text-sm text-neutral-600 mb-2">
-                    {student.rollNumber}
-                  </p>
-                  <div className="flex gap-2 mb-2">
-                    <Badge variant="info" size="sm">
-                      {student.year}
-                    </Badge>
-                    <Badge variant="default" size="sm">
-                      {student.department}
-                    </Badge>
+                <div className="flex items-start gap-3">
+                  {/* Avatar */}
+                  <div className="flex-shrink-0">
+                    {student.avatar ? (
+                      <img
+                        src={student.avatar}
+                        alt={student.name}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center text-lg font-bold">
+                        {student.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-neutral-500 truncate">
-                    {student.email}
-                  </p>
-                </div>
-              </div>
 
-              {/* Remove Button */}
-              <div className="mt-3 pt-3 border-t border-neutral-200">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleRemoveStudent(student.id)}
-                  className="w-full text-red-600 border-red-300 hover:bg-red-50"
-                >
-                  Remove
-                </Button>
-              </div>
+                  {/* Student Info */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-brand-green mb-1 truncate">
+                      {student.name}
+                    </h4>
+                    <p className="text-sm text-neutral-600 mb-2">
+                      {student.rollNumber}
+                    </p>
+                    <div className="flex gap-2 mb-2">
+                      <Badge variant="info" size="sm">
+                        {student.year}
+                      </Badge>
+                      <Badge variant="default" size="sm">
+                        {student.department}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-neutral-500 truncate">
+                      {student.email}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Remove Button */}
+                <div className="mt-3 pt-3 border-t border-neutral-200">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRemoveStudent(student.id)}
+                    className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                  >
+                    Remove Student
+                  </Button>
+                </div>
             </Card>
           ))}
         </div>

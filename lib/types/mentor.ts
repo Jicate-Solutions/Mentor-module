@@ -17,7 +17,7 @@ export interface Student {
   department: string;
   year: string;
   avatar?: string;
-  phone?: string;
+  isActive?: boolean;
 }
 
 export interface CounselingSession {
@@ -25,6 +25,7 @@ export interface CounselingSession {
   mentorId: string;
   studentId: string;
   studentName: string;
+  student?: Student;  // Complete student information
   sessionName: string;
   date: string;
   time: string;

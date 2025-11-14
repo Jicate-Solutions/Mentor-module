@@ -145,44 +145,17 @@ export default function DashboardPage() {
       setTopMentors(trendsData.topMentors || []);
       setDepartmentData(trendsData.departmentDistribution || []);
 
-      // Fetch upcoming sessions
-      const today = new Date().toISOString().split('T')[0];
-      const { data: sessionsData } = await supabase
-        .from('counseling_sessions')
-        .select(`
-          id,
-          session_name,
-          date,
-          time,
-          status,
-          mentors:mentor_id (
-            users:user_id (full_name)
-          ),
-          students:student_id (name)
-        `)
-        .gte('date', today)
-        .eq('status', 'scheduled')
-        .order('date', { ascending: true })
-        .limit(10);
+      // Fetch upcoming sessions from API (bypasses RLS to show all system sessions)
+      const sessionsResponse = await fetch('/api/dashboard/sessions?limit=10');
+      const sessionsData = await sessionsResponse.json();
+      setUpcomingSessions(sessionsData.sessions || []);
 
-      const formattedSessions = sessionsData?.map((session: any) => ({
-        id: session.id,
-        session_name: session.session_name,
-        date: session.date,
-        time: session.time || 'TBD',
-        status: session.status,
-        mentor_name: session.mentors?.users?.full_name,
-        student_name: session.students?.name,
-      })) || [];
-
-      setUpcomingSessions(formattedSessions);
-
-      // Generate department progress (mock data based on department distribution)
+      // Use real department progress data from API
       const colors = ['#0b6d41', '#ffde59', '#84efc2', '#48dfa0', '#1ec481'];
       const progress = trendsData.departmentDistribution?.slice(0, 5).map((dept: any, index: number) => ({
         name: dept.name,
-        completed: Math.floor(dept.value * 0.7), // Simulate 70% completion
-        total: dept.value,
+        completed: dept.completed || 0, // Real completed sessions count
+        total: dept.total || 0, // Real total sessions count
         color: colors[index % colors.length],
       })) || [];
       setDepartmentProgress(progress);
@@ -199,11 +172,11 @@ export default function DashboardPage() {
           actionUrl: '/mentor',
         });
       }
-      if (formattedSessions.length > 0) {
+      if (sessionsData.sessions && sessionsData.sessions.length > 0) {
         notifs.push({
           id: 'upcoming-1',
           title: 'Upcoming Sessions',
-          description: `You have ${formattedSessions.length} upcoming counseling session${formattedSessions.length > 1 ? 's' : ''} scheduled.`,
+          description: `You have ${sessionsData.sessions.length} upcoming counseling session${sessionsData.sessions.length > 1 ? 's' : ''} scheduled.`,
           type: 'info',
         });
       }

@@ -26,7 +26,40 @@ export async function GET(
     // Create admin client for this request
     const supabaseAdmin = createAdminClient();
 
-    // Fetch sessions from Supabase with student details and feedback
+    // IMPORTANT: mentorId is the JKKN staff ID, we need to find the Supabase mentor.id
+    // First, find the user by jkkn_user_id
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('jkkn_user_id', mentorId)
+      .single();
+
+    if (!user) {
+      console.log(`[Counseling API GET] No user found for JKKN ID ${mentorId}`);
+      return NextResponse.json({
+        success: true,
+        sessions: [],
+      });
+    }
+
+    // Then find the mentor record
+    const { data: mentor } = await supabaseAdmin
+      .from('mentors')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!mentor) {
+      console.log(`[Counseling API GET] No mentor record found for user ${user.id}`);
+      return NextResponse.json({
+        success: true,
+        sessions: [],
+      });
+    }
+
+    console.log(`[Counseling API GET] Found mentor ${mentor.id} for JKKN ID ${mentorId}`);
+
+    // Fetch sessions from Supabase with complete student details and feedback
     const { data: sessions, error } = await supabaseAdmin
       .from('counseling_sessions')
       .select(`
@@ -35,7 +68,12 @@ export async function GET(
           id,
           name,
           roll_number,
-          email
+          email,
+          year,
+          section,
+          department_id,
+          avatar_url,
+          is_active
         ),
         feedback:session_feedback!session_id (
           id,
@@ -45,7 +83,7 @@ export async function GET(
           submitted_at
         )
       `)
-      .eq('mentor_id', mentorId)
+      .eq('mentor_id', mentor.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -56,12 +94,22 @@ export async function GET(
       );
     }
 
-    // Transform data to match frontend interface
+    // Transform data to match frontend interface with complete student info
     const transformedSessions: CounselingSession[] = (sessions || []).map((session: any) => ({
       id: session.id,
       mentorId: session.mentor_id,
       studentId: session.student_id,
       studentName: session.student?.name || 'Unknown Student',
+      student: session.student ? {
+        id: session.student.id,
+        name: session.student.name,
+        email: session.student.email || '',
+        rollNumber: session.student.roll_number || '',
+        department: session.student.department_id || '',
+        year: session.student.year || '',
+        avatar: session.student.avatar_url || undefined,
+        isActive: session.student.is_active ?? true,
+      } : undefined,
       sessionName: session.session_name,
       date: session.date,
       time: session.time,
@@ -134,12 +182,29 @@ export async function POST(
     // Create admin client for this request
     const supabaseAdmin = createAdminClient();
 
-    // Get mentor's department and institution for student record
-    console.log('[Counseling API POST] Querying mentor:', mentorId);
+    // IMPORTANT: mentorId here is the JKKN staff ID, not Supabase mentors.id
+    console.log('[Counseling API POST] Looking up mentor by JKKN ID:', mentorId);
+
+    // Step 1: Find user by jkkn_user_id
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('id, jkkn_user_id, department_id, institution_id')
+      .eq('jkkn_user_id', mentorId)
+      .single();
+
+    if (!user) {
+      console.error('[Counseling API] User not found for JKKN ID:', mentorId);
+      return NextResponse.json(
+        { error: 'Mentor not found. Please ensure the mentor has been set up correctly.' },
+        { status: 404 }
+      );
+    }
+
+    // Step 2: Find mentor by user_id
     const { data: mentor, error: mentorError } = await supabaseAdmin
       .from('mentors')
-      .select('department_id, institution_id')
-      .eq('id', mentorId)
+      .select('id, user_id, department_id, institution_id')
+      .eq('user_id', user.id)
       .single();
 
     console.log('[Counseling API POST] Mentor query result:', {
@@ -149,9 +214,11 @@ export async function POST(
     });
 
     if (mentorError || !mentor) {
-      console.error('[Counseling API] Mentor not found in Supabase. Using FALLBACK values.');
-      console.error('[Counseling API] This means the mentor from JKKN API is not in Supabase mentors table.');
-      console.error('[Counseling API] Error details:', mentorError);
+      console.error('[Counseling API] Mentor record not found for user:', user.id);
+      return NextResponse.json(
+        { error: 'Mentor record not found. Please contact support.' },
+        { status: 404 }
+      );
     }
 
     // Use actual mentor or fallback values
@@ -211,7 +278,7 @@ export async function POST(
 
     // Insert new session into Supabase
     console.log('[Counseling API] Creating counseling session with data:', {
-      mentor_id: mentorId,
+      mentor_id: mentor!.id,
       student_id: student.id,
       session_name: sessionName,
       date,
@@ -221,7 +288,7 @@ export async function POST(
     const { data: newSession, error: insertError } = await supabaseAdmin
       .from('counseling_sessions')
       .insert({
-        mentor_id: mentorId,
+        mentor_id: mentor!.id,  // Use Supabase mentor.id, not JKKN mentorId
         student_id: student.id,
         session_name: sessionName,
         date: date,
@@ -229,7 +296,7 @@ export async function POST(
         notes: notes || null,
         attachment_url: attachment || null,
         status: 'scheduled',
-        created_by: mentorId,
+        created_by: user!.id,  // FK to users.id, not JKKN mentorId
       })
       .select()
       .single();

@@ -93,40 +93,88 @@ export async function GET(
     const departmentId = getDepartmentId(staff.department);
     const institutionId = getInstitutionId(staff.institution);
 
-    console.log('[Mentor Detail] Syncing mentor to Supabase:', {
-      id: mentorId,
+    console.log('[Mentor Detail] Looking up mentor in Supabase:', {
+      jkkn_id: mentorId,
       department_id: departmentId,
       institution_id: institutionId
     });
 
-    // Upsert mentor into Supabase mentors table
-    const { error: upsertError } = await supabaseAdmin
-      .from('mentors')
-      .upsert({
-        id: mentorId, // Use JKKN staff ID as primary key
-        user_id: null, // Will be set when mentor logs in
-        department_id: departmentId,
-        institution_id: institutionId,
-        designation: staff.designation || staff.position || null,
-        specialization: staff.specialization || null,
-        is_active: true,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'id',
-      });
+    // Step 1: Find or create user by JKKN user ID
+    let { data: user } = await supabaseAdmin
+      .from('users')
+      .select('id, jkkn_user_id, department_id, institution_id')
+      .eq('jkkn_user_id', mentorId)
+      .single();
 
-    if (upsertError) {
-      console.error('[Mentor Detail] Error syncing to Supabase:', upsertError);
-      // Don't fail the request, just log the error
-    } else {
-      console.log(`[Mentor Detail] ✅ Successfully synced mentor ${mentorId} to Supabase`);
+    if (!user) {
+      console.log('[Mentor Detail] User not found, creating...');
+      const { data: newUser, error: userError } = await supabaseAdmin
+        .from('users')
+        .upsert({
+          jkkn_user_id: mentorId,
+          email: staff.email || staff.institution_email || `${mentorId}@jkkn.ac.in`,
+          full_name: fullName || 'Unknown',
+          role: 'mentor',
+          department_id: departmentId,
+          institution_id: institutionId,
+        }, {
+          onConflict: 'jkkn_user_id',
+        })
+        .select('id, jkkn_user_id, department_id, institution_id')
+        .single();
+
+      if (userError) {
+        console.error('[Mentor Detail] Error creating user:', userError);
+      } else {
+        user = newUser;
+        console.log('[Mentor Detail] ✅ Created user record');
+      }
     }
 
-    // Count students assigned to this mentor from Supabase
-    const { count: totalStudents } = await supabaseAdmin
-      .from('mentor_students')
-      .select('*', { count: 'exact', head: true })
-      .eq('mentor_id', mentorId);
+    // Step 2: Find or create mentor record by user_id
+    let totalStudents = 0;
+
+    if (user) {
+      let { data: mentorRecord } = await supabaseAdmin
+        .from('mentors')
+        .select('id, user_id, department_id, institution_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!mentorRecord) {
+        console.log('[Mentor Detail] Mentor record not found, creating...');
+        const { data: newMentor, error: mentorError } = await supabaseAdmin
+          .from('mentors')
+          .insert({
+            user_id: user.id,
+            department_id: departmentId || '00000000-0000-0000-0000-000000000001',
+            institution_id: institutionId || '00000000-0000-0000-0000-000000000001',
+            designation: staff.designation || staff.position || null,
+            specialization: staff.specialization || null,
+            is_active: true,
+          })
+          .select('id, user_id, department_id, institution_id')
+          .single();
+
+        if (mentorError) {
+          console.error('[Mentor Detail] Error creating mentor:', mentorError);
+        } else {
+          mentorRecord = newMentor;
+          console.log('[Mentor Detail] ✅ Created mentor record');
+        }
+      }
+
+      // Count students assigned to this mentor
+      if (mentorRecord) {
+        const { count } = await supabaseAdmin
+          .from('mentor_students')
+          .select('*', { count: 'exact', head: true })
+          .eq('mentor_id', mentorRecord.id);
+
+        totalStudents = count || 0;
+        console.log(`[Mentor Detail] Found ${totalStudents} students for mentor ${mentorId}`);
+      }
+    }
 
     // Return mentor data
     const mentor = {

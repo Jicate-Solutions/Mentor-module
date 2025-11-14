@@ -256,13 +256,66 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Transform staff data to mentor format
+    // Create admin Supabase client for querying student counts
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const supabaseAdmin = createAdminClient();
+
+    // Get all JKKN staff IDs
+    const jkknStaffIds = allMentors.map(staff => staff.id);
+
+    // Batch query: Get all users with these JKKN IDs
+    const { data: users } = await supabaseAdmin
+      .from('users')
+      .select('id, jkkn_user_id')
+      .in('jkkn_user_id', jkknStaffIds);
+
+    // Get all mentor records for these users
+    const userIds = users?.map(u => u.id) || [];
+    const { data: mentorRecords } = await supabaseAdmin
+      .from('mentors')
+      .select('id, user_id')
+      .in('user_id', userIds);
+
+    // Get student counts for all mentors
+    const mentorIds = mentorRecords?.map(m => m.id) || [];
+    const { data: studentCounts } = await supabaseAdmin
+      .from('mentor_students')
+      .select('mentor_id')
+      .in('mentor_id', mentorIds);
+
+    // Build lookup maps for efficient O(1) access
+    const userToMentorMap = new Map(
+      mentorRecords?.map(m => [m.user_id, m.id]) || []
+    );
+    const jkknToUserMap = new Map(
+      users?.map(u => [u.jkkn_user_id, u.id]) || []
+    );
+    const mentorStudentCountMap = new Map<string, number>();
+
+    // Count students per mentor
+    studentCounts?.forEach(record => {
+      const currentCount = mentorStudentCountMap.get(record.mentor_id) || 0;
+      mentorStudentCountMap.set(record.mentor_id, currentCount + 1);
+    });
+
+    console.log('[Mentor List] Student count stats:', {
+      totalMentors: allMentors.length,
+      mentorsInSupabase: mentorRecords?.length || 0,
+      totalStudentAssignments: studentCounts?.length || 0
+    });
+
+    // Transform staff data to mentor format with real student counts
     let mentors = allMentors.map((staff: StaffMember) => {
       // Safely construct name with fallbacks
       const firstName = staff.first_name || '';
       const lastName = staff.last_name || '';
       const fullName = `${firstName} ${lastName}`.trim();
       const finalName = fullName || staff.email?.split('@')[0] || staff.id || 'Unknown';
+
+      // Get student count through lookup chain: JKKN ID → User ID → Mentor ID → Count
+      const userId = jkknToUserMap.get(staff.id);
+      const mentorId = userId ? userToMentorMap.get(userId) : undefined;
+      const totalStudents = mentorId ? (mentorStudentCountMap.get(mentorId) || 0) : 0;
 
       return {
         id: staff.id,
@@ -272,7 +325,7 @@ export async function GET(request: NextRequest) {
         designation: staff.designation,
         phone: staff.phone || '',
         avatar: null,
-        totalStudents: 0, // TODO: Get from database if available
+        totalStudents,
       };
     });
 

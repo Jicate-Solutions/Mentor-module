@@ -1,6 +1,5 @@
 'use client';
 
-import Card from '@/components/ui/Card';
 import { MentoringIllustration, StudentsIllustration, SessionsIllustration, FeedbackIllustration } from '@/lib/illustrations';
 import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 
@@ -17,39 +16,39 @@ const StatCard = ({ title, value, trend, icon, subtitle, loading }: StatCardProp
   const isPositiveTrend = trend !== undefined && trend >= 0;
 
   return (
-    <Card variant="elevated" className="hover:shadow-xl transition-shadow duration-300">
+    <div className="bg-white border border-neutral-200 rounded-lg p-4 hover:shadow-sm transition-shadow duration-200">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-neutral-600 mb-1">{title}</p>
+          <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">{title}</p>
           {loading ? (
-            <div className="h-8 bg-neutral-200 rounded animate-pulse w-20" />
+            <div className="h-7 bg-neutral-100 rounded animate-pulse w-16" />
           ) : (
-            <p className="text-3xl font-bold text-neutral-900 mb-2">{value}</p>
+            <p className="text-2xl font-semibold text-neutral-900 mb-1">{value}</p>
           )}
           {subtitle && (
             <p className="text-xs text-neutral-500">{subtitle}</p>
           )}
           {trend !== undefined && !loading && (
-            <div className="flex items-center gap-1 mt-2">
+            <div className="flex items-center gap-1 mt-1.5">
               {isPositiveTrend ? (
-                <ArrowUpIcon className="w-4 h-4 text-success" />
+                <ArrowUpIcon className="w-3.5 h-3.5 text-success-600" />
               ) : (
-                <ArrowDownIcon className="w-4 h-4 text-error" />
+                <ArrowDownIcon className="w-3.5 h-3.5 text-error-600" />
               )}
               <span
-                className={`text-sm font-semibold ${
-                  isPositiveTrend ? 'text-success' : 'text-error'
+                className={`text-xs font-medium ${
+                  isPositiveTrend ? 'text-success-600' : 'text-error-600'
                 }`}
               >
                 {Math.abs(trend)}%
               </span>
-              <span className="text-xs text-neutral-500 ml-1">vs last week</span>
+              <span className="text-xs text-neutral-400">vs last week</span>
             </div>
           )}
         </div>
-        <div className="ml-4">{icon}</div>
+        <div className="ml-3">{icon}</div>
       </div>
-    </Card>
+    </div>
   );
 };
 
@@ -68,18 +67,18 @@ interface StatsGridProps {
 
 export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard
         title="Total Mentors"
         value={loading ? '...' : stats.totalMentors}
-        icon={<MentoringIllustration className="w-16 h-16" />}
+        icon={<MentoringIllustration className="w-10 h-10 opacity-70" />}
         subtitle="Active faculty members"
         loading={loading}
       />
       <StatCard
         title="Active Students"
         value={loading ? '...' : stats.activeStudents}
-        icon={<StudentsIllustration className="w-16 h-16" />}
+        icon={<StudentsIllustration className="w-10 h-10 opacity-70" />}
         subtitle="Currently enrolled"
         loading={loading}
       />
@@ -87,14 +86,14 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
         title="Counseling Sessions"
         value={loading ? '...' : stats.totalSessions}
         trend={stats.trends?.sessions}
-        icon={<SessionsIllustration className="w-16 h-16" />}
+        icon={<SessionsIllustration className="w-10 h-10 opacity-70" />}
         subtitle="All time sessions"
         loading={loading}
       />
       <StatCard
         title="Pending Feedback"
         value={loading ? '...' : stats.pendingFeedback}
-        icon={<FeedbackIllustration className="w-16 h-16" />}
+        icon={<FeedbackIllustration className="w-10 h-10 opacity-70" />}
         subtitle="Awaiting submission"
         loading={loading}
       />

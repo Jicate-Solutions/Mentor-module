@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-brand-cream flex">
+    <div className="min-h-screen bg-neutral-50/50 flex">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -61,16 +61,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className={`flex-1 flex flex-col min-w-0 overflow-x-hidden transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-80'}`}>
         {/* Top Header Bar */}
         <header
-          className={`bg-white border-b border-neutral-200 fixed top-0 left-0 right-0 z-30 shadow-sm transition-all duration-300 ${
+          className={`bg-white border-b border-neutral-100 fixed top-0 left-0 right-0 z-30 transition-all duration-300 ${
             sidebarCollapsed ? 'lg:left-20' : 'lg:left-80'
           }`}
         >
-          <div className="flex items-center justify-between px-4 py-3 lg:px-8 lg:py-4">
+          <div className="flex items-center justify-between px-4 py-2.5 lg:px-6 lg:py-3">
             <div className="flex items-center gap-2">
               {/* Mobile Menu Button - 44x44px touch target */}
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden text-brand-green hover:bg-brand-yellow p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                className="lg:hidden text-neutral-700 hover:bg-neutral-100 p-2 rounded-md transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
                 aria-label="Open menu"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +81,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               {/* Desktop Sidebar Toggle Button */}
               <button
                 onClick={toggleSidebarCollapse}
-                className="hidden lg:flex text-brand-green hover:bg-brand-yellow p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] items-center justify-center"
+                className="hidden lg:flex text-neutral-700 hover:bg-neutral-100 p-2 rounded-md transition-colors min-w-[40px] min-h-[40px] items-center justify-center"
                 aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
@@ -96,7 +96,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             {/* Page Title */}
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-brand-green truncate px-2 flex-1">
+            <h1 className="text-base sm:text-lg lg:text-xl font-semibold text-neutral-900 truncate px-2 flex-1">
               {getPageTitle()}
             </h1>
 
@@ -149,19 +149,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         {/* Breadcrumbs */}
         {pathname !== '/dashboard' && (
-          <div className="bg-white border-b border-neutral-200 px-4 py-3 lg:px-8 pt-20">
+          <div className="bg-white border-b border-neutral-100 px-4 py-2.5 lg:px-6 pt-16">
             <Breadcrumbs autoGenerate className="text-sm" />
           </div>
         )}
 
         {/* Main Content */}
-        <main className={`flex-1 overflow-auto ${pathname === '/dashboard' ? 'pt-20' : ''}`}>
+        <main className={`flex-1 overflow-auto ${pathname === '/dashboard' ? 'pt-16' : ''}`}>
           {children}
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-neutral-200 py-4 px-4 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-neutral-600">
+        <footer className="bg-white border-t border-neutral-100 py-3 px-4 lg:px-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-neutral-500">
             <p>© 2025 JKKN Institutions. All rights reserved.</p>
             <p className="flex items-center gap-2">
               Powered by

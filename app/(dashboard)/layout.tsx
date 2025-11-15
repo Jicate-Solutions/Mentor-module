@@ -28,10 +28,10 @@ export default function AuthenticatedLayout({
   // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-brand-cream">
+      <div className="flex items-center justify-center min-h-screen bg-neutral-50/50">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-brand-green border-t-transparent mb-4"></div>
-          <p className="text-neutral-600">Loading...</p>
+          <div className="inline-block animate-spin rounded-full h-10 w-10 border-2 border-neutral-200 border-t-brand-green mb-3"></div>
+          <p className="text-sm text-neutral-500">Loading...</p>
         </div>
       </div>
     );

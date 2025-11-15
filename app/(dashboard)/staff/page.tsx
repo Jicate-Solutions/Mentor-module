@@ -175,14 +175,15 @@ export default function StaffPage() {
   };
 
   return (
-    <div className="space-y-6">
-        {/* Header */}
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
+      {/* Hero Header */}
+      <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-brand-green mb-2">
+            <h1 className="text-2xl lg:text-3xl font-bold text-brand-green mb-2">
               JKKN Staff
             </h1>
-            <p className="text-neutral-600">
+            <p className="text-neutral-600 text-sm lg:text-base">
               Browse and manage staff members from MyJKKN database
             </p>
           </div>
@@ -192,70 +193,71 @@ export default function StaffPage() {
             </Badge>
           )}
         </div>
+      </div>
 
-        {/* API Not Configured Warning */}
-        {!isConfigured && (
-          <Card variant="bordered">
-            <div className="flex items-start gap-3">
-              <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="text-lg font-semibold text-yellow-800 mb-1">API Not Configured</p>
-                <p className="text-sm text-yellow-700">
-                  {statusMessage}. Please add NEXT_PUBLIC_MYJKKN_API_KEY to your .env.local file to view staff data.
-                </p>
-              </div>
+      {/* API Not Configured Warning */}
+      {!isConfigured && (
+        <div className="bg-yellow-50/80 rounded-xl border border-yellow-200/60 p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="text-base font-semibold text-yellow-800 mb-1">API Not Configured</p>
+              <p className="text-sm text-yellow-700">
+                {statusMessage}. Please add NEXT_PUBLIC_MYJKKN_API_KEY to your .env.local file to view staff data.
+              </p>
             </div>
-          </Card>
-        )}
+          </div>
+        </div>
+      )}
 
-        {/* Main Content */}
-        {isConfigured && (
-          <Card variant="default">
-            {/* Search and Actions Bar */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-              <div className="flex-1 w-full sm:max-w-md">
-                <SearchInput
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name, email, designation, or department..."
-                />
+      {/* Main Content */}
+      {isConfigured && (
+        <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm space-y-6">
+          {/* Search and Actions Bar */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex-1 w-full sm:max-w-md">
+              <SearchInput
+                value={searchQuery}
+                onChange={(value) => setSearchQuery(value)}
+                placeholder="Search by name, email, designation, or department..."
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              {/* View Toggle */}
+              <div className="flex items-center gap-1 bg-white rounded-xl border border-neutral-200/50 p-1 shadow-sm">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-4 py-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center gap-2 text-sm font-medium ${
+                    viewMode === 'grid'
+                      ? 'bg-accent-100/80 text-brand-green shadow-sm'
+                      : 'text-neutral-600 hover:bg-neutral-100/70'
+                  }`}
+                  aria-label="Grid view"
+                  aria-pressed={viewMode === 'grid'}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                  <span className="hidden md:inline">Grid</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-4 py-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center gap-2 text-sm font-medium ${
+                    viewMode === 'table'
+                      ? 'bg-accent-100/80 text-brand-green shadow-sm'
+                      : 'text-neutral-600 hover:bg-neutral-100/70'
+                  }`}
+                  aria-label="Table view"
+                  aria-pressed={viewMode === 'table'}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span className="hidden md:inline">Table</span>
+                </button>
               </div>
-              <div className="flex items-center gap-3">
-                {/* View Toggle */}
-                <div className="flex items-center gap-2 bg-white rounded-lg border-2 border-brand-green p-1">
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`px-4 py-2 rounded-md transition-colors min-w-[44px] min-h-[44px] flex items-center gap-2 ${
-                      viewMode === 'grid'
-                        ? 'bg-brand-yellow text-brand-green'
-                        : 'text-neutral-600 hover:bg-brand-cream'
-                    }`}
-                    aria-label="Grid view"
-                    aria-pressed={viewMode === 'grid'}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                    <span className="hidden md:inline text-sm font-medium">Grid</span>
-                  </button>
-                  <button
-                    onClick={() => setViewMode('table')}
-                    className={`px-4 py-2 rounded-md transition-colors min-w-[44px] min-h-[44px] flex items-center gap-2 ${
-                      viewMode === 'table'
-                        ? 'bg-brand-yellow text-brand-green'
-                        : 'text-neutral-600 hover:bg-brand-cream'
-                    }`}
-                    aria-label="Table view"
-                    aria-pressed={viewMode === 'table'}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    <span className="hidden md:inline text-sm font-medium">Table</span>
-                  </button>
-                </div>
                 <Button
                   variant="outline"
                   size="sm"
@@ -267,88 +269,104 @@ export default function StaffPage() {
                   </svg>
                   Refresh
                 </Button>
-              </div>
             </div>
+          </div>
 
-            {/* Stats */}
-            <div className="mb-6 flex items-center gap-2 text-sm text-neutral-600">
-              <span className="font-medium text-brand-green">
-                {searchQuery ? filteredStaff.length : total}
-              </span>
-              {searchQuery ? 'matching' : 'total'} staff members
-              {!searchQuery && (
-                <>
-                  <span>•</span>
-                  <span>Page {currentPage} of {totalPages}</span>
-                </>
-              )}
-            </div>
-
-            {/* Loading State */}
-            {loading && (
-              <div className="text-center py-16">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-brand-green border-t-transparent mb-4"></div>
-                <p className="text-neutral-600 font-medium">Loading staff...</p>
-              </div>
+          {/* Stats */}
+          <div className="flex items-center gap-2 text-sm text-neutral-600">
+            <span className="font-semibold text-brand-green">
+              {searchQuery ? filteredStaff.length : total}
+            </span>
+            {searchQuery ? 'matching' : 'total'} staff members
+            {!searchQuery && (
+              <>
+                <span>•</span>
+                <span>Page {currentPage} of {totalPages}</span>
+              </>
             )}
+          </div>
 
-            {/* Error State */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                  <div>
-                    <p className="text-sm font-medium text-red-800">Error loading data</p>
-                    <p className="text-sm text-red-600 mt-1">{error}</p>
-                  </div>
+          {/* Loading State */}
+          {loading && (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-brand-green border-t-transparent mb-3"></div>
+              <p className="text-neutral-600 text-sm">Loading staff...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="bg-red-50/80 border border-red-200/60 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-red-800">Error loading data</p>
+                  <p className="text-sm text-red-600 mt-1">{error}</p>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
             {/* Data Content */}
             {!loading && !error && filteredStaff.length > 0 && (
               <>
-                {/* Grid View */}
-                {viewMode === 'grid' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredStaff.map((member) => {
-                      const genderInfo = getGenderDisplay(member.gender);
-                      return (
-                        <Card
-                          key={member.id}
-                          variant="bordered"
-                          hoverable
-                          className="transition-all"
-                        >
-                          <div className="flex items-start gap-4">
-                            {/* Avatar */}
-                            <div className="flex-shrink-0">
-                              <div className="w-16 h-16 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center text-2xl font-bold border-2 border-brand-green">
-                                {member.first_name.charAt(0)}{member.last_name.charAt(0)}
-                              </div>
+              {/* Grid View */}
+              {viewMode === 'grid' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredStaff.map((member) => {
+                    const genderInfo = getGenderDisplay(member.gender);
+                    return (
+                      <div
+                        key={member.id}
+                        className="bg-white rounded-xl border border-neutral-200/50 p-5 shadow-sm hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-start gap-4">
+                          {/* Avatar */}
+                          <div className="flex-shrink-0">
+                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center text-lg font-bold shadow-sm">
+                              {member.first_name.charAt(0)}{member.last_name.charAt(0)}
+                            </div>
+                          </div>
+
+                          {/* Staff Info */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-bold text-neutral-800 mb-1 truncate">
+                              {getFullName(member)}
+                            </h3>
+
+                            <div className="flex items-center gap-2 mb-3 flex-wrap">
+                              <Badge variant={getDesignationVariant(member.designation)} size="sm">
+                                {member.designation}
+                              </Badge>
+                              <Badge variant={genderInfo.variant} size="sm">
+                                {genderInfo.icon} {genderInfo.label}
+                              </Badge>
                             </div>
 
-                            {/* Staff Info */}
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-lg font-bold text-brand-green mb-1 truncate">
-                                {getFullName(member)}
-                              </h3>
-
-                              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                                <Badge variant={getDesignationVariant(member.designation)} size="sm">
-                                  {member.designation}
-                                </Badge>
-                                <Badge variant={genderInfo.variant} size="sm">
-                                  {genderInfo.icon} {genderInfo.label}
-                                </Badge>
+                            <div className="space-y-2 text-xs text-neutral-600 mb-3">
+                              <div className="flex items-center gap-2">
+                                <svg
+                                  className="w-4 h-4 flex-shrink-0 text-neutral-500"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                <span className="truncate">{member.email}</span>
                               </div>
 
-                              <div className="space-y-2 text-sm text-neutral-600 mb-3">
+                              {member.phone && (
                                 <div className="flex items-center gap-2">
                                   <svg
-                                    className="w-4 h-4 flex-shrink-0"
+                                    className="w-4 h-4 flex-shrink-0 text-neutral-500"
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -357,141 +375,123 @@ export default function StaffPage() {
                                       strokeLinecap="round"
                                       strokeLinejoin="round"
                                       strokeWidth={2}
-                                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                                     />
                                   </svg>
-                                  <span className="truncate">{member.email}</span>
+                                  <span>{member.phone}</span>
                                 </div>
+                              )}
+                            </div>
 
-                                {member.phone && (
-                                  <div className="flex items-center gap-2">
-                                    <svg
-                                      className="w-4 h-4 flex-shrink-0"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                                      />
-                                    </svg>
-                                    <span>{member.phone}</span>
+                            <div className="pt-3 border-t border-neutral-200/70 space-y-1">
+                              <div className="text-xs text-neutral-500">Department</div>
+                              <div className="text-sm font-medium text-brand-green">
+                                {formatDisplayValue(getDepartmentName(member.department))}
+                              </div>
+                              {getInstitutionName(member.institution) !== 'N/A' && (
+                                <>
+                                  <div className="text-xs text-neutral-500 mt-2">Institution</div>
+                                  <div className="text-sm text-neutral-700">
+                                    {getInstitutionName(member.institution)}
                                   </div>
-                                )}
-                              </div>
-
-                              <div className="pt-3 border-t border-neutral-200 space-y-1">
-                                <div className="text-xs text-neutral-500">Department</div>
-                                <div className="text-sm font-medium text-brand-green">
-                                  {formatDisplayValue(getDepartmentName(member.department))}
-                                </div>
-                                {getInstitutionName(member.institution) !== 'N/A' && (
-                                  <>
-                                    <div className="text-xs text-neutral-500 mt-2">Institution</div>
-                                    <div className="text-sm text-neutral-700">
-                                      {getInstitutionName(member.institution)}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
+                                </>
+                              )}
                             </div>
                           </div>
-                        </Card>
+                        </div>
+                      </div>
                       );
                     })}
                   </div>
                 )}
 
-                {/* Table View */}
-                {viewMode === 'table' && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-brand-cream border-b-2 border-brand-green">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">
-                            Staff Member
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">
-                            Designation
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">
-                            Contact
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">
-                            Department
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">
-                            Institution
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">
-                            Gender
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-neutral-200">
-                        {filteredStaff.map((member) => {
-                          const genderInfo = getGenderDisplay(member.gender);
-                          return (
-                            <tr
-                              key={member.id}
-                              className="hover:bg-brand-cream hover:bg-opacity-50 transition-colors"
-                            >
-                              <td className="px-4 py-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center text-sm font-bold flex-shrink-0">
-                                    {member.first_name.charAt(0)}{member.last_name.charAt(0)}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-brand-green">
-                                      {getFullName(member)}
-                                    </p>
-                                  </div>
+              {/* Table View */}
+              {viewMode === 'table' && (
+                <div className="overflow-x-auto rounded-lg border border-neutral-200/50">
+                  <table className="w-full">
+                    <thead className="bg-neutral-50/80 border-b border-neutral-200/70">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                          Staff Member
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                          Designation
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                          Contact
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                          Department
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                          Institution
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                          Gender
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-200/50">
+                      {filteredStaff.map((member) => {
+                        const genderInfo = getGenderDisplay(member.gender);
+                        return (
+                          <tr
+                            key={member.id}
+                            className="hover:bg-neutral-50/60 transition-colors"
+                          >
+                            <td className="px-4 py-3.5">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-sm">
+                                  {member.first_name.charAt(0)}{member.last_name.charAt(0)}
                                 </div>
-                              </td>
-                              <td className="px-4 py-4">
-                                <Badge variant={getDesignationVariant(member.designation)} size="sm">
-                                  {member.designation}
-                                </Badge>
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-1.5 text-sm text-neutral-700">
+                                <div>
+                                  <p className="font-medium text-neutral-800 text-sm">
+                                    {getFullName(member)}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <Badge variant={getDesignationVariant(member.designation)} size="sm">
+                                {member.designation}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-xs text-neutral-700">
+                                  <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                  </svg>
+                                  <span className="truncate max-w-[200px]">{member.email}</span>
+                                </div>
+                                {member.phone && (
+                                  <div className="flex items-center gap-1.5 text-xs text-neutral-700">
                                     <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                     </svg>
-                                    <span className="truncate max-w-[200px]">{member.email}</span>
+                                    <span>{member.phone}</span>
                                   </div>
-                                  {member.phone && (
-                                    <div className="flex items-center gap-1.5 text-sm text-neutral-700">
-                                      <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                      </svg>
-                                      <span>{member.phone}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-4 py-4">
-                                <span className="text-sm font-medium text-brand-green">
-                                  {formatDisplayValue(getDepartmentName(member.department))}
-                                </span>
-                              </td>
-                              <td className="px-4 py-4">
-                                <span className="text-sm text-neutral-700">
-                                  {formatDisplayValue(getInstitutionName(member.institution))}
-                                </span>
-                              </td>
-                              <td className="px-4 py-4">
-                                <Badge
-                                  variant={genderInfo.variant}
-                                  size="sm"
-                                >
-                                  {genderInfo.icon} {genderInfo.label}
-                                </Badge>
-                              </td>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <span className="text-sm font-medium text-brand-green">
+                                {formatDisplayValue(getDepartmentName(member.department))}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <span className="text-sm text-neutral-700">
+                                {formatDisplayValue(getInstitutionName(member.institution))}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <Badge
+                                variant={genderInfo.variant}
+                                size="sm"
+                              >
+                                {genderInfo.icon} {genderInfo.label}
+                              </Badge>
+                            </td>
                             </tr>
                           );
                         })}
@@ -500,93 +500,93 @@ export default function StaffPage() {
                   </div>
                 )}
 
-                {/* Pagination */}
-                {!searchQuery && totalPages > 1 && (
-                  <div className="mt-6 flex items-center justify-between border-t border-neutral-200 pt-4">
-                    <p className="text-sm text-neutral-600">
-                      Showing {staff.length} of {total} results
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1 || loading}
-                      >
-                        Previous
-                      </Button>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                          let pageNum;
-                          if (totalPages <= 5) {
-                            pageNum = i + 1;
-                          } else if (currentPage <= 3) {
-                            pageNum = i + 1;
-                          } else if (currentPage >= totalPages - 2) {
-                            pageNum = totalPages - 4 + i;
-                          } else {
-                            pageNum = currentPage - 2 + i;
-                          }
+              {/* Pagination */}
+              {!searchQuery && totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4">
+                  <p className="text-xs text-neutral-600">
+                    Showing {staff.length} of {total} results
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1 || loading}
+                    >
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
 
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => handlePageChange(pageNum)}
-                              disabled={loading}
-                              className={`
-                                px-3 py-1 text-sm rounded transition-colors
-                                ${currentPage === pageNum
-                                  ? 'bg-brand-yellow text-brand-green font-semibold'
-                                  : 'text-neutral-700 hover:bg-brand-cream'
-                                }
-                                disabled:opacity-50 disabled:cursor-not-allowed
-                              `}
-                            >
-                              {pageNum}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages || loading}
-                      >
-                        Next
-                      </Button>
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            disabled={loading}
+                            className={`
+                              px-3 py-1.5 text-xs rounded-lg transition-all font-medium
+                              ${currentPage === pageNum
+                                ? 'bg-accent-100/80 text-brand-green shadow-sm border border-accent-200'
+                                : 'text-neutral-600 hover:bg-neutral-100/70'
+                              }
+                              disabled:opacity-50 disabled:cursor-not-allowed
+                            `}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages || loading}
+                    >
+                      Next
+                    </Button>
                   </div>
-                )}
-              </>
-            )}
+                </div>
+              )}
+            </>
+          )}
 
-            {/* Empty State */}
-            {!loading && !error && filteredStaff.length === 0 && (
-              <div className="text-center py-16">
-                <div className="text-6xl mb-4">👨‍💼</div>
-                <h3 className="text-xl font-semibold text-brand-green mb-2">
-                  {searchQuery ? 'No matching staff members' : 'No staff found'}
-                </h3>
-                <p className="text-neutral-600">
-                  {searchQuery
-                    ? 'Try adjusting your search terms'
-                    : 'No data available from the API'}
-                </p>
-                {searchQuery && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSearchQuery('')}
-                    className="mt-4"
-                  >
-                    Clear search
-                  </Button>
-                )}
-              </div>
-            )}
-          </Card>
-        )}
-      </div>
+          {/* Empty State */}
+          {!loading && !error && filteredStaff.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-5xl mb-4">👨‍💼</div>
+              <h3 className="text-lg font-semibold text-neutral-800 mb-2">
+                {searchQuery ? 'No matching staff members' : 'No staff found'}
+              </h3>
+              <p className="text-sm text-neutral-600">
+                {searchQuery
+                  ? 'Try adjusting your search terms'
+                  : 'No data available from the API'}
+              </p>
+              {searchQuery && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSearchQuery('')}
+                  className="mt-4"
+                >
+                  Clear search
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

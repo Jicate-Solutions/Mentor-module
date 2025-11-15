@@ -5,6 +5,7 @@ import type { JKKNUser } from '../auth/token-validation';
  * Store or update user in Supabase after JKKN authentication
  */
 export async function upsertUser(jkknUser: JKKNUser & {
+  department_id?: string;
   phone_number?: string;
   gender?: string;
   designation?: string;

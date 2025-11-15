@@ -150,7 +150,7 @@ export default function DataTable<T extends Record<string, any>>({
                 }
               } : undefined}
             >
-              <CardContent row={row} />
+              {CardContent(row)}
             </div>
           );
         })}

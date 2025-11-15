@@ -1,8 +1,15 @@
 // app/api/admin/guide/sections/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { checkAdminAccess } from '@/lib/auth/admin-guard';
 
 export async function GET(request: NextRequest) {
+  // Check admin access
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.authorized) {
+    return accessCheck.error;
+  }
+
   try {
     const supabase = await createClient();
 
@@ -24,6 +31,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // Check admin access
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.authorized) {
+    return accessCheck.error;
+  }
+
   try {
     const supabase = await createClient();
     const body = await request.json();

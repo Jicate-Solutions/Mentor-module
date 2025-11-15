@@ -1,29 +1,21 @@
-// app/api/admin/guide/sections/[id]/route.ts
+// app/api/admin/guide/faqs/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { checkAdminAccess } from '@/lib/auth/admin-guard';
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Check admin access
-  const accessCheck = await checkAdminAccess();
-  if (!accessCheck.authorized) {
-    return accessCheck.error;
-  }
-
   try {
     const supabase = await createClient();
     const body = await request.json();
 
-    const { data: section, error } = await supabase
-      .from('guide_sections')
+    const { data: faq, error } = await supabase
+      .from('guide_faqs')
       .update({
-        title: body.title,
-        slug: body.slug,
-        description: body.description,
-        icon: body.icon,
+        question: body.question,
+        answer: body.answer,
+        category: body.category,
         order_index: body.order_index,
         is_published: body.is_published,
       })
@@ -33,11 +25,11 @@ export async function PUT(
 
     if (error) throw error;
 
-    return NextResponse.json(section);
+    return NextResponse.json(faq);
   } catch (error) {
-    console.error('Error updating section:', error);
+    console.error('Error updating FAQ:', error);
     return NextResponse.json(
-      { error: 'Failed to update section' },
+      { error: 'Failed to update FAQ' },
       { status: 500 }
     );
   }
@@ -47,17 +39,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Check admin access
-  const accessCheck = await checkAdminAccess();
-  if (!accessCheck.authorized) {
-    return accessCheck.error;
-  }
-
   try {
     const supabase = await createClient();
 
     const { error } = await supabase
-      .from('guide_sections')
+      .from('guide_faqs')
       .delete()
       .eq('id', params.id);
 
@@ -65,9 +51,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting section:', error);
+    console.error('Error deleting FAQ:', error);
     return NextResponse.json(
-      { error: 'Failed to delete section' },
+      { error: 'Failed to delete FAQ' },
       { status: 500 }
     );
   }

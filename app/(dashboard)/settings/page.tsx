@@ -3,7 +3,6 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { Section, Container } from '@/components/ui/PageLayout';
 import Tabs from '@/components/ui/Tabs';
 import ApiManagementTab from './components/ApiManagementTab';
 import GeneralSettingsTab from './components/GeneralSettingsTab';
@@ -51,19 +50,21 @@ export default function SettingsPage() {
   ];
 
   return (
-    <Section spacing="md" background="cream">
-        <Container>
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-brand-green mb-2">
-              Settings
-            </h1>
-            <p className="text-neutral-600">
-              Manage your application settings and API integrations
-            </p>
-          </div>
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
+      {/* Hero Header */}
+      <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
+        <h1 className="text-2xl lg:text-3xl font-bold text-brand-green mb-2">
+          Settings
+        </h1>
+        <p className="text-neutral-600 text-sm lg:text-base">
+          Manage your application settings and API integrations
+        </p>
+      </div>
 
-          <Tabs tabs={tabs} defaultTab="api-management" />
-        </Container>
-      </Section>
+      {/* Tabs Content */}
+      <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
+        <Tabs tabs={tabs} defaultTab="api-management" />
+      </div>
+    </div>
   );
 }

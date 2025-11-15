@@ -53,6 +53,7 @@ interface TopMentor {
 interface DepartmentData {
   name: string;
   value: number;
+  [key: string]: string | number;
 }
 
 interface DepartmentProgress {
@@ -190,7 +191,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 p-4 lg:p-8 space-y-8">
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
       {/* Welcome Hero */}
       <WelcomeHero />
 
@@ -198,7 +199,7 @@ export default function DashboardPage() {
       <StatsGrid stats={stats} loading={loading} />
 
       {/* Department Progress & Upcoming Sessions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <ProgressCard departments={departmentProgress} loading={loading} />
         </div>
@@ -222,7 +223,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Top Mentors & Department Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TopMentorsCard mentors={topMentors} loading={loading} />
         <DepartmentChart data={departmentData} loading={loading} />
       </div>

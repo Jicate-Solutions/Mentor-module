@@ -106,10 +106,10 @@ export default function MentorDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-brand-cream flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50/50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-brand-green mx-auto mb-4"></div>
-          <p className="text-brand-green font-semibold">Loading mentor details...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-neutral-200 border-t-brand-green mx-auto mb-3"></div>
+          <p className="text-sm text-neutral-600">Loading mentor details...</p>
         </div>
       </div>
     );
@@ -117,13 +117,13 @@ export default function MentorDetailPage() {
 
   if (error || !mentor) {
     return (
-      <div className="min-h-screen bg-brand-cream flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50/50 flex items-center justify-center">
         <div className="text-center">
-          <div className="bg-red-100 border-2 border-red-500 rounded-lg p-6 max-w-md">
-            <p className="text-red-700 font-semibold mb-4">{error || 'Mentor not found'}</p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+            <p className="text-red-700 text-sm mb-4">{error || 'Mentor not found'}</p>
             <button
               onClick={() => router.push('/mentor')}
-              className="px-4 py-2 bg-brand-green text-white rounded-lg hover:bg-green-700 transition"
+              className="px-4 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-50 transition text-sm"
             >
               Back to Mentors
             </button>
@@ -141,7 +141,7 @@ export default function MentorDetailPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-brand-cream p-6">
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header with Back Button */}
         <div className="mb-6">
@@ -155,11 +155,11 @@ export default function MentorDetailPage() {
         </div>
 
         {/* Mentor Profile Header */}
-        <div className="bg-white rounded-xl shadow-lg border-2 border-brand-green p-6 mb-6">
+        <div className="bg-white rounded-lg border border-neutral-200 p-4 md:p-6 mb-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-6">
               {/* Avatar */}
-              <div className="w-24 h-24 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center text-3xl font-bold border-4 border-brand-green shadow-lg flex-shrink-0">
+              <div className="w-16 h-16 rounded-full bg-brand-yellow/20 text-brand-green flex items-center justify-center text-xl font-semibold border-2 border-brand-green/30 flex-shrink-0">
                 {mentor.avatar ? (
                   <img src={mentor.avatar} alt={mentor.name} className="w-full h-full rounded-full object-cover" />
                 ) : (
@@ -169,16 +169,16 @@ export default function MentorDetailPage() {
 
               {/* Mentor Info */}
               <div className="flex-1">
-                <h1 className="text-3xl font-bold text-brand-green mb-2">{mentor.name}</h1>
-                <div className="space-y-1 text-gray-700">
-                  <p className="text-lg">
-                    <span className="font-semibold">Staff ID:</span> {mentor.id}
+                <h1 className="text-2xl font-semibold text-neutral-900 mb-2">{mentor.name}</h1>
+                <div className="space-y-1 text-neutral-600">
+                  <p className="text-sm">
+                    <span className="font-medium">Staff ID:</span> {mentor.id}
                   </p>
-                  <p className="text-lg">
-                    <span className="font-semibold">Department:</span> {mentor.department}
+                  <p className="text-sm">
+                    <span className="font-medium">Department:</span> {mentor.department}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="px-4 py-1 bg-brand-green text-white rounded-full text-sm font-semibold">
+                    <span className="px-3 py-1 bg-brand-green/10 text-brand-green rounded-md text-xs font-medium">
                       {mentor.designation}
                     </span>
                   </div>
@@ -187,7 +187,7 @@ export default function MentorDetailPage() {
             </div>
 
             {/* View Profile Button */}
-            <button className="px-6 py-2 bg-brand-green text-white rounded-lg hover:bg-green-700 transition font-semibold flex items-center gap-2">
+            <button className="px-4 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-50 transition text-sm font-medium flex items-center gap-2">
               <User className="w-4 h-4" />
               View profile
             </button>
@@ -195,50 +195,50 @@ export default function MentorDetailPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Students Assigned Card */}
-          <div className="bg-white rounded-xl shadow-lg border-2 border-brand-yellow p-6">
+          <div className="bg-white rounded-lg border border-neutral-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 font-semibold mb-2">Students Assigned</p>
-                <p className="text-4xl font-bold text-brand-green">{mentor.totalStudents || 0}</p>
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Students Assigned</p>
+                <p className="text-2xl font-semibold text-neutral-900">{mentor.totalStudents || 0}</p>
               </div>
-              <div className="w-16 h-16 bg-brand-yellow rounded-full flex items-center justify-center">
-                <Users className="w-8 h-8 text-brand-green" />
+              <div className="w-12 h-12 bg-brand-yellow/20 rounded-full flex items-center justify-center">
+                <Users className="w-6 h-6 text-brand-green" />
               </div>
             </div>
           </div>
 
           {/* Pending Feedback Card */}
-          <div className="bg-white rounded-xl shadow-lg border-2 border-brand-yellow p-6">
+          <div className="bg-white rounded-lg border border-neutral-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 font-semibold mb-2">Pending Feedback</p>
-                <p className="text-4xl font-bold text-brand-green">{mentor.pendingFeedback || 0}</p>
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Pending Feedback</p>
+                <p className="text-2xl font-semibold text-neutral-900">{mentor.pendingFeedback || 0}</p>
               </div>
-              <div className="w-16 h-16 bg-brand-yellow rounded-full flex items-center justify-center">
-                <MessageSquare className="w-8 h-8 text-brand-green" />
+              <div className="w-12 h-12 bg-brand-yellow/20 rounded-full flex items-center justify-center">
+                <MessageSquare className="w-6 h-6 text-brand-green" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Tabs Navigation */}
-        <div className="bg-white rounded-t-xl shadow-lg border-2 border-b-0 border-brand-green">
-          <div className="flex border-b-2 border-gray-200">
+        <div className="bg-white rounded-t-lg border border-b-0 border-neutral-200">
+          <div className="flex border-b border-neutral-200">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-4 font-semibold transition ${
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition ${
                     activeTab === tab.id
-                      ? 'border-b-4 border-brand-green text-brand-green bg-brand-cream'
-                      : 'text-gray-600 hover:text-brand-green hover:bg-gray-50'
+                      ? 'border-b-2 border-brand-green text-brand-green bg-neutral-50'
+                      : 'text-neutral-600 hover:text-brand-green hover:bg-neutral-50'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4 h-4" />
                   {tab.label}
                 </button>
               );
@@ -246,7 +246,7 @@ export default function MentorDetailPage() {
           </div>
 
           {/* Tab Content */}
-          <div className="p-6">
+          <div className="p-4">
             {/* Students Tab */}
             {activeTab === 'students' && (
               <StudentsTab mentorId={mentorId} />

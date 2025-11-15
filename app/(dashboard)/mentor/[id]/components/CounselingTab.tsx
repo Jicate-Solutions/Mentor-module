@@ -351,7 +351,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
     );
   }
 
-  const selectedStudent = students.find(s => s.id === formData.studentId);
+  // Note: selectedStudent not used, formData uses selectedStudentIds array instead
+  // const selectedStudent = students.find(s => s.id === formData.studentId);
 
   return (
     <div>
@@ -384,7 +385,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
       {/* No Students Warning */}
       {students.length === 0 && (
-        <Card variant="cream" className="mb-6">
+        <Card variant="elevated" className="mb-6">
           <div className="text-center py-6">
             <div className="text-4xl mb-3">⚠️</div>
             <p className="text-brand-green font-medium mb-2">No Students Assigned</p>
@@ -397,7 +398,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
       {/* Sessions List with Students Inside */}
       {sessions.length === 0 ? (
-        <Card variant="cream">
+        <Card variant="elevated">
           <div className="text-center py-12">
             <div className="text-6xl mb-4">💬</div>
             <h3 className="text-xl font-semibold text-brand-green mb-2">
@@ -709,7 +710,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
           <div className="space-y-6">
             {/* Student Profile Card */}
             {selectedSession.student && (
-              <Card variant="cream" className="border-2 border-brand-green">
+              <Card variant="elevated" className="border-2 border-brand-green">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 rounded-full bg-brand-green flex items-center justify-center text-white text-2xl font-bold">
                     {selectedSession.student.name.charAt(0).toUpperCase()}
@@ -841,7 +842,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               </h3>
 
               {selectedSession.feedback ? (
-                <Card variant="bordered">
+                <Card variant="outline">
                   <div className="space-y-4">
                     <div className="bg-brand-cream p-4 rounded-lg">
                       <p className="text-sm font-semibold text-brand-green mb-2">

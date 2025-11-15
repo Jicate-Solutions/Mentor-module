@@ -68,7 +68,7 @@ export default function ResourceForm({ resource, onSubmit, onCancel }: ResourceF
           </label>
           <select
             value={formData.resource_type}
-            onChange={(e) => setFormData({ ...formData, resource_type: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, resource_type: e.target.value as GuideResource['resource_type'] })}
             required
             className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#0b6d41]"
           >

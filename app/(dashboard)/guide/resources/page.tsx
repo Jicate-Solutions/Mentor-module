@@ -102,8 +102,12 @@ export default function ResourcesPage() {
     }
   };
 
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return '';
+  const formatFileSize = (size?: string | number) => {
+    if (!size) return '';
+    // If it's already a formatted string, return it
+    if (typeof size === 'string') return size;
+    // Otherwise format as bytes
+    const bytes = size as number;
     const kb = bytes / 1024;
     const mb = kb / 1024;
     if (mb >= 1) return `${mb.toFixed(1)} MB`;

@@ -5,8 +5,10 @@ import { checkAdminAccess } from '@/lib/auth/admin-guard';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+
   // Check admin access
   const accessCheck = await checkAdminAccess();
   if (!accessCheck.authorized) {
@@ -27,7 +29,7 @@ export async function PUT(
         order_index: body.order_index,
         is_published: body.is_published,
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -45,8 +47,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+
   // Check admin access
   const accessCheck = await checkAdminAccess();
   if (!accessCheck.authorized) {
@@ -59,7 +63,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('guide_sections')
       .delete()
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (error) throw error;
 

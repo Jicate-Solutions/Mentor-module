@@ -65,14 +65,15 @@ export interface GuideResource {
   id: string;
   title: string;
   description?: string;
-  resource_type: 'document' | 'video' | 'link' | 'template' | 'checklist';
+  resource_type: 'document' | 'video' | 'link' | 'template' | 'checklist' | 'toolkit';
   file_url?: string;
   external_url?: string;
   thumbnail_url?: string;
-  file_size?: number;
+  file_size?: string;
   file_format?: string;
   category?: string;
   tags?: string[];
+  order_index: number;
   download_count: number;
   is_published: boolean;
   created_at: string;

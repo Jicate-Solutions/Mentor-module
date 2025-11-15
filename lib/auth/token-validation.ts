@@ -6,6 +6,7 @@ export interface JKKNUser {
   full_name: string;
   role: string;
   institution_id?: string;
+  department_id?: string;
 }
 
 export interface TokenResponse {

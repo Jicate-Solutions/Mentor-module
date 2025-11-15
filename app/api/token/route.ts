@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authConfig } from '@/lib/auth/config';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,16 +14,16 @@ export async function POST(req: NextRequest) {
 
     // Exchange code for tokens with MyJKKN Auth Server
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_AUTH_SERVER_URL}/api/auth/token`,
+      `${authConfig.authServerUrl}/api/auth/token`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           grant_type: 'authorization_code',
           code,
-          app_id: process.env.NEXT_PUBLIC_APP_ID,
-          api_key: process.env.API_KEY,
-          redirect_uri: process.env.NEXT_PUBLIC_REDIRECT_URI,
+          app_id: authConfig.clientId,
+          api_key: authConfig.apiKey,
+          redirect_uri: authConfig.redirectUri,
         }),
       }
     );

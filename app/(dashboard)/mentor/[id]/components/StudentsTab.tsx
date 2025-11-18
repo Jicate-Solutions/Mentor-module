@@ -31,7 +31,6 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
   const [searching, setSearching] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
   const [assigning, setAssigning] = useState(false);
-  const [allAssignments, setAllAssignments] = useState<Record<string, { mentorId: string; mentorName: string; mentorEmail: string }>>({});
 
   // Fetch assigned students (extracted for reuse)
   const fetchStudents = useCallback(async () => {
@@ -58,31 +57,10 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     }
   }, [accessToken, mentorId, toast]);
 
-  // Fetch all student assignments across all mentors
-  const fetchAllAssignments = useCallback(async () => {
-    if (!accessToken) return;
-
-    try {
-      const response = await fetch('/api/students/assignments', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAllAssignments(data.assignments || {});
-      }
-    } catch (error) {
-      console.error('Error fetching all assignments:', error);
-    }
-  }, [accessToken]);
-
   // Fetch assigned students on mount
   useEffect(() => {
     fetchStudents();
-    fetchAllAssignments();
-  }, [fetchStudents, fetchAllAssignments]);
+  }, [fetchStudents]);
 
   // Search for students
   const handleSearch = async () => {
@@ -130,15 +108,8 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     return () => clearTimeout(debounceTimer);
   }, [searchQuery]); // Re-run when searchQuery changes
 
-  // Toggle student selection (only if not already assigned to another mentor)
+  // Toggle student selection
   const toggleStudentSelection = (student: Student) => {
-    // Check if student is already assigned to a different mentor
-    const assignment = allAssignments[student.id];
-    if (assignment && assignment.mentorId !== mentorId) {
-      // Student is assigned to another mentor, don't allow selection
-      return;
-    }
-
     setSelectedStudents((prev) => {
       const isSelected = prev.some(s => s.id === student.id);
       if (isSelected) {
@@ -191,10 +162,9 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
         }
       }
 
-      // Refetch assigned students list and all assignments to sync with backend
+      // Refetch assigned students list to sync with backend
       if (successCount > 0) {
         await fetchStudents();
-        await fetchAllAssignments();
       }
 
       // Show results
@@ -405,36 +375,25 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {searchResults.map((student) => {
                 const isSelected = selectedStudents.some(s => s.id === student.id);
-                const assignment = allAssignments[student.id];
-                const isAssignedToOther = assignment && assignment.mentorId !== mentorId;
-                const isAssignedToCurrent = assignment && assignment.mentorId === mentorId;
 
                 return (
                   <Card
                     key={student.id}
                     variant={isSelected ? 'outline' : 'default'}
-                    className={`
-                      transition-shadow
-                      ${isAssignedToOther
-                        ? 'opacity-60 cursor-not-allowed'
-                        : 'cursor-pointer hover:shadow-md'
-                      }
-                    `}
-                    onClick={() => !isAssignedToOther && toggleStudentSelection(student)}
+                    className="transition-shadow cursor-pointer hover:shadow-md"
+                    onClick={() => toggleStudentSelection(student)}
                   >
                     <div className="flex items-center gap-3">
                       {/* Checkbox */}
                       <div className="flex-shrink-0">
                         <div className={`
                           w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
-                          ${isAssignedToOther
-                            ? 'border-neutral-300 bg-neutral-100 cursor-not-allowed'
-                            : isSelected
+                          ${isSelected
                             ? 'bg-brand-green border-brand-green'
                             : 'border-neutral-300 bg-white'
                           }
                         `}>
-                          {isSelected && !isAssignedToOther && (
+                          {isSelected && (
                             <svg
                               className="w-4 h-4 text-white"
                               fill="none"
@@ -468,21 +427,11 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
                       {/* Info */}
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <h4 className={`font-semibold ${isAssignedToOther ? 'text-neutral-500' : 'text-brand-green'}`}>
+                          <h4 className="font-semibold text-brand-green">
                             {student.name}
                           </h4>
-                          {isAssignedToOther && (
-                            <Badge variant="warning" size="sm">
-                              Assigned to {assignment.mentorName}
-                            </Badge>
-                          )}
-                          {isAssignedToCurrent && (
-                            <Badge variant="success" size="sm">
-                              Already Assigned
-                            </Badge>
-                          )}
                         </div>
-                        <p className={`text-sm ${isAssignedToOther ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                        <p className="text-sm text-neutral-600">
                           {student.rollNumber} • {student.year} • {student.department}
                         </p>
                       </div>

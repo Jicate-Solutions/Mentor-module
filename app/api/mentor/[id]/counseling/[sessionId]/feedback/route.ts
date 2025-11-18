@@ -23,7 +23,7 @@ export async function POST(
 
     const { id: mentorId, sessionId } = await params;
     const body = await request.json();
-    const { counselingQueries, actionTaken } = body;
+    const { counselingQueries, actionTaken, attachmentUrl } = body;
 
     // Validation
     if (!counselingQueries || !actionTaken) {
@@ -53,14 +53,20 @@ export async function POST(
     }
 
     // Insert feedback into session_feedback table
+    const feedbackData: any = {
+      session_id: sessionId,
+      counseling_queries: counselingQueries,
+      action_taken: actionTaken,
+      submitted_by: mentorId,
+    };
+
+    if (attachmentUrl) {
+      feedbackData.attachment_url = attachmentUrl;
+    }
+
     const { data: feedback, error: feedbackError } = await supabaseAdmin
       .from('session_feedback')
-      .insert({
-        session_id: sessionId,
-        counseling_queries: counselingQueries,
-        action_taken: actionTaken,
-        submitted_by: mentorId,
-      })
+      .insert(feedbackData)
       .select()
       .single();
 
@@ -106,6 +112,7 @@ export async function POST(
           id,
           counseling_queries,
           action_taken,
+          attachment_url,
           submitted_by,
           submitted_at
         )
@@ -143,6 +150,7 @@ export async function POST(
       feedback: updatedSession.feedback ? {
         counselingQueries: updatedSession.feedback.counseling_queries,
         actionTaken: updatedSession.feedback.action_taken,
+        attachmentUrl: updatedSession.feedback.attachment_url || undefined,
         submittedAt: updatedSession.feedback.submitted_at,
         submittedBy: updatedSession.feedback.submitted_by || mentorId,
       } : undefined,

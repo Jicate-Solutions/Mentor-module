@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserAccess, getInstitutionFilter } from '@/lib/middleware/access-control';
 
 /**
  * Transform MyJKKN API institution response to match our interface
@@ -26,6 +27,16 @@ function transformInstitutionData(apiInstitution: any) {
  */
 export async function GET(request: NextRequest) {
   try {
+    // Get user access level
+    const userAccess = await getUserAccess();
+
+    if (!userAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     // Get API key from environment (server-side only)
     const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
     const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
@@ -80,16 +91,36 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform the data to match our interface
-    const transformedData = {
+    let transformedData = {
       ...data,
       data: data.data ? data.data.map(transformInstitutionData) : []
     };
 
     console.log('Transformed institution data:', JSON.stringify(transformedData.data[0], null, 2));
 
+    // Apply access control filtering
+    const institutionFilter = getInstitutionFilter(userAccess);
+
+    if (institutionFilter !== null) {
+      // Filter institutions based on user's access level
+      transformedData.data = transformedData.data.filter(
+        (inst: any) => inst.id === institutionFilter
+      );
+
+      // Update metadata
+      transformedData.metadata = {
+        page: 1,
+        totalPages: 1,
+        total: transformedData.data.length,
+      };
+
+      console.log(`[Access Control] Filtered institutions for ${userAccess.role}: ${transformedData.data.length} results`);
+    }
+
     return NextResponse.json({
       success: true,
       ...transformedData,
+      accessLevel: userAccess.role, // Include for debugging
     });
 
   } catch (error: any) {

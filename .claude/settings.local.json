@@ -38,7 +38,11 @@
       "Bash(npx tsc:*)",
       "Bash(dir:*)",
       "Skill(writing-plans)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Complete FAQ and Resources management (Batch 2)\n\nTask 5: FAQ Management\n- Created FAQ management page with CRUD interface\n- Following same pattern as sections and content management\n\nTask 6: Resources Management\n- Created complete resources management system\n- API routes for GET, POST, PUT, DELETE operations\n- ResourceForm component with resource type selector\n- ResourceList component with type-based color coding\n- Support for documents, templates, videos, links, toolkits\n- File URL and size tracking with download counts\n\nAll admin management modules now complete: Sections, Content, FAQs, Resources\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Complete FAQ and Resources management (Batch 2)\n\nTask 5: FAQ Management\n- Created FAQ management page with CRUD interface\n- Following same pattern as sections and content management\n\nTask 6: Resources Management\n- Created complete resources management system\n- API routes for GET, POST, PUT, DELETE operations\n- ResourceForm component with resource type selector\n- ResourceList component with type-based color coding\n- Support for documents, templates, videos, links, toolkits\n- File URL and size tracking with download counts\n\nAll admin management modules now complete: Sections, Content, FAQs, Resources\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(npm run dev:*)",
+      "mcp__filesystem__write_file",
+      "mcp__filesystem__create_directory",
+      "Bash(powershell -Command:*)"
     ],
     "deny": [],
     "ask": []

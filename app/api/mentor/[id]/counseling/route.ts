@@ -1,6 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CounselingSession } from '@/lib/types/mentor';
+import { randomBytes } from 'crypto';
+import { sendFeedbackRequestEmail } from '@/lib/email/send-feedback-request';
+
+/**
+ * Helper function to create feedback records and send emails
+ * Runs asynchronously after session creation
+ */
+async function createFeedbackRecordsAndSendEmails(
+  sessionId: string,
+  studentId: string,
+  mentorId: string,
+  studentEmail: string,
+  studentName: string,
+  mentorName: string,
+  sessionName: string,
+  sessionDate: string
+) {
+  try {
+    const supabaseAdmin = createAdminClient();
+
+    // Generate unique feedback token (cryptographically secure)
+    const feedbackToken = randomBytes(32).toString('hex');
+
+    // Token expires in 7 days
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 7);
+
+    console.log(`[Feedback] Creating feedback record for session ${sessionId}, student ${studentId}`);
+
+    // Create feedback record
+    const { data: feedbackRecord, error: feedbackError } = await supabaseAdmin
+      .from('student_feedback')
+      .insert({
+        session_id: sessionId,
+        student_id: studentId,
+        mentor_id: mentorId,
+        feedback_token: feedbackToken,
+        token_expires_at: tokenExpiresAt.toISOString(),
+        is_anonymous: false,
+      })
+      .select()
+      .single();
+
+    if (feedbackError) {
+      console.error(`[Feedback] Failed to create feedback record:`, feedbackError);
+      return;
+    }
+
+    console.log(`[Feedback] Created feedback record ${feedbackRecord.id}`);
+
+    // Send email (non-blocking, catch errors)
+    try {
+      await sendFeedbackRequestEmail({
+        studentEmail,
+        studentName,
+        mentorName,
+        sessionName,
+        sessionDate,
+        feedbackToken,
+      });
+
+      // Update email_sent_at timestamp
+      await supabaseAdmin
+        .from('student_feedback')
+        .update({ email_sent_at: new Date().toISOString() })
+        .eq('id', feedbackRecord.id);
+
+      console.log(`[Feedback] ✅ Email sent to ${studentEmail}`);
+    } catch (emailError) {
+      console.error(`[Feedback] Failed to send email to ${studentEmail}:`, emailError);
+      // Don't throw - we still want the session to be created successfully
+    }
+  } catch (error) {
+    console.error('[Feedback] Error in createFeedbackRecordsAndSendEmails:', error);
+    // Don't throw - session creation should succeed even if feedback fails
+  }
+}
 
 /**
  * GET /api/mentor/[id]/counseling
@@ -229,7 +306,7 @@ export async function POST(
     console.log('[Counseling API] Checking if student exists:', student.id);
     const { data: studentData, error: studentError } = await supabaseAdmin
       .from('students')
-      .select('id, name, roll_number')
+      .select('id, name, roll_number, email')
       .eq('id', student.id)
       .single();
 
@@ -311,6 +388,36 @@ export async function POST(
     }
 
     console.log(`[Counseling API] ✅ Successfully created counseling session ${newSession.id}`);
+
+    // Create feedback record and send email asynchronously (non-blocking)
+    // We need to get mentor name for the email
+    const { data: mentorUserData } = await supabaseAdmin
+      .from('users')
+      .select('full_name')
+      .eq('id', user.id)
+      .single();
+
+    const mentorName = mentorUserData?.full_name || 'Your Mentor';
+    const studentEmail = studentData?.email || student.email || '';
+
+    // Only create feedback if we have a valid email
+    if (studentEmail) {
+      // Run asynchronously without blocking response
+      createFeedbackRecordsAndSendEmails(
+        newSession.id,
+        student.id,
+        mentor!.id,
+        studentEmail,
+        studentData?.name || student.name || 'Student',
+        mentorName,
+        sessionName,
+        date
+      ).catch(err => {
+        console.error('[Counseling API] Background feedback creation failed:', err);
+      });
+    } else {
+      console.warn(`[Counseling API] Skipping feedback email - no email for student ${student.id}`);
+    }
 
     // Transform to frontend interface
     const transformedSession: CounselingSession = {

@@ -1,6 +1,6 @@
 // lib/auth/admin-guard.ts
-import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { getCurrentUser } from './get-current-user';
 
 /**
  * Check if the current user has admin access (super_admin or administrator roles)
@@ -8,12 +8,10 @@ import { NextResponse } from 'next/server';
  */
 export async function checkAdminAccess() {
   try {
-    const supabase = await createClient();
+    // Get current authenticated user
+    const user = await getCurrentUser();
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    if (!user) {
       return {
         authorized: false,
         error: NextResponse.json(
@@ -23,25 +21,8 @@ export async function checkAdminAccess() {
       };
     }
 
-    // Get user data with role from users table
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id, role, is_super_admin, full_name, email')
-      .eq('jkkn_user_id', user.id)
-      .single();
-
-    if (userError || !userData) {
-      return {
-        authorized: false,
-        error: NextResponse.json(
-          { error: 'User not found', message: 'User data could not be retrieved' },
-          { status: 404 }
-        ),
-      };
-    }
-
     // Check if user has admin role
-    const isAdmin = userData.role === 'super_admin' || userData.role === 'administrator' || userData.is_super_admin === true;
+    const isAdmin = user.role === 'super_admin' || user.role === 'institution_admin' || user.is_super_admin === true;
 
     if (!isAdmin) {
       return {
@@ -55,7 +36,13 @@ export async function checkAdminAccess() {
 
     return {
       authorized: true,
-      user: userData,
+      user: {
+        id: user.id,
+        role: user.role,
+        is_super_admin: user.is_super_admin,
+        full_name: user.full_name,
+        email: user.email,
+      },
     };
   } catch (error) {
     console.error('Admin access check error:', error);

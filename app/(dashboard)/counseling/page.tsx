@@ -6,6 +6,9 @@ import { CounselingSession } from '@/lib/types/mentor';
 import { supabase } from '@/lib/supabase/client';
 import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
+import HorizontalFilterBar from '@/components/filters/HorizontalFilterBar';
+import { useFilters } from '@/hooks/useFilters';
+import type { FilterConfig } from '@/lib/types/filters';
 
 type TabType = 'all' | 'upcoming' | 'completed';
 
@@ -37,7 +40,7 @@ interface GroupedSession {
 }
 
 export default function CounselingSessionsPage() {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [sessions, setSessions] = useState<CounselingSession[]>([]);
   const [filteredSessions, setFilteredSessions] = useState<GroupedSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +56,105 @@ export default function CounselingSessionsPage() {
   const [mentorId, setMentorId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null); // Store users.id (UUID)
   const [isAdmin, setIsAdmin] = useState(false); // Check if user is admin (not a mentor)
+
+  // Filter configuration - Fetch options from JKKN API
+  const filterConfigs: FilterConfig[] = [
+    {
+      key: 'institution',
+      label: 'Institution',
+      type: 'dropdown',
+      options: async () => {
+        try {
+          const response = await fetch('/api/jkkn/institutions', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            return (data.data || []).map((inst: any) => ({
+              value: inst.institution_name || inst.name,
+              label: inst.institution_name || inst.name,
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading institutions:', error);
+        }
+        return [];
+      },
+      placeholder: 'All institutions',
+      width: 'w-56',
+    },
+    {
+      key: 'department',
+      label: 'Department',
+      type: 'dropdown',
+      options: async () => {
+        try {
+          const response = await fetch('/api/jkkn/departments', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            return (data.data || []).map((dept: any) => ({
+              value: dept.department_name || dept.name,
+              label: dept.department_name || dept.name,
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading departments:', error);
+        }
+        return [];
+      },
+      placeholder: 'All departments',
+      width: 'w-56',
+    },
+    {
+      key: 'program',
+      label: 'Program',
+      type: 'dropdown',
+      options: async () => {
+        try {
+          const response = await fetch('/api/jkkn/programs', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            return (data.data || []).map((prog: any) => ({
+              value: prog.program_name || prog.name,
+              label: prog.program_name || prog.name,
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading programs:', error);
+        }
+        return [];
+      },
+      placeholder: 'All programs',
+      width: 'w-56',
+    },
+    {
+      key: 'designation',
+      label: 'Designation',
+      type: 'dropdown',
+      options: [
+        { value: 'professor', label: 'Professor' },
+        { value: 'associate professor', label: 'Associate Professor' },
+        { value: 'assistant professor', label: 'Assistant Professor' },
+        { value: 'lecturer', label: 'Lecturer' },
+        { value: 'tutor', label: 'Tutor' },
+      ],
+      placeholder: 'All designations',
+      width: 'w-56',
+    },
+  ];
+
+  // Initialize filters hook
+  const { filters, setFilter, clearAllFilters, activeFiltersCount } = useFilters({}, true);
 
   // Fetch mentor ID and initial data
   useEffect(() => {
@@ -136,7 +238,7 @@ export default function CounselingSessionsPage() {
     return Array.from(grouped.values());
   };
 
-  // Filter sessions based on active tab and search query
+  // Filter sessions based on active tab, search query, and filters
   useEffect(() => {
     let grouped = groupSessionsByDetails();
 
@@ -158,8 +260,41 @@ export default function CounselingSessionsPage() {
       );
     }
 
+    // Apply institution filter (filter by student's institution)
+    if (filters.institution && filters.institution !== '') {
+      grouped = grouped.filter(s =>
+        s.students.some((student: any) =>
+          student.institution?.toLowerCase().includes((filters.institution as string).toLowerCase())
+        )
+      );
+    }
+
+    // Apply department filter (filter by student's department)
+    if (filters.department && filters.department !== '') {
+      grouped = grouped.filter(s =>
+        s.students.some((student: any) =>
+          student.department?.toLowerCase().includes((filters.department as string).toLowerCase())
+        )
+      );
+    }
+
+    // Apply program filter (filter by student's program)
+    if (filters.program && filters.program !== '') {
+      grouped = grouped.filter(s =>
+        s.students.some((student: any) =>
+          student.program?.toLowerCase().includes((filters.program as string).toLowerCase())
+        )
+      );
+    }
+
+    // Apply designation filter (Note: This would be for mentor's designation if available)
+    if (filters.designation && filters.designation !== '') {
+      // Designation filtering logic - to be implemented when designation data is available
+      // grouped = grouped.filter(s => ...);
+    }
+
     setFilteredSessions(grouped);
-  }, [sessions, activeTab, searchQuery]);
+  }, [sessions, activeTab, searchQuery, filters]);
 
   const fetchMentorId = async () => {
     try {
@@ -454,11 +589,22 @@ export default function CounselingSessionsPage() {
           <h2 className="text-lg font-semibold text-neutral-700">Filters & Search</h2>
         </div>
 
-        <SearchInput
-          value={searchQuery}
-          onChange={(value) => setSearchQuery(value)}
-          placeholder="Search sessions..."
-        />
+        <div className="space-y-4">
+          <SearchInput
+            value={searchQuery}
+            onChange={(value) => setSearchQuery(value)}
+            placeholder="Search sessions..."
+          />
+
+          <HorizontalFilterBar
+            filters={filterConfigs}
+            filterState={filters}
+            onFilterChange={setFilter}
+            onClearAll={clearAllFilters}
+            activeFiltersCount={activeFiltersCount}
+            loading={loading}
+          />
+        </div>
       </div>
 
       {/* Tabs Navigation */}

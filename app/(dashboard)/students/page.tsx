@@ -5,6 +5,9 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import SearchInput from '@/components/ui/SearchInput';
+import HorizontalFilterBar from '@/components/filters/HorizontalFilterBar';
+import { useFilters } from '@/hooks/useFilters';
+import type { FilterConfig } from '@/lib/types/filters';
 import {
   fetchStudents,
   checkApiStatus,
@@ -29,6 +32,83 @@ export default function StudentsPage() {
   // Search and filters
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Filter configuration
+  const filterConfigs: FilterConfig[] = [
+    {
+      key: 'institution_id',
+      label: 'Institution',
+      type: 'dropdown',
+      options: async () => {
+        // Extract unique institutions from students data
+        const uniqueInstitutions = new Map();
+        students.forEach((student) => {
+          const inst = student.institution;
+          if (typeof inst === 'object' && inst.id && inst.name) {
+            uniqueInstitutions.set(inst.id, inst.name);
+          }
+        });
+        return Array.from(uniqueInstitutions.entries()).map(([id, name]) => ({
+          value: id,
+          label: name,
+        }));
+      },
+      placeholder: 'All institutions',
+      width: 'w-56',
+    },
+    {
+      key: 'department_id',
+      label: 'Department',
+      type: 'dropdown',
+      options: async () => {
+        // Extract unique departments from students data
+        const uniqueDepartments = new Map();
+        students.forEach((student) => {
+          const dept = student.department;
+          if (typeof dept === 'object' && dept.id && dept.name) {
+            uniqueDepartments.set(dept.id, dept.name);
+          }
+        });
+        return Array.from(uniqueDepartments.entries()).map(([id, name]) => ({
+          value: id,
+          label: name,
+        }));
+      },
+      placeholder: 'All departments',
+      width: 'w-56',
+      dependsOn: 'institution_id',
+    },
+    {
+      key: 'program_id',
+      label: 'Program',
+      type: 'dropdown',
+      options: async () => {
+        // Extract unique programs from students data
+        const uniquePrograms = new Map();
+        students.forEach((student) => {
+          const prog = student.program;
+          if (typeof prog === 'object' && prog.id && prog.name) {
+            uniquePrograms.set(prog.id, prog.name);
+          }
+        });
+        return Array.from(uniquePrograms.entries()).map(([id, name]) => ({
+          value: id,
+          label: name,
+        }));
+      },
+      placeholder: 'All programs',
+      width: 'w-56',
+      dependsOn: 'department_id',
+    },
+    {
+      key: 'profile_complete',
+      label: 'Profile Status',
+      type: 'status-toggle',
+    },
+  ];
+
+  // Initialize filters hook
+  const { filters, setFilter, clearAllFilters, activeFiltersCount } = useFilters({}, true);
+
   // Check API status on mount
   useEffect(() => {
     checkStatus();
@@ -41,10 +121,13 @@ export default function StudentsPage() {
     }
   }, [isConfigured]);
 
-  // Filter students based on search
+  // Filter students based on search and filters
   useEffect(() => {
+    let filtered = [...students];
+
+    // Apply search filter
     if (searchQuery) {
-      const filtered = students.filter((student) => {
+      filtered = filtered.filter((student) => {
         const institutionName = getInstitutionName(student.institution);
         const departmentName = getDepartmentName(student.department);
         const programName = getProgramName(student.program);
@@ -60,11 +143,44 @@ export default function StudentsPage() {
           `${student.first_name} ${student.last_name}`.toLowerCase().includes(query)
         );
       });
-      setFilteredStudents(filtered);
-    } else {
-      setFilteredStudents(students);
     }
-  }, [searchQuery, students]);
+
+    // Apply institution filter
+    if (filters.institution_id && filters.institution_id !== '') {
+      filtered = filtered.filter((student) => {
+        const inst = student.institution;
+        const instId = typeof inst === 'object' ? inst.id : inst;
+        return instId === filters.institution_id;
+      });
+    }
+
+    // Apply department filter
+    if (filters.department_id && filters.department_id !== '') {
+      filtered = filtered.filter((student) => {
+        const dept = student.department;
+        const deptId = typeof dept === 'object' ? dept.id : dept;
+        return deptId === filters.department_id;
+      });
+    }
+
+    // Apply program filter
+    if (filters.program_id && filters.program_id !== '') {
+      filtered = filtered.filter((student) => {
+        const prog = student.program;
+        const progId = typeof prog === 'object' ? prog.id : prog;
+        return progId === filters.program_id;
+      });
+    }
+
+    // Apply profile status filter
+    if (filters.profile_complete !== null && filters.profile_complete !== undefined) {
+      filtered = filtered.filter((student) => {
+        return student.is_profile_complete === filters.profile_complete;
+      });
+    }
+
+    setFilteredStudents(filtered);
+  }, [searchQuery, students, filters]);
 
   /**
    * Check API configuration status
@@ -205,6 +321,16 @@ export default function StudentsPage() {
               Refresh
             </Button>
           </div>
+
+          {/* Horizontal Filter Bar */}
+          <HorizontalFilterBar
+            filters={filterConfigs}
+            filterState={filters}
+            onFilterChange={setFilter}
+            onClearAll={clearAllFilters}
+            activeFiltersCount={activeFiltersCount}
+            loading={loading}
+          />
 
           {/* Stats */}
           <div className="flex items-center gap-2 text-sm text-neutral-600">

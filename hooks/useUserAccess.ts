@@ -1,0 +1,69 @@
+/**
+ * useUserAccess Hook
+ * Client-side hook to get current user's access level and permissions
+ */
+
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/components/providers/AuthProvider';
+import type { AccessLevel } from '@/types/access-control';
+
+export interface UserAccessInfo {
+  role: AccessLevel;
+  institutionId: string | null;
+  departmentId: string | null;
+  isSuperAdmin: boolean;
+  isInstitutionAdmin: boolean;
+}
+
+export function useUserAccess() {
+  const { user } = useAuth();
+  const [accessInfo, setAccessInfo] = useState<UserAccessInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      const role = (user.role || 'student') as AccessLevel;
+
+      setAccessInfo({
+        role,
+        institutionId: user.institution_id || null,
+        departmentId: user.department_id || null,
+        isSuperAdmin: role === 'super_admin',
+        isInstitutionAdmin: role === 'institution_admin',
+      });
+    }
+    setLoading(false);
+  }, [user]);
+
+  return { accessInfo, loading };
+}
+
+/**
+ * Get access level display label
+ */
+export function getAccessLevelLabel(role: AccessLevel): string {
+  const labels: Record<AccessLevel, string> = {
+    super_admin: 'Super Admin',
+    institution_admin: 'Institution Admin',
+    mentor: 'Mentor',
+    student: 'Student',
+  };
+
+  return labels[role] || role;
+}
+
+/**
+ * Get access level badge color
+ */
+export function getAccessLevelColor(role: AccessLevel): string {
+  const colors: Record<AccessLevel, string> = {
+    super_admin: 'bg-red-100 text-red-800 border-red-200',
+    institution_admin: 'bg-green-100 text-green-800 border-green-200',
+    mentor: 'bg-blue-100 text-blue-800 border-blue-200',
+    student: 'bg-gray-100 text-gray-800 border-gray-200',
+  };
+
+  return colors[role] || colors.student;
+}

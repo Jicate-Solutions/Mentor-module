@@ -42,9 +42,11 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
   const [selectedSession, setSelectedSession] = useState<CounselingSession | null>(null);
   const [feedbackData, setFeedbackData] = useState({
     counselingQueries: '',
-    actionTaken: ''
+    actionTaken: '',
+    attachment: null as File | null
   });
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   // Group sessions by session details (same session name, date, time = same group session)
   const groupSessionsByDetails = () => {
@@ -281,12 +283,14 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
     if (session.feedback) {
       setFeedbackData({
         counselingQueries: session.feedback.counselingQueries,
-        actionTaken: session.feedback.actionTaken
+        actionTaken: session.feedback.actionTaken,
+        attachment: null
       });
     } else {
       setFeedbackData({
         counselingQueries: '',
-        actionTaken: ''
+        actionTaken: '',
+        attachment: null
       });
     }
   };
@@ -301,6 +305,34 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
     try {
       setSubmittingFeedback(true);
+
+      let attachmentUrl = '';
+
+      // Upload file if attached
+      if (feedbackData.attachment) {
+        setUploadingFile(true);
+        const formData = new FormData();
+        formData.append('file', feedbackData.attachment);
+        formData.append('bucket', 'counseling-attachments');
+        formData.append('path', `feedback/${selectedSession.id}`);
+
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: formData,
+        });
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          attachmentUrl = uploadData.url;
+        } else {
+          toast.error('File upload failed', 'Could not upload attachment. Submitting feedback without it.');
+        }
+        setUploadingFile(false);
+      }
+
       const response = await fetch(
         `/api/mentor/${mentorId}/counseling/${selectedSession.id}/feedback`,
         {
@@ -309,7 +341,11 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(feedbackData),
+          body: JSON.stringify({
+            counselingQueries: feedbackData.counselingQueries,
+            actionTaken: feedbackData.actionTaken,
+            attachmentUrl: attachmentUrl || undefined,
+          }),
         }
       );
 
@@ -324,7 +360,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         // Clear feedback form
         setFeedbackData({
           counselingQueries: '',
-          actionTaken: ''
+          actionTaken: '',
+          attachment: null
         });
       } else {
         const errorData = await response.json();
@@ -334,6 +371,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
       toast.error('Error submitting feedback', 'An unexpected error occurred. Please try again');
     } finally {
       setSubmittingFeedback(false);
+      setUploadingFile(false);
     }
   };
 
@@ -860,6 +898,24 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                         {selectedSession.feedback.actionTaken}
                       </p>
                     </div>
+                    {selectedSession.feedback.attachmentUrl && (
+                      <div className="bg-brand-cream p-4 rounded-lg">
+                        <p className="text-sm font-semibold text-brand-green mb-2">
+                          Attachment
+                        </p>
+                        <a
+                          href={selectedSession.feedback.attachmentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-brand-green hover:underline"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                          View Attachment
+                        </a>
+                      </div>
+                    )}
                     <div className="pt-4 border-t border-neutral-200 text-sm text-neutral-600 flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -899,13 +955,50 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                       required
                     />
 
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-neutral-700">
+                        Attachment (Optional)
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="file"
+                          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            setFeedbackData(prev => ({
+                              ...prev,
+                              attachment: file
+                            }));
+                          }}
+                          className="flex-1 text-sm text-neutral-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green/90 cursor-pointer"
+                        />
+                        {feedbackData.attachment && (
+                          <button
+                            type="button"
+                            onClick={() => setFeedbackData(prev => ({ ...prev, attachment: null }))}
+                            className="text-red-600 hover:text-red-700 text-sm font-medium"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      {feedbackData.attachment && (
+                        <p className="text-xs text-neutral-600">
+                          Selected: {feedbackData.attachment.name} ({(feedbackData.attachment.size / 1024).toFixed(2)} KB)
+                        </p>
+                      )}
+                      <p className="text-xs text-neutral-500">
+                        Supported: Images, Videos, Audio, PDF, Word, Excel, PowerPoint (Max 10MB)
+                      </p>
+                    </div>
+
                     <Button
                       variant="primary"
                       onClick={handleSubmitFeedback}
-                      disabled={submittingFeedback || !feedbackData.counselingQueries || !feedbackData.actionTaken}
+                      disabled={submittingFeedback || uploadingFile || !feedbackData.counselingQueries || !feedbackData.actionTaken}
                       className="w-full"
                     >
-                      {submittingFeedback ? 'Submitting Feedback...' : 'Submit Feedback'}
+                      {uploadingFile ? 'Uploading file...' : submittingFeedback ? 'Submitting Feedback...' : 'Submit Feedback'}
                     </Button>
                   </div>
                 </Card>

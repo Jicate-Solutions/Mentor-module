@@ -1,4 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserAccess } from '@/lib/middleware/access-control';
+import { applyAccessFilters, updateMetadata, wereFiltersApplied } from '@/lib/utils/api-filters';
+
+/**
+ * Helper function to extract institution and department IDs from student data
+ */
+function extractInstitutionDepartmentIds(student: any) {
+  // Extract institution_id
+  let institution_id = '';
+  if (typeof student.institution === 'object' && student.institution !== null) {
+    institution_id = student.institution.id || student.institution.institution_id || '';
+  } else if (typeof student.institution === 'string') {
+    institution_id = student.institution;
+  } else if (student.institution_id) {
+    institution_id = student.institution_id;
+  }
+
+  // Extract department_id
+  let department_id = '';
+  if (typeof student.department === 'object' && student.department !== null) {
+    department_id = student.department.id || student.department.department_id || '';
+  } else if (typeof student.department === 'string') {
+    department_id = student.department;
+  } else if (student.department_id) {
+    department_id = student.department_id;
+  }
+
+  return { institution_id, department_id };
+}
 
 /**
  * Transform MyJKKN API student response to match our interface
@@ -58,6 +87,16 @@ function transformStudentData(apiStudent: any) {
  */
 export async function GET(request: NextRequest) {
   try {
+    // Get user access level
+    const userAccess = await getUserAccess();
+
+    if (!userAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     // Get API key from environment (server-side only)
     const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
     const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
@@ -112,16 +151,37 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform the data to match our interface
-    const transformedData = {
+    let transformedData = {
       ...data,
       data: data.data ? data.data.map(transformStudentData) : []
     };
 
     console.log('Transformed student data:', JSON.stringify(transformedData.data[0], null, 2));
 
+    // Add institution_id and department_id to each student for filtering
+    const studentsWithIds = transformedData.data.map((student: any) => ({
+      ...student,
+      ...extractInstitutionDepartmentIds(student)
+    }));
+
+    // Apply access control filtering
+    const filteredData = applyAccessFilters(studentsWithIds, userAccess);
+
+    // Update metadata
+    const filtersApplied = wereFiltersApplied(userAccess);
+    transformedData.data = filteredData;
+    transformedData.metadata = updateMetadata(
+      transformedData.metadata,
+      filteredData.length,
+      filtersApplied
+    );
+
+    console.log(`[Access Control] Filtered students for ${userAccess.role}: ${filteredData.length} results`);
+
     return NextResponse.json({
       success: true,
       ...transformedData,
+      accessLevel: userAccess.role,
     });
 
   } catch (error: any) {

@@ -15,6 +15,11 @@ export async function upsertUser(jkknUser: JKKNUser & {
   try {
     const supabaseAdmin = createAdminClient();
 
+    // Map JKKN role to our DB role
+    const dbRole = mapJkknRoleToDbRole(jkknUser.role);
+
+    console.log(`📋 Role Mapping: ${jkknUser.role} → ${dbRole}`);
+
     const { data, error } = await supabaseAdmin
       .from('users')
       .upsert(
@@ -22,14 +27,14 @@ export async function upsertUser(jkknUser: JKKNUser & {
           jkkn_user_id: jkknUser.id,
           email: jkknUser.email,
           full_name: jkknUser.full_name,
-          role: jkknUser.role,
+          role: dbRole, // Use mapped role instead of original
           department_id: jkknUser.department_id || null,
           institution_id: jkknUser.institution_id || null,
           phone_number: jkknUser.phone_number || null,
           gender: jkknUser.gender || null,
           designation: jkknUser.designation || null,
           avatar_url: jkknUser.avatar_url || null,
-          is_super_admin: jkknUser.role === 'super_admin',
+          is_super_admin: dbRole === 'super_admin',
           profile_completed: jkknUser.profile_completed || false,
           last_login: new Date().toISOString(),
         },
@@ -230,6 +235,23 @@ export async function logoutUser(userId: string) {
     console.error('Failed to logout user:', error);
     return false;
   }
+}
+
+/**
+ * Map MyJKKN roles to our internal database roles
+ */
+export function mapJkknRoleToDbRole(jkknRole: string): string {
+  const roleMapping: Record<string, string> = {
+    // MyJKKN role -> Our DB role
+    'administrator': 'super_admin',
+    'principal': 'institution_admin',
+    'hod': 'institution_admin',
+    'digital_coordinator': 'institution_admin',
+    'faculty': 'mentor',
+    'super_admin': 'super_admin',
+  };
+
+  return roleMapping[jkknRole] || 'mentor'; // Default to mentor if unknown
 }
 
 /**

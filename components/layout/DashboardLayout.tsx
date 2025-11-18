@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import Breadcrumbs from '@/components/ui/Breadcrumbs';
 import { TooltipIconButton } from '@/components/ui/Tooltip';
+import AccessLevelBadge from '@/components/ui/AccessLevelBadge';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -101,7 +102,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </h1>
 
             {/* Right Side Actions */}
-            <div className="flex items-center gap-1 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-3">
+              {/* Access Level Badge */}
+              <div className="hidden sm:block">
+                <AccessLevelBadge size="sm" />
+              </div>
+
               {/* Notifications - 44x44px touch target */}
               <div className="hidden sm:block relative">
                 <TooltipIconButton

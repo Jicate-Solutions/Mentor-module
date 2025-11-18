@@ -1,0 +1,74 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/auth/get-current-user';
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    const bucket = formData.get('bucket') as string || 'uploads';
+    const path = formData.get('path') as string || '';
+
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `File size exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit` },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createAdminClient();
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(7);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${timestamp}-${randomString}.${fileExt}`;
+    const filePath = path ? `${path}/${fileName}` : fileName;
+
+    // Convert file to ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (error) {
+      console.error('[Upload API] Supabase storage error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(data.path);
+
+    return NextResponse.json({
+      success: true,
+      url: urlData.publicUrl,
+      path: data.path,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+    });
+  } catch (error: any) {
+    console.error('[Upload API] Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

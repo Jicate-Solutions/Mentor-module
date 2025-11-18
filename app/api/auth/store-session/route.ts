@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { upsertUser, createUserSession, isRoleAllowed, getDefaultRouteForRole } from '@/lib/supabase/auth';
 
 /**
@@ -71,6 +72,28 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Redirecting ${jkknUser.role} to: ${redirectUrl}`);
     console.log('========================================');
+
+    // Set HTTP-only cookies for server-side authentication
+    const cookieStore = await cookies();
+    const maxAge = expires_in; // Cookie expires when token expires
+
+    cookieStore.set('access_token', access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: maxAge,
+      path: '/',
+    });
+
+    cookieStore.set('refresh_token', refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      path: '/',
+    });
+
+    console.log('✅ HTTP-only cookies set for authentication');
 
     return NextResponse.json({
       success: true,

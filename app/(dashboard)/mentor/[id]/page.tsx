@@ -2,12 +2,15 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, User, Users, MessageSquare, Calendar, FileText } from 'lucide-react';
+import { ArrowLeft, User, Users, MessageSquare, Calendar, FileText, Target, Download, ThumbsUp } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import CounselingTab from './components/CounselingTab';
 import StudentsTab from './components/StudentsTab';
 import AttendanceTab from './components/AttendanceTab';
 import ExamResultsTab from './components/ExamResultsTab';
+import IDPTab from './components/IDPTab';
+import ReportsTab from './components/ReportsTab';
+import StudentFeedbackTab from './components/StudentFeedbackTab';
 
 interface Mentor {
   id: string;
@@ -21,7 +24,7 @@ interface Mentor {
   pendingFeedback?: number;
 }
 
-type TabType = 'students' | 'counseling' | 'attendance' | 'examResults';
+type TabType = 'students' | 'counseling' | 'attendance' | 'examResults' | 'idp' | 'reports' | 'studentFeedback';
 
 export default function MentorDetailPage() {
   const params = useParams();
@@ -33,6 +36,7 @@ export default function MentorDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('students');
+  const [students, setStudents] = useState<any[]>([]);
 
   // Fetch mentor details
   useEffect(() => {
@@ -82,6 +86,20 @@ export default function MentorDetailPage() {
             ...mentorData.mentor,
             pendingFeedback,
           });
+
+          // Fetch students for IDP tab
+          const studentsResponse = await fetch(`/api/mentor/${mentorId}/students`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+
+          if (studentsResponse.ok) {
+            const studentsData = await studentsResponse.json();
+            if (studentsData.success && studentsData.students) {
+              setStudents(studentsData.students);
+            }
+          }
         } else {
           throw new Error('Mentor not found');
         }
@@ -138,6 +156,9 @@ export default function MentorDetailPage() {
     { id: 'counseling' as TabType, label: 'Counseling', icon: MessageSquare },
     { id: 'attendance' as TabType, label: 'Attendance', icon: Calendar },
     { id: 'examResults' as TabType, label: 'Exam Results', icon: FileText },
+    { id: 'idp' as TabType, label: 'IDP', icon: Target },
+    { id: 'studentFeedback' as TabType, label: 'Student Feedback', icon: ThumbsUp },
+    { id: 'reports' as TabType, label: 'Reports', icon: Download },
   ];
 
   return (
@@ -265,6 +286,21 @@ export default function MentorDetailPage() {
             {/* Exam Results Tab */}
             {activeTab === 'examResults' && (
               <ExamResultsTab mentorId={mentorId} />
+            )}
+
+            {/* IDP Tab */}
+            {activeTab === 'idp' && (
+              <IDPTab mentorId={mentorId} students={students} />
+            )}
+
+            {/* Student Feedback Tab */}
+            {activeTab === 'studentFeedback' && (
+              <StudentFeedbackTab mentorId={mentorId} />
+            )}
+
+            {/* Reports Tab */}
+            {activeTab === 'reports' && (
+              <ReportsTab mentorId={mentorId} />
             )}
           </div>
         </div>

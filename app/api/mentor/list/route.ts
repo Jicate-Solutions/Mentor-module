@@ -90,68 +90,114 @@ export async function GET(request: NextRequest) {
       return department?.department_name || department?.name || 'N/A';
     };
 
-    // Fetch staff from JKKN API - optimized to fetch 1 page for speed
+    // Helper function to extract institution name from staff member
+    const getInstitutionName = (institution: any): string => {
+      if (typeof institution === 'string') return institution;
+      return institution?.institution_name || institution?.name || 'N/A';
+    };
+
+    // Fetch staff from JKKN API - fetch ALL pages to ensure complete data
     let allMentors: any[] = [];
-    const pageLimit = 100; // Get 100 per page (sufficient for most searches)
+    const pageLimit = 100; // Fetch 100 per page
 
     console.log('[Mentor List] Fetching staff from JKKN API with endpoint fallback...');
 
     // Try multiple possible endpoints (staff endpoint location varies by API)
     const possibleEndpoints = [
-      `${baseUrl}/api-management/staff?page=1&limit=${pageLimit}`,
-      `${baseUrl}/api-management/organizations/employees?page=1&limit=${pageLimit}`,
-      `${baseUrl}/api/staff?page=1&limit=${pageLimit}`,
-      `${baseUrl}/staff?page=1&limit=${pageLimit}`,
+      `${baseUrl}/api-management/staff`,
+      `${baseUrl}/api-management/organizations/employees`,
+      `${baseUrl}/api/staff`,
+      `${baseUrl}/staff`,
     ];
 
     let apiData: any = null;
     let successfulEndpoint: string | null = null;
     let lastError: string = '';
+    let allStaffData: any[] = [];
 
     try {
       // Try each endpoint until one works
-      for (const url of possibleEndpoints) {
-        console.log(`[Mentor List] Trying endpoint: ${url}`);
+      for (const baseEndpoint of possibleEndpoints) {
+        console.log(`[Mentor List] Trying endpoint: ${baseEndpoint}`);
 
         try {
-          const apiResponse = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            // Add cache control for better performance
-            next: { revalidate: 60 }, // Cache for 60 seconds
-          });
+          // Fetch ALL pages from this endpoint
+          let currentPage = 1;
+          let hasMorePages = true;
+          let pageData: any[] = [];
 
-          console.log(`[Mentor List] Response status: ${apiResponse.status}`);
+          while (hasMorePages) {
+            const paginatedUrl = `${baseEndpoint}?page=${currentPage}&limit=${pageLimit}`;
+            console.log(`[Mentor List] Fetching page ${currentPage}...`);
 
-          // Check if response is successful
-          if (apiResponse.ok) {
-            const contentType = apiResponse.headers.get('content-type');
+            const apiResponse = await fetch(paginatedUrl, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              // Add cache control for better performance
+              next: { revalidate: 60 }, // Cache for 60 seconds
+            });
 
-            // Verify it's JSON, not HTML
-            if (contentType && contentType.includes('application/json')) {
-              apiData = await apiResponse.json();
-              successfulEndpoint = url;
-              console.log(`[Mentor List] ✓ SUCCESS! Endpoint works: ${url}`);
-              break; // Exit loop on success
+            console.log(`[Mentor List] Page ${currentPage} response status: ${apiResponse.status}`);
+
+            // Check if response is successful
+            if (apiResponse.ok) {
+              const contentType = apiResponse.headers.get('content-type');
+
+              // Verify it's JSON, not HTML
+              if (contentType && contentType.includes('application/json')) {
+                const pageApiData = await apiResponse.json();
+
+                // First page - store full response
+                if (currentPage === 1) {
+                  apiData = pageApiData;
+                  successfulEndpoint = baseEndpoint;
+                }
+
+                // Add this page's data
+                if (pageApiData.data && Array.isArray(pageApiData.data)) {
+                  pageData.push(...pageApiData.data);
+                  console.log(`[Mentor List] Page ${currentPage}: ${pageApiData.data.length} staff members`);
+
+                  // Check if there are more pages
+                  // If we got less than pageLimit, we've reached the end
+                  if (pageApiData.data.length < pageLimit) {
+                    hasMorePages = false;
+                    console.log(`[Mentor List] ✓ Reached last page (page ${currentPage})`);
+                  } else {
+                    currentPage++;
+                  }
+                } else {
+                  hasMorePages = false;
+                  console.log(`[Mentor List] No data array in response for page ${currentPage}`);
+                }
+              } else {
+                const text = await apiResponse.text();
+                console.log(`[Mentor List] ✗ Got HTML instead of JSON from ${paginatedUrl}`);
+                lastError = `Got HTML instead of JSON`;
+                break; // Try next endpoint
+              }
             } else {
-              const text = await apiResponse.text();
-              console.log(`[Mentor List] ✗ Got HTML instead of JSON from ${url}`);
-              lastError = `Got HTML instead of JSON`;
-              continue; // Try next endpoint
+              // Log failure and try next endpoint
+              const errorText = await apiResponse.text();
+              const isHtml = errorText.includes('<!DOCTYPE') || errorText.includes('<html');
+              console.log(`[Mentor List] ✗ Failed with ${apiResponse.status}: ${isHtml ? 'HTML 404 page' : errorText.substring(0, 100)}`);
+              lastError = `${apiResponse.status} ${apiResponse.statusText}`;
+              break; // Try next endpoint
             }
-          } else {
-            // Log failure and try next endpoint
-            const errorText = await apiResponse.text();
-            const isHtml = errorText.includes('<!DOCTYPE') || errorText.includes('<html');
-            console.log(`[Mentor List] ✗ Failed with ${apiResponse.status}: ${isHtml ? 'HTML 404 page' : errorText.substring(0, 100)}`);
-            lastError = `${apiResponse.status} ${apiResponse.statusText}`;
-            continue; // Try next endpoint
           }
+
+          // If we successfully fetched at least one page, use this endpoint
+          if (successfulEndpoint && pageData.length > 0) {
+            allStaffData = pageData;
+            console.log(`[Mentor List] ✓ SUCCESS! Fetched ${allStaffData.length} total staff members from ${successfulEndpoint}`);
+            break; // Exit endpoint trying loop
+          }
+
         } catch (fetchError) {
-          console.error(`[Mentor List] ✗ Fetch error for ${url}:`, fetchError);
+          console.error(`[Mentor List] ✗ Fetch error for ${baseEndpoint}:`, fetchError);
           lastError = fetchError instanceof Error ? fetchError.message : 'Fetch failed';
           continue; // Try next endpoint
         }
@@ -171,11 +217,11 @@ export async function GET(request: NextRequest) {
       console.log('[Mentor List] Using successful endpoint:', successfulEndpoint);
 
       console.log('[Mentor List] Staff API response:', {
-        dataLength: apiData.data?.length,
-        totalFields: Object.keys(apiData).join(', '),
+        totalStaffFetched: allStaffData.length,
+        firstPageFields: Object.keys(apiData).join(', '),
       });
 
-      if (!apiData.data || apiData.data.length === 0) {
+      if (!allStaffData || allStaffData.length === 0) {
         console.log('[Mentor List] No staff members found in database');
         return NextResponse.json({
           success: true,
@@ -186,13 +232,13 @@ export async function GET(request: NextRequest) {
       }
 
       // Log first staff member to see actual field structure
-      if (apiData.data.length > 0) {
-        console.log('[Mentor List] First staff member (raw):', JSON.stringify(apiData.data[0], null, 2));
-        console.log('[Mentor List] Available fields:', Object.keys(apiData.data[0]));
+      if (allStaffData.length > 0) {
+        console.log('[Mentor List] First staff member (raw):', JSON.stringify(allStaffData[0], null, 2));
+        console.log('[Mentor List] Available fields:', Object.keys(allStaffData[0]));
       }
 
       // Transform and filter staff members who are mentors
-      const staffMembers = apiData.data.map((staff: any) => {
+      const staffMembers = allStaffData.map((staff: any) => {
         // Extract name fields with multiple fallbacks
         const firstName = staff.first_name || staff.firstName || staff.name?.first || '';
         const lastName = staff.last_name || staff.lastName || staff.name?.last || '';
@@ -322,6 +368,7 @@ export async function GET(request: NextRequest) {
         name: finalName,
         email: staff.email || staff.institution_email,
         department: getDepartmentName(staff.department),
+        institution: getInstitutionName(staff.institution),
         designation: staff.designation,
         phone: staff.phone || '',
         avatar: null,

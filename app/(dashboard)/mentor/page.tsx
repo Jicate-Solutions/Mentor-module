@@ -11,6 +11,9 @@ import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { ErrorState, NoSearchResults } from '@/components/ui/EmptyState';
+import HorizontalFilterBar from '@/components/filters/HorizontalFilterBar';
+import { useFilters } from '@/hooks/useFilters';
+import type { FilterConfig } from '@/lib/types/filters';
 import type { Mentor } from '@/lib/types/mentor';
 
 export default function MentorListingPage() {
@@ -18,11 +21,111 @@ export default function MentorListingPage() {
   const { user, accessToken } = useAuth();
 
   const [mentors, setMentors] = useState<Mentor[]>([]);
+  const [filteredMentors, setFilteredMentors] = useState<Mentor[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Filter configuration - Fetch options from JKKN API
+  const filterConfigs: FilterConfig[] = [
+    {
+      key: 'institution',
+      label: 'Institution',
+      type: 'dropdown',
+      options: async () => {
+        try {
+          const response = await fetch('/api/jkkn/institutions', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            return (data.data || []).map((inst: any) => ({
+              value: inst.institution_name || inst.name,
+              label: inst.institution_name || inst.name,
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading institutions:', error);
+        }
+        return [];
+      },
+      placeholder: 'All institutions',
+      width: 'w-56',
+    },
+    {
+      key: 'department',
+      label: 'Department',
+      type: 'dropdown',
+      options: async () => {
+        try {
+          const response = await fetch('/api/jkkn/departments', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            return (data.data || []).map((dept: any) => ({
+              value: dept.department_name || dept.name,
+              label: dept.department_name || dept.name,
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading departments:', error);
+        }
+        return [];
+      },
+      placeholder: 'All departments',
+      width: 'w-56',
+    },
+    {
+      key: 'program',
+      label: 'Program',
+      type: 'dropdown',
+      options: async () => {
+        try {
+          const response = await fetch('/api/jkkn/programs', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            return (data.data || []).map((prog: any) => ({
+              value: prog.program_name || prog.name,
+              label: prog.program_name || prog.name,
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading programs:', error);
+        }
+        return [];
+      },
+      placeholder: 'All programs',
+      width: 'w-56',
+    },
+    {
+      key: 'designation',
+      label: 'Designation',
+      type: 'dropdown',
+      options: [
+        { value: 'professor', label: 'Professor' },
+        { value: 'associate professor', label: 'Associate Professor' },
+        { value: 'assistant professor', label: 'Assistant Professor' },
+        { value: 'lecturer', label: 'Lecturer' },
+        { value: 'tutor', label: 'Tutor' },
+      ],
+      placeholder: 'All designations',
+      width: 'w-56',
+    },
+  ];
+
+  // Initialize filters hook
+  const { filters, setFilter, clearAllFilters, activeFiltersCount } = useFilters({}, true);
 
   // Fetch mentors from JKKN API based on search query
   const searchMentors = async (query: string) => {
@@ -58,31 +161,74 @@ export default function MentorListingPage() {
         total: data.total,
       });
 
-      setMentors(data.mentors || []);
+      const mentorData = data.mentors || [];
+      setMentors(mentorData);
+      setFilteredMentors(mentorData);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to search mentors';
       console.error('[MentorPage] Error searching mentors:', errorMessage);
       setError(errorMessage);
       setMentors([]);
+      setFilteredMentors([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Debounced search - only search after user stops typing for 500ms
+  // Apply filters to mentors
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    let filtered = [...mentors];
+
+    // Apply institution filter
+    if (filters.institution && filters.institution !== '') {
+      filtered = filtered.filter((mentor) =>
+        mentor.institution?.toLowerCase().includes((filters.institution as string).toLowerCase())
+      );
+    }
+
+    // Apply department filter
+    if (filters.department && filters.department !== '') {
+      filtered = filtered.filter((mentor) =>
+        mentor.department?.toLowerCase().includes((filters.department as string).toLowerCase())
+      );
+    }
+
+    // Apply program filter
+    if (filters.program && filters.program !== '') {
+      filtered = filtered.filter((mentor) =>
+        mentor.program?.toLowerCase().includes((filters.program as string).toLowerCase())
+      );
+    }
+
+    // Apply designation filter
+    if (filters.designation && filters.designation !== '') {
+      filtered = filtered.filter((mentor) =>
+        mentor.designation?.toLowerCase().includes((filters.designation as string).toLowerCase())
+      );
+    }
+
+    setFilteredMentors(filtered);
+  }, [filters, mentors]);
+
+  // Debounced search - only search after user stops typing for 500ms
+  // Also trigger search when filters change
+  useEffect(() => {
+    // If no search query and no active filters, show empty state
+    if (!searchQuery.trim() && activeFiltersCount === 0) {
       setMentors([]);
       setHasSearched(false);
       return;
     }
 
+    // If filters are active but no search query, use a wildcard search
+    const queryToSearch = searchQuery.trim() || '*';
+
     const timer = setTimeout(() => {
-      searchMentors(searchQuery);
+      searchMentors(queryToSearch);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, accessToken]);
+  }, [searchQuery, filters, accessToken]);
 
   const handleMentorClick = (mentorId: string) => {
     router.push(`/mentor/${mentorId}`);
@@ -145,6 +291,16 @@ export default function MentorListingPage() {
           </div>
         </div>
 
+        {/* Horizontal Filter Bar - Always visible */}
+        <HorizontalFilterBar
+          filters={filterConfigs}
+          filterState={filters}
+          onFilterChange={setFilter}
+          onClearAll={clearAllFilters}
+          activeFiltersCount={activeFiltersCount}
+          loading={loading}
+        />
+
         {/* Loading State */}
         {loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -194,18 +350,21 @@ export default function MentorListingPage() {
         )}
 
         {/* Mentors Content */}
-        {!loading && !error && mentors.length > 0 && (
+        {!loading && !error && filteredMentors.length > 0 && (
           <>
             <div className="flex items-center justify-between">
               <p className="text-sm text-neutral-600">
-                Found <span className="font-semibold text-brand-green">{mentors.length}</span> mentor{mentors.length !== 1 ? 's' : ''}
+                Found <span className="font-semibold text-brand-green">{filteredMentors.length}</span> mentor{filteredMentors.length !== 1 ? 's' : ''}
+                {activeFiltersCount > 0 && (
+                  <span className="text-xs ml-2">({mentors.length} total)</span>
+                )}
               </p>
             </div>
 
             {/* Grid View */}
             {viewMode === 'grid' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {mentors.map((mentor) => (
+                {filteredMentors.map((mentor) => (
                   <div
                     key={mentor.id}
                     onClick={() => handleMentorClick(mentor.id)}

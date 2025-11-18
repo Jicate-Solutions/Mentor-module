@@ -552,10 +552,10 @@ export default function CounselingSessionsPage() {
   return (
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
       {/* Hero Header */}
-      <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
-        <div className="flex items-start justify-between">
+      <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-6">
+        <div className="flex items-start justify-between relative z-10">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-neutral-800 mb-2">
+            <h1 className="text-2xl lg:text-3xl font-bold text-neutral-900 mb-2">
               Counseling Sessions
             </h1>
             <p className="text-neutral-600 text-sm lg:text-base">
@@ -578,6 +578,7 @@ export default function CounselingSessionsPage() {
             </Button>
           )}
         </div>
+        <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-brand-yellow/20 rounded-full blur-3xl" />
       </div>
 
       {/* Filters & Search */}
@@ -650,16 +651,36 @@ export default function CounselingSessionsPage() {
         )}
 
         {!loading && !error && filteredSessions.length === 0 && (
-          <div className="text-center py-16">
-            <div className="text-5xl mb-4">📅</div>
-            <h3 className="text-lg font-semibold text-neutral-800 mb-2">
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-brand-green/10 rounded-full blur-2xl" />
+              <div className="relative bg-gradient-to-br from-brand-green/10 to-brand-yellow/10 rounded-full p-6">
+                <svg className="w-16 h-16 text-brand-green/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-neutral-900 mb-2">
               No sessions found
             </h3>
-            <p className="text-sm text-neutral-600">
+            <p className="text-sm text-neutral-600 text-center max-w-sm">
               {searchQuery
-                ? 'Try adjusting your search terms'
-                : 'No counseling sessions have been scheduled yet'}
+                ? 'Try adjusting your search terms or filters to find what you\'re looking for'
+                : 'No counseling sessions have been scheduled yet. Create your first session to get started.'}
             </p>
+            {mentorId && !isAdmin && (
+              <Button
+                onClick={openCreateModal}
+                variant="outline"
+                size="sm"
+                className="mt-4"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create First Session
+              </Button>
+            )}
           </div>
         )}
 
@@ -668,7 +689,7 @@ export default function CounselingSessionsPage() {
             {filteredSessions.map(session => (
               <div
                 key={session.id}
-                className="border border-neutral-200 rounded-lg p-5 hover:border-brand-green/30 hover:shadow-sm transition-all"
+                className="border border-neutral-200 rounded-xl p-5 hover:border-brand-green/30 hover:shadow-md transition-all bg-white"
               >
                 {/* Session Header */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">

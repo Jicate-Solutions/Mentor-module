@@ -105,9 +105,17 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
           {/* Session List */}
           <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
             {upcomingSessions.length === 0 ? (
-              <div className="text-center py-8 text-neutral-500">
-                <ClockIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No upcoming sessions</p>
+              <div className="flex flex-col items-center justify-center py-12 px-4">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-brand-green/10 rounded-full blur-xl" />
+                  <div className="relative bg-gradient-to-br from-brand-green/10 to-brand-yellow/10 rounded-full p-4">
+                    <ClockIcon className="w-10 h-10 text-brand-green/60" />
+                  </div>
+                </div>
+                <h4 className="text-sm font-semibold text-neutral-900 mt-4 mb-1">No sessions scheduled</h4>
+                <p className="text-xs text-neutral-500 text-center max-w-xs">
+                  Your upcoming counseling sessions will appear here
+                </p>
               </div>
             ) : (
               upcomingSessions.slice(0, 5).map((session) => (

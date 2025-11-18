@@ -83,9 +83,17 @@ export const ActivityFeed = ({ activities, loading }: ActivityFeedProps) => {
           ))}
         </div>
       ) : activities.length === 0 ? (
-        <div className="text-center py-12 text-neutral-500">
-          <CalendarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>No recent activity</p>
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="relative">
+            <div className="absolute inset-0 bg-brand-green/10 rounded-full blur-xl" />
+            <div className="relative bg-gradient-to-br from-brand-green/10 to-brand-yellow/10 rounded-full p-4">
+              <CalendarIcon className="w-12 h-12 text-brand-green/60" />
+            </div>
+          </div>
+          <h4 className="text-base font-semibold text-neutral-900 mt-4 mb-1">No activity yet</h4>
+          <p className="text-sm text-neutral-500 text-center max-w-xs">
+            Activity will appear here as you interact with the mentoring system
+          </p>
         </div>
       ) : (
         <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">

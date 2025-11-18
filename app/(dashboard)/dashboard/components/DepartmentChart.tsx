@@ -46,8 +46,20 @@ export const DepartmentChart = ({ data, loading }: DepartmentChartProps) => {
           <div className="w-48 h-48 bg-neutral-200 rounded-full animate-pulse" />
         </div>
       ) : data.length === 0 ? (
-        <div className="text-center py-12 text-neutral-500">
-          <p>No department data available</p>
+        <div className="flex flex-col items-center justify-center py-12 px-4">
+          <div className="relative mb-6">
+            <div className="absolute inset-0 bg-brand-green/10 rounded-full blur-xl" />
+            <div className="relative bg-gradient-to-br from-brand-green/10 to-brand-yellow/10 rounded-full p-4">
+              <svg className="w-12 h-12 text-brand-green/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+              </svg>
+            </div>
+          </div>
+          <h4 className="text-base font-semibold text-neutral-900 mb-2">No distribution data</h4>
+          <p className="text-sm text-neutral-500 text-center max-w-sm">
+            Department session distribution will be displayed here once data becomes available
+          </p>
         </div>
       ) : (
         <>

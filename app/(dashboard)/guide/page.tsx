@@ -7,6 +7,7 @@ import FileUploadDialog from '@/components/guide/FileUploadDialog';
 import FileManagementTable from '@/components/guide/FileManagementTable';
 import FilePreviewModal from '@/components/guide/FilePreviewModal';
 import EditDocumentDialog from '@/components/guide/EditDocumentDialog';
+import StatCard from '@/components/ui/StatCard';
 import type { MentorDocument } from '@/lib/types/documents';
 
 export default function GuideDocumentsPage() {
@@ -177,11 +178,11 @@ export default function GuideDocumentsPage() {
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+        <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-6 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 relative z-10">
             <div>
-              <h1 className="text-3xl font-bold text-brand-green mb-2">Mentoring Guide</h1>
-              <p className="text-neutral-600">
+              <h1 className="text-2xl lg:text-3xl font-bold text-neutral-900 mb-2">Mentoring Guide</h1>
+              <p className="text-neutral-600 text-sm lg:text-base">
                 Access mentoring resources, templates, and best practice documents
               </p>
             </div>
@@ -189,52 +190,39 @@ export default function GuideDocumentsPage() {
             {canManage && (
               <button
                 onClick={() => setIsUploadOpen(true)}
-                className="px-6 py-3 bg-brand-yellow text-brand-green font-semibold rounded-lg hover:bg-accent-400 transition flex items-center gap-2 justify-center shadow-md"
+                className="px-6 py-3 bg-brand-green text-white font-semibold rounded-lg hover:bg-brand-green/90 transition flex items-center gap-2 justify-center shadow-sm"
               >
                 <Upload className="w-5 h-5" />
                 Import Documents
               </button>
             )}
           </div>
+          <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-brand-yellow/20 rounded-full blur-3xl" />
+        </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl border-2 border-neutral-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-brand-yellow/20 rounded-lg flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-brand-green" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-neutral-900">{documents.length}</p>
-                  <p className="text-sm text-neutral-600">Total Documents</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border-2 border-neutral-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-brand-green/10 rounded-lg flex items-center justify-center">
-                  <Filter className="w-6 h-6 text-brand-green" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-neutral-900">{categories.length}</p>
-                  <p className="text-sm text-neutral-600">Categories</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border-2 border-neutral-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Search className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-neutral-900">{filteredDocuments.length}</p>
-                  <p className="text-sm text-neutral-600">Filtered Results</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <StatCard
+            title="Total Documents"
+            value={documents.length}
+            subtitle="Available resources"
+            icon={<FileText className="w-6 h-6" />}
+            variant="primary"
+          />
+          <StatCard
+            title="Categories"
+            value={categories.length}
+            subtitle="Document categories"
+            icon={<Filter className="w-6 h-6" />}
+            variant="accent"
+          />
+          <StatCard
+            title="Filtered Results"
+            value={filteredDocuments.length}
+            subtitle="Matching documents"
+            icon={<Search className="w-6 h-6" />}
+            variant="default"
+          />
         </div>
 
         {/* Search and Filter */}

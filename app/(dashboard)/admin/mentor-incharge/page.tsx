@@ -290,19 +290,26 @@ export default function MentorInchargePage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Mentor Incharge Management</h1>
-          <p className="text-neutral-600 mt-1">Assign mentors to supervise other mentors in their department or institution</p>
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-6">
+        <div className="flex items-start justify-between relative z-10">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-neutral-900 mb-2">Mentor Incharge Management</h1>
+            <p className="text-neutral-600 text-sm lg:text-base">Assign mentors to supervise other mentors in their department or institution</p>
+          </div>
+          <Button
+            variant="primary"
+            onClick={() => setShowAssignModal(true)}
+            className="bg-brand-green hover:bg-brand-green/90"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Assign Incharge
+          </Button>
         </div>
-        <Button
-          variant="primary"
-          onClick={() => setShowAssignModal(true)}
-          className="bg-brand-green hover:bg-brand-green/90"
-        >
-          Assign Mentor Incharge
-        </Button>
+        <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-brand-yellow/20 rounded-full blur-3xl" />
       </div>
 
       {/* Search and Filters - Always visible */}
@@ -325,46 +332,64 @@ export default function MentorInchargePage() {
       </div>
 
       {incharges.length === 0 ? (
-        <Card>
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-brand-yellow/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+        <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-brand-green/10 rounded-full blur-2xl" />
+              <div className="relative bg-gradient-to-br from-brand-green/10 to-brand-yellow/10 rounded-full p-6">
+                <svg className="w-16 h-16 text-brand-green/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
             </div>
-            <p className="text-neutral-600 mb-4">No Mentor Incharges assigned yet</p>
-            <p className="text-sm text-neutral-500 mb-6">Assign a mentor to supervise other mentors' activities</p>
+            <h3 className="text-lg font-bold text-neutral-900 mb-2">No Mentor Incharges assigned yet</h3>
+            <p className="text-sm text-neutral-600 text-center max-w-sm mb-4">
+              Assign a mentor to supervise other mentors' activities in their department or institution
+            </p>
             <Button
               variant="primary"
               onClick={() => setShowAssignModal(true)}
               className="bg-brand-green hover:bg-brand-green/90"
             >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
               Assign First Incharge
             </Button>
           </div>
-        </Card>
+        </div>
       ) : (
         <div className="space-y-4">
           {filteredIncharges.length === 0 ? (
-            <Card>
-              <div className="text-center py-12">
-                <p className="text-neutral-600">No incharges match your filters</p>
+            <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
+              <div className="flex flex-col items-center justify-center py-12 px-4">
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-brand-green/10 rounded-full blur-xl" />
+                  <div className="relative bg-gradient-to-br from-brand-green/10 to-brand-yellow/10 rounded-full p-4">
+                    <svg className="w-12 h-12 text-brand-green/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <h4 className="text-base font-semibold text-neutral-900 mb-1">No matches found</h4>
+                <p className="text-sm text-neutral-600 text-center max-w-sm mb-4">
+                  No incharges match your current filters. Try adjusting your search criteria.
+                </p>
                 <Button
                   variant="outline"
                   onClick={clearAllFilters}
-                  className="mt-4"
                 >
-                  Clear Filters
+                  Clear All Filters
                 </Button>
               </div>
-            </Card>
+            </div>
           ) : (
             filteredIncharges.map((incharge) => {
             const inchargeUser = incharge.incharge?.[0];
             const assignerUser = incharge.assigner?.[0];
 
             return (
-              <Card key={incharge.id} className="p-6">
+              <div key={incharge.id} className="bg-white border border-neutral-200 rounded-xl p-6 hover:border-brand-green/30 hover:shadow-md transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -429,7 +454,7 @@ export default function MentorInchargePage() {
                     )}
                   </div>
                 </div>
-              </Card>
+              </div>
             );
           })
           )}

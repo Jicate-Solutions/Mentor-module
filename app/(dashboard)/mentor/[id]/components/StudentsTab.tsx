@@ -257,25 +257,18 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
         <h2 className="text-2xl font-bold text-brand-green">
           Assigned Students ({assignedStudents.length})
         </h2>
-        <Button
-          variant="primary"
+        <button
           onClick={() => setShowAddModal(true)}
+          className="group relative px-6 py-3.5 bg-brand-green hover:bg-brand-green/90 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3 overflow-hidden"
         >
-          <svg
-            className="w-5 h-5 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          Add Student
-        </Button>
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-green via-brand-green/90 to-brand-green opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className="relative z-10 w-6 h-6 bg-brand-yellow rounded-full flex items-center justify-center group-hover:rotate-90 transition-transform duration-300">
+            <svg className="w-4 h-4 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
+          <span className="relative z-10">Add Student</span>
+        </button>
       </div>
 
       {/* Students List */}
@@ -292,20 +285,20 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {assignedStudents.map((student) => (
-            <Card key={student.id} variant="default">
-                <div className="flex items-start gap-3">
+            <div key={student.id} className="bg-white rounded-lg border border-brand-green/20 hover:border-brand-green/40 shadow-sm hover:shadow-md transition-all duration-200 p-4">
+                <div className="flex items-start gap-3 mb-3">
                   {/* Avatar */}
                   <div className="flex-shrink-0">
                     {student.avatar ? (
                       <img
                         src={student.avatar}
                         alt={student.name}
-                        className="w-12 h-12 rounded-full object-cover"
+                        className="w-12 h-12 rounded-full object-cover border border-brand-green/30"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center text-lg font-bold">
+                      <div className="w-12 h-12 rounded-full bg-brand-yellow/80 text-brand-green flex items-center justify-center text-base font-semibold border border-brand-green/30">
                         {student.name.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -313,19 +306,18 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
 
                   {/* Student Info */}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-brand-green mb-1 truncate">
+                    <h4 className="font-semibold text-brand-green text-base mb-0.5 truncate">
                       {student.name}
                     </h4>
-                    <p className="text-sm text-neutral-600 mb-2">
+                    <p className="text-sm text-neutral-600 mb-2 font-medium">
                       {student.rollNumber}
                     </p>
-                    <div className="flex gap-2 mb-2">
-                      <Badge variant="info" size="sm">
-                        {student.year}
-                      </Badge>
-                      <Badge variant="default" size="sm">
-                        {student.department}
-                      </Badge>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 mb-1">
+                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">
+                        Year {student.year}
+                      </span>
+                      <span className="text-neutral-300">•</span>
+                      <span>{student.department}</span>
                     </div>
                     <p className="text-xs text-neutral-500 truncate">
                       {student.email}
@@ -334,17 +326,13 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
                 </div>
 
                 {/* Remove Button */}
-                <div className="mt-3 pt-3 border-t border-neutral-200">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRemoveStudent(student.id)}
-                    className="w-full text-red-600 border-red-300 hover:bg-red-50"
-                  >
-                    Remove Student
-                  </Button>
-                </div>
-            </Card>
+                <button
+                  onClick={() => handleRemoveStudent(student.id)}
+                  className="w-full px-3 py-2 text-sm font-medium text-red-600 hover:text-white bg-white hover:bg-red-600 border border-red-300 hover:border-red-600 rounded-lg transition-all duration-200"
+                >
+                  Remove Student
+                </button>
+            </div>
           ))}
         </div>
       )}

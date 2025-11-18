@@ -50,15 +50,21 @@
       "Bash(uv:*)",
       "Bash(C:UsersAdmin.localbinuv.exe --version)",
       "Bash(\"/c/Users/Admin/.local/bin/uv.exe\" --version)",
-      "Bash(\"/c/Users/Admin/AppData/Local/Programs/Python/Python312/python.exe\" --version)"
+      "Bash(\"/c/Users/Admin/AppData/Local/Programs/Python/Python312/python.exe\" --version)",
+      "Bash(cat:*)",
+      "Bash(npx supabase:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx dotenv-cli:*)",
+      "Bash(del test-report.mjs test-report.ts test-counseling-report.xlsx)",
+      "Skill(brand-styling)"
     ],
     "deny": [],
     "ask": []
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
-    "memory",
-    "filesystem",
     "supabase",
+    "filesystem",
     "context7"
   ]
 }

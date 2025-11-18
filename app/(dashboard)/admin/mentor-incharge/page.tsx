@@ -365,10 +365,10 @@ export default function MentorInchargePage() {
 
             return (
               <Card key={incharge.id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-neutral-900">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <h3 className="text-lg font-semibold text-neutral-900 truncate">
                         {inchargeUser?.full_name || 'Unknown'}
                       </h3>
                       <Badge variant={incharge.is_active ? 'success' : 'default'}>
@@ -378,7 +378,7 @@ export default function MentorInchargePage() {
                         {getScopeLabel(incharge)}
                       </Badge>
                     </div>
-                    <p className="text-sm text-neutral-600 mb-3">{inchargeUser?.email}</p>
+                    <p className="text-sm text-neutral-600 mb-3 break-words">{inchargeUser?.email}</p>
 
                     {incharge.department_ids && incharge.department_ids.length > 0 && (
                       <div className="text-sm text-neutral-600 mb-2">
@@ -398,7 +398,7 @@ export default function MentorInchargePage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     {incharge.is_active ? (
                       <>
                         <Button

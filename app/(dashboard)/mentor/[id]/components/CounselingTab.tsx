@@ -396,29 +396,37 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
     <div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h2 className="text-xl font-semibold text-brand-green">
+        <h2 className="text-2xl font-bold text-brand-green">
           Counseling Sessions ({sessions.length})
         </h2>
-        <Button
-          variant="primary"
+        <button
           onClick={() => setShowCreateModal(true)}
           disabled={students.length === 0}
+          className="group relative px-6 py-3.5 bg-brand-green hover:bg-brand-green/90 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg flex items-center gap-3 overflow-hidden"
         >
-          <svg
-            className="w-5 h-5 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          Create Session
-        </Button>
+          {/* Background gradient animation */}
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-green via-brand-green/90 to-brand-green opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+          {/* Icon with animation */}
+          <div className="relative z-10 w-6 h-6 bg-brand-yellow rounded-full flex items-center justify-center group-hover:rotate-90 transition-transform duration-300">
+            <svg
+              className="w-4 h-4 text-brand-green"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={3}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+          </div>
+
+          {/* Text */}
+          <span className="relative z-10">Create Session</span>
+        </button>
       </div>
 
       {/* No Students Warning */}
@@ -448,72 +456,72 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
           </div>
         </Card>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {groupSessionsByDetails().map((groupedSession, index) => (
-            <Card key={index} variant="default" className="border-2 border-brand-green">
+            <div key={index} className="bg-white rounded-lg border border-brand-green/20 hover:border-brand-green/40 shadow-sm hover:shadow-md transition-all duration-200 p-5">
               {/* Session Header */}
-              <div className="flex items-start gap-3 mb-4 pb-4 border-b border-neutral-200">
-                <div className="text-3xl">💬</div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-brand-green mb-2">
+              <div className="flex items-start gap-4 mb-4 pb-4 border-b border-neutral-100">
+                {/* Icon */}
+                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-brand-cream border border-brand-yellow/50 flex items-center justify-center">
+                  <svg
+                    className="w-5 h-5 text-brand-green"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-brand-green mb-2">
                     {groupedSession.sessionName}
                   </h3>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <Badge
-                      variant={
-                        groupedSession.status === 'completed' ? 'success' :
-                        groupedSession.status === 'scheduled' ? 'info' : 'default'
-                      }
-                      size="sm"
-                    >
-                      {groupedSession.status.toUpperCase()}
-                    </Badge>
-                    <Badge variant="info" size="sm">
-                      {groupedSession.students.length} Student{groupedSession.students.length !== 1 ? 's' : ''}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
-                    <div className="flex items-center gap-2">
-                      <svg
-                        className="w-4 h-4 text-brand-green"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
+
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600">
+                    <div className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-brand-green/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      {new Date(groupedSession.date).toLocaleDateString('en-US', {
+                      <span>{new Date(groupedSession.date).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'
-                      })}
+                      })}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <svg
-                        className="w-4 h-4 text-brand-green"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
+                    <span className="text-neutral-300">•</span>
+                    <div className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-brand-green/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      {groupedSession.time}
+                      <span>{groupedSession.time}</span>
                     </div>
+                    <span className="text-neutral-300">•</span>
+                    <div className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-brand-green/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                      <span className="font-medium text-brand-green">{groupedSession.students.length}</span>
+                    </div>
+                    <span className="text-neutral-300">•</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      groupedSession.status === 'completed'
+                        ? 'bg-green-50 text-green-700 border border-green-200'
+                        : 'bg-blue-50 text-blue-700 border border-blue-200'
+                    }`}>
+                      {groupedSession.status === 'completed' ? 'Completed' : 'Scheduled'}
+                    </span>
                   </div>
+
                   {groupedSession.notes && (
-                    <div className="mt-3 p-3 bg-neutral-50 rounded-lg">
-                      <p className="text-sm text-neutral-700">
-                        <span className="font-medium text-brand-green">Notes:</span> {groupedSession.notes}
+                    <div className="mt-3 p-2.5 bg-brand-cream/50 rounded-md border-l-2 border-brand-yellow">
+                      <p className="text-sm text-neutral-700 leading-relaxed">
+                        {groupedSession.notes}
                       </p>
                     </div>
                   )}
@@ -522,14 +530,14 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
               {/* Students List Inside Session */}
               <div>
-                <h4 className="text-sm font-semibold text-brand-green mb-3 uppercase tracking-wide">
-                  Students in this session
+                <h4 className="text-xs font-medium text-neutral-500 mb-3 uppercase tracking-wider">
+                  Students ({groupedSession.students.length})
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                   {groupedSession.students.map(({ session }) => (
                     <div
                       key={session.id}
-                      className="bg-brand-cream p-4 rounded-lg border-2 border-brand-yellow hover:border-brand-green transition-colors"
+                      className="bg-brand-cream/30 hover:bg-brand-cream/60 p-3.5 rounded-lg border border-brand-green/10 hover:border-brand-green/30 transition-all duration-200 group"
                     >
                       <div className="flex items-center gap-3">
                         {/* Student Avatar */}
@@ -538,10 +546,10 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                             <img
                               src={session.student.avatar}
                               alt={session.student.name}
-                              className="w-12 h-12 rounded-full object-cover border-2 border-brand-green"
+                              className="w-10 h-10 rounded-full object-cover border border-brand-green/30"
                             />
                           ) : (
-                            <div className="w-12 h-12 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center text-lg font-bold border-2 border-brand-green">
+                            <div className="w-10 h-10 rounded-full bg-brand-yellow/80 text-brand-green flex items-center justify-center text-base font-semibold border border-brand-green/30">
                               {session.studentName.charAt(0).toUpperCase()}
                             </div>
                           )}
@@ -549,43 +557,46 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
                         {/* Student Info */}
                         <div className="flex-1 min-w-0">
-                          <h5 className="font-bold text-brand-green mb-1 truncate">
+                          <h5 className="font-semibold text-brand-green text-sm mb-0.5 truncate">
                             {session.studentName}
                           </h5>
-                          {session.student?.rollNumber && (
-                            <p className="text-xs text-neutral-600 mb-1">
-                              Roll: {session.student.rollNumber}
-                            </p>
-                          )}
-                          <div className="flex gap-1 flex-wrap">
+                          <div className="flex items-center gap-2 text-xs text-neutral-600">
+                            {session.student?.rollNumber && (
+                              <span>{session.student.rollNumber}</span>
+                            )}
                             {session.student?.year && (
-                              <Badge variant="info" size="sm">
-                                {session.student.year}
-                              </Badge>
+                              <>
+                                <span className="text-neutral-300">•</span>
+                                <span>Year {session.student.year}</span>
+                              </>
                             )}
                             {session.feedback && (
-                              <Badge variant="success" size="sm">
-                                ✓ Feedback
-                              </Badge>
+                              <>
+                                <span className="text-neutral-300">•</span>
+                                <span className="flex items-center gap-1 text-green-600 font-medium">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                  </svg>
+                                  Feedback
+                                </span>
+                              </>
                             )}
                           </div>
                         </div>
 
                         {/* View Details Button */}
-                        <Button
-                          variant="outline"
-                          size="sm"
+                        <button
                           onClick={() => handleViewSession(session)}
-                          className="flex-shrink-0"
+                          className="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-brand-green hover:text-white bg-white hover:bg-brand-green border border-brand-green/30 hover:border-brand-green rounded-md transition-all duration-200"
                         >
                           View
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}
@@ -597,17 +608,20 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         title="Create Counseling Session"
         size="lg"
       >
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Student Selection with Search and Checkboxes */}
-          <div>
-            <label className="block text-sm font-medium text-brand-green mb-2">
-              Select Students <span className="text-red-500">*</span>
+          <div className="bg-brand-cream p-5 rounded-xl border-2 border-brand-yellow">
+            <label className="block text-base font-semibold text-brand-green mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              Select Students <span className="text-red-600">*</span>
             </label>
 
             {/* Search Input */}
-            <div className="mb-3">
+            <div className="mb-4">
               <div className="relative">
-                <div className="absolute left-3 top-3 text-neutral-400">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-green/60">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
@@ -616,51 +630,75 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search with student ID or name"
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-colors"
+                  placeholder="Search by name or roll number..."
+                  className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green"
                 />
               </div>
             </div>
 
             {/* Select All Checkbox */}
-            <div className="mb-2 pb-2 border-b border-neutral-200">
-              <label className="flex items-center gap-3 cursor-pointer hover:bg-neutral-50 p-2 rounded-lg transition-colors">
+            <div className="mb-3 pb-3 border-b-2 border-brand-yellow/50">
+              <label className="flex items-center gap-3 cursor-pointer hover:bg-brand-yellow/20 p-3 rounded-lg transition-all group">
                 <input
                   type="checkbox"
                   checked={selectAll}
                   onChange={handleSelectAll}
-                  className="w-5 h-5 text-brand-green focus:ring-brand-green rounded border-neutral-300"
+                  className="w-5 h-5 text-brand-green focus:ring-brand-green focus:ring-offset-2 rounded border-2 border-brand-green/30 cursor-pointer"
                 />
-                <span className="font-medium text-brand-green">
-                  All Students ({students.length})
+                <span className="font-semibold text-brand-green group-hover:text-brand-green flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  Select All Students ({students.length})
                 </span>
               </label>
             </div>
 
             {/* Student List with Checkboxes */}
-            <div className="max-h-64 overflow-y-auto space-y-1 border border-neutral-200 rounded-lg p-2">
+            <div className="max-h-72 overflow-y-auto space-y-2 bg-white rounded-xl border-2 border-brand-green/10 p-3">
               {filteredStudents.length === 0 ? (
-                <div className="text-center py-8 text-neutral-500">
-                  {searchQuery ? 'No students found matching your search' : 'No students assigned'}
+                <div className="text-center py-12 text-neutral-500">
+                  <div className="text-4xl mb-3">🔍</div>
+                  <p className="font-medium text-brand-green mb-1">
+                    {searchQuery ? 'No students found' : 'No students assigned'}
+                  </p>
+                  <p className="text-sm text-neutral-600">
+                    {searchQuery ? 'Try a different search term' : 'Please assign students first'}
+                  </p>
                 </div>
               ) : (
                 filteredStudents.map((student) => (
                   <label
                     key={student.id}
-                    className="flex items-center gap-3 p-3 cursor-pointer hover:bg-neutral-50 rounded-lg transition-colors"
+                    className={`flex items-center gap-4 p-4 cursor-pointer rounded-xl transition-all border-2 ${
+                      formData.selectedStudentIds.includes(student.id)
+                        ? 'bg-brand-yellow/30 border-brand-yellow hover:bg-brand-yellow/40'
+                        : 'bg-white border-brand-green/10 hover:bg-brand-cream hover:border-brand-green/30'
+                    }`}
                   >
                     <input
                       type="checkbox"
                       checked={formData.selectedStudentIds.includes(student.id)}
                       onChange={() => toggleStudentSelection(student.id)}
-                      className="w-5 h-5 text-brand-green focus:ring-brand-green rounded border-neutral-300"
+                      className="w-5 h-5 text-brand-green focus:ring-brand-green focus:ring-offset-2 rounded border-2 border-brand-green/30 cursor-pointer"
                     />
-                    <div className="flex-1">
-                      <div className="font-medium text-brand-green">{student.name}</div>
-                      <div className="text-sm text-neutral-600">
-                        {student.rollNumber} • {student.department}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-brand-green mb-0.5 truncate">{student.name}</div>
+                      <div className="text-sm text-neutral-600 flex items-center gap-2">
+                        <span className="font-medium">{student.rollNumber}</span>
+                        <span className="text-brand-green/40">•</span>
+                        <span className="truncate">{student.department}</span>
                       </div>
                     </div>
+                    {formData.selectedStudentIds.includes(student.id) && (
+                      <div className="flex-shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-brand-green flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
                   </label>
                 ))
               )}
@@ -668,72 +706,157 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
             {/* Selected count */}
             {formData.selectedStudentIds.length > 0 && (
-              <div className="mt-2 text-sm text-neutral-600">
-                {formData.selectedStudentIds.length} student{formData.selectedStudentIds.length > 1 ? 's' : ''} selected
+              <div className="mt-3 flex items-center gap-2 text-sm bg-brand-green/10 px-4 py-2.5 rounded-lg border border-brand-green/20">
+                <svg className="w-4 h-4 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-semibold text-brand-green">
+                  {formData.selectedStudentIds.length} student{formData.selectedStudentIds.length > 1 ? 's' : ''} selected
+                </span>
               </div>
             )}
           </div>
 
-          {/* Session Name */}
-          <Input
-            label="Session Name"
-            placeholder="e.g., Academic Progress Review, Career Guidance"
-            value={formData.sessionName}
-            onChange={(e) => handleInputChange('sessionName', e.target.value)}
-            required
-          />
+          {/* Session Details Section */}
+          <div className="bg-brand-cream p-5 rounded-xl border-2 border-brand-yellow">
+            <h4 className="text-base font-semibold text-brand-green mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Session Details
+            </h4>
 
-          {/* Date and Time */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              type="date"
-              label="Date"
-              value={formData.date}
-              onChange={(e) => handleInputChange('date', e.target.value)}
-              required
-            />
-            <Input
-              type="time"
-              label="Time"
-              value={formData.time}
-              onChange={(e) => handleInputChange('time', e.target.value)}
-              required
-            />
+            <div className="space-y-4">
+              {/* Session Name */}
+              <div>
+                <label className="block text-sm font-medium text-brand-green mb-2">
+                  Session Name <span className="text-red-600">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.sessionName}
+                    onChange={(e) => handleInputChange('sessionName', e.target.value)}
+                    placeholder="e.g., Academic Progress Review, Career Guidance"
+                    className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Date and Time */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-green mb-2">
+                    Date <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => handleInputChange('date', e.target.value)}
+                    className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-brand-green mb-2">
+                    Time <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => handleInputChange('time', e.target.value)}
+                    className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Notes */}
-          <TextArea
-            label="Notes / Remarks"
-            placeholder="Add any notes, agenda items, or discussion topics for this session..."
-            value={formData.notes}
-            onChange={(e) => handleInputChange('notes', e.target.value)}
-            rows={4}
-          />
+          {/* Additional Information Section */}
+          <div className="bg-brand-cream p-5 rounded-xl border-2 border-brand-yellow">
+            <h4 className="text-base font-semibold text-brand-green mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Additional Information
+            </h4>
 
-          {/* Attachment */}
-          <Input
-            label="Attachment (URL)"
-            placeholder="https://example.com/document.pdf"
-            value={formData.attachment}
-            onChange={(e) => handleInputChange('attachment', e.target.value)}
-            helperText="Optional: Add a link to any supporting documents or materials"
-          />
+            <div className="space-y-4">
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-brand-green mb-2">
+                  Notes / Agenda
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => handleInputChange('notes', e.target.value)}
+                  placeholder="Add any notes, agenda items, or discussion topics for this session..."
+                  rows={4}
+                  className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green resize-none"
+                />
+              </div>
 
-          <ModalFooter>
-            <Button
-              variant="outline"
+              {/* Attachment */}
+              <div>
+                <label className="block text-sm font-medium text-brand-green mb-2">
+                  Attachment URL (Optional)
+                </label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-green/60">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                  </div>
+                  <input
+                    type="url"
+                    value={formData.attachment}
+                    onChange={(e) => handleInputChange('attachment', e.target.value)}
+                    placeholder="https://example.com/document.pdf"
+                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-neutral-600">
+                  Add a link to any supporting documents or materials
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-brand-yellow/30">
+            <button
+              type="button"
               onClick={() => setShowCreateModal(false)}
+              className="flex-1 px-6 py-3.5 rounded-xl border-2 border-brand-green/30 bg-white hover:bg-brand-cream text-brand-green font-semibold transition-all duration-200 hover:border-brand-green"
             >
               Cancel
-            </Button>
-            <Button
-              variant="primary"
+            </button>
+            <button
+              type="button"
               onClick={handleCreateSession}
-              disabled={creating}
+              disabled={creating || formData.selectedStudentIds.length === 0 || !formData.sessionName || !formData.date || !formData.time}
+              className="flex-1 px-6 py-3.5 rounded-xl bg-brand-green hover:bg-brand-green/90 text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
             >
-              {creating ? 'Creating...' : 'Create Session'}
-            </Button>
-          </ModalFooter>
+              {creating ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creating Sessions...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create Session
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </Modal>
 

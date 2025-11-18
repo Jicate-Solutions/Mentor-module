@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
-import Card from '@/components/ui/Card';
 import IDPForm from './IDPForm';
 
 interface IDPTabProps {
@@ -150,19 +149,21 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
             Track and manage student development goals
           </p>
         </div>
-        <Button
-          variant="primary"
+        <button
           onClick={() => {
             setSelectedPlan(null);
             setShowForm(true);
           }}
-          className="bg-brand-green hover:bg-brand-green/90"
+          className="group relative px-6 py-3.5 bg-brand-green hover:bg-brand-green/90 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3 overflow-hidden"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Create New Plan
-        </Button>
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-green via-brand-green/90 to-brand-green opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className="relative z-10 w-6 h-6 bg-brand-yellow rounded-full flex items-center justify-center group-hover:rotate-90 transition-transform duration-300">
+            <svg className="w-4 h-4 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
+          <span className="relative z-10">Create New Plan</span>
+        </button>
       </div>
 
       {/* Error State */}
@@ -174,31 +175,40 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
 
       {/* Plans List */}
       {plans.length === 0 ? (
-        <Card className="p-12 text-center">
-          <div className="text-5xl mb-4">🎯</div>
-          <h3 className="text-lg font-semibold text-neutral-800 mb-2">
+        <div className="bg-white rounded-lg border border-brand-green/20 shadow-sm p-12 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-cream rounded-xl border border-brand-yellow/50 mb-4">
+            <svg className="w-8 h-8 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-brand-green mb-2">
             No IDP Plans Yet
           </h3>
           <p className="text-sm text-neutral-600 mb-6">
             Create individual development plans to track student growth and goals
           </p>
-          <Button
-            variant="primary"
+          <button
             onClick={() => setShowForm(true)}
-            className="bg-brand-green hover:bg-brand-green/90"
+            className="group relative px-6 py-3.5 bg-brand-green hover:bg-brand-green/90 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 inline-flex items-center gap-3 overflow-hidden"
           >
-            Create First Plan
-          </Button>
-        </Card>
+            <div className="absolute inset-0 bg-gradient-to-r from-brand-green via-brand-green/90 to-brand-green opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative z-10 w-6 h-6 bg-brand-yellow rounded-full flex items-center justify-center group-hover:rotate-90 transition-transform duration-300">
+              <svg className="w-4 h-4 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <span className="relative z-10">Create First Plan</span>
+          </button>
+        </div>
       ) : (
         <div className="space-y-4">
           {plans.map((plan) => (
-            <Card key={plan.id} className="p-6 hover:shadow-md transition-shadow">
+            <div key={plan.id} className="bg-white rounded-lg border border-brand-green/20 hover:border-brand-green/40 shadow-sm hover:shadow-md transition-all duration-200 p-5">
               {/* Plan Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h4 className="text-lg font-semibold text-neutral-900">
+                    <h4 className="text-lg font-semibold text-brand-green">
                       {plan.student?.name || 'Unknown Student'}
                     </h4>
                     <div className="flex items-center gap-2">
@@ -215,26 +225,30 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                       </select>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-neutral-600">
-                    <span className="flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600">
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-brand-green/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       {plan.student?.roll_number}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <span className="text-neutral-300">•</span>
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-brand-green/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       Target: {formatDate(plan.target_date)}
                     </span>
                     {plan.progress_percentage > 0 && (
-                      <span className="flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {plan.progress_percentage}% Complete
-                      </span>
+                      <>
+                        <span className="text-neutral-300">•</span>
+                        <span className="flex items-center gap-1.5">
+                          <svg className="w-4 h-4 text-brand-green/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {plan.progress_percentage}% Complete
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>
@@ -269,14 +283,14 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
               </div>
 
               {/* Area of Focus */}
-              <div className="bg-accent-100/50 rounded-lg p-3 mb-4">
+              <div className="bg-brand-cream/50 rounded-lg border-l-2 border-brand-yellow p-3 mb-4">
                 <p className="text-sm font-medium text-brand-green mb-1">Area of Focus</p>
-                <p className="text-sm text-neutral-900">{plan.area_of_focus}</p>
+                <p className="text-sm text-neutral-700">{plan.area_of_focus}</p>
               </div>
 
               {/* SMART Goal */}
               <div className="mb-4">
-                <p className="text-sm font-medium text-neutral-700 mb-1">SMART Goal</p>
+                <p className="text-sm font-medium text-brand-green mb-1">SMART Goal</p>
                 <p className="text-sm text-neutral-600">{plan.smart_goal_statement}</p>
               </div>
 
@@ -338,7 +352,7 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                   )}
                 </div>
               )}
-            </Card>
+            </div>
           ))}
         </div>
       )}

@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Card from '@/components/ui/Card';
 
 interface AttendanceTabProps {
   mentorId: string;
@@ -16,112 +15,120 @@ export default function AttendanceTab({ mentorId }: AttendanceTabProps) {
       </h2>
 
       {/* Coming Soon Card */}
-      <Card variant="elevated" className="text-center py-16">
+      <div className="bg-white rounded-lg border border-brand-green/20 shadow-sm text-center py-16">
         <div className="max-w-2xl mx-auto">
           {/* Icon */}
-          <div className="inline-flex items-center justify-center w-24 h-24 bg-brand-yellow rounded-full mb-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-brand-cream rounded-xl border border-brand-yellow/50 mb-6">
             <svg
-              className="w-12 h-12 text-brand-green"
+              className="w-10 h-10 text-brand-green"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              strokeWidth={1.5}
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
           </div>
 
           {/* Title */}
-          <h3 className="text-3xl font-bold text-brand-green mb-4">
+          <h3 className="text-2xl font-bold text-brand-green mb-3">
             Coming Soon
           </h3>
 
           {/* Description */}
-          <p className="text-lg text-neutral-700 mb-6 leading-relaxed">
+          <p className="text-base text-neutral-600 mb-6 leading-relaxed">
             Attendance tracking feature is under development and will be available soon.
           </p>
 
           {/* Features List */}
-          <div className="bg-white rounded-lg p-6 mb-6">
-            <h4 className="text-xl font-semibold text-brand-green mb-4">
+          <div className="bg-brand-cream/30 rounded-lg border border-brand-green/10 p-5 mb-6">
+            <h4 className="text-lg font-semibold text-brand-green mb-4">
               Upcoming Features
             </h4>
             <ul className="space-y-3 text-left">
               <li className="flex items-start gap-3">
-                <svg
-                  className="w-6 h-6 text-brand-yellow flex-shrink-0 mt-0.5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <div className="flex-shrink-0 w-5 h-5 rounded bg-brand-yellow/80 flex items-center justify-center mt-0.5">
+                  <svg
+                    className="w-3 h-3 text-brand-green"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
                 <div>
-                  <p className="font-medium text-brand-green">Daily Attendance Marking</p>
+                  <p className="font-medium text-brand-green text-sm">Daily Attendance Marking</p>
                   <p className="text-sm text-neutral-600">
                     Mark students as present, absent, or late for each day
                   </p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <svg
-                  className="w-6 h-6 text-brand-yellow flex-shrink-0 mt-0.5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <div className="flex-shrink-0 w-5 h-5 rounded bg-brand-yellow/80 flex items-center justify-center mt-0.5">
+                  <svg
+                    className="w-3 h-3 text-brand-green"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
                 <div>
-                  <p className="font-medium text-brand-green">Attendance Analytics</p>
+                  <p className="font-medium text-brand-green text-sm">Attendance Analytics</p>
                   <p className="text-sm text-neutral-600">
                     View attendance percentage and trends for each student
                   </p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <svg
-                  className="w-6 h-6 text-brand-yellow flex-shrink-0 mt-0.5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <div className="flex-shrink-0 w-5 h-5 rounded bg-brand-yellow/80 flex items-center justify-center mt-0.5">
+                  <svg
+                    className="w-3 h-3 text-brand-green"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
                 <div>
-                  <p className="font-medium text-brand-green">Attendance Reports</p>
+                  <p className="font-medium text-brand-green text-sm">Attendance Reports</p>
                   <p className="text-sm text-neutral-600">
                     Generate and export detailed attendance reports
                   </p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <svg
-                  className="w-6 h-6 text-brand-yellow flex-shrink-0 mt-0.5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <div className="flex-shrink-0 w-5 h-5 rounded bg-brand-yellow/80 flex items-center justify-center mt-0.5">
+                  <svg
+                    className="w-3 h-3 text-brand-green"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
                 <div>
-                  <p className="font-medium text-brand-green">Low Attendance Alerts</p>
+                  <p className="font-medium text-brand-green text-sm">Low Attendance Alerts</p>
                   <p className="text-sm text-neutral-600">
                     Automatic notifications for students with low attendance
                   </p>
@@ -131,24 +138,24 @@ export default function AttendanceTab({ mentorId }: AttendanceTabProps) {
           </div>
 
           {/* Timeline Badge */}
-          <div className="inline-flex items-center gap-2 bg-brand-green text-brand-cream px-6 py-3 rounded-full font-medium">
+          <div className="inline-flex items-center gap-2 bg-brand-green text-brand-cream px-5 py-2.5 rounded-lg font-medium text-sm shadow-sm">
             <svg
-              className="w-5 h-5"
+              className="w-4 h-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              strokeWidth={2}
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
             <span>Expected: Q2 2025</span>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

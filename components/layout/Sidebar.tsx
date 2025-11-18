@@ -17,6 +17,7 @@ interface NavItem {
   icon: React.ReactNode;
   badge?: number;
   comingSoon?: boolean;
+  requiredRoles?: string[]; // Roles that can see this item
 }
 
 interface NavSection {
@@ -24,12 +25,16 @@ interface NavSection {
   icon: React.ReactNode;
   items: NavItem[];
   defaultOpen?: boolean;
+  requiredRoles?: string[]; // Roles that can see this section
 }
 
 export default function Sidebar({ isOpen, onClose, isCollapsed = false }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+
+  // Get user role for filtering
+  const userRole = user?.role || '';
 
   // Track which sections are expanded - with localStorage persistence
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
@@ -44,15 +49,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         }
       }
     }
-    // Default state if nothing in localStorage - all collapsed except those shown in image
+    // Default state if nothing in localStorage - standalone items don't need state, only Academic Data is collapsible
     return {
-      'dashboard': true,
-      'people management': false,
-      'mentoring activities': false,
-      'notifications & alerts': false,
-      'academic data': false,
-      'handbook': false,
-      'help & support': true
+      'academic data': false // Only collapsible section, collapsed by default
     };
   });
 
@@ -70,8 +69,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     }));
   };
 
-  // Grouped navigation structure matching the design
+  // Helper function to check if user has required role for a nav item/section
+  const hasRequiredRole = (requiredRoles?: string[]): boolean => {
+    if (!requiredRoles || requiredRoles.length === 0) return true; // No restrictions
+    if (userRole === 'super_admin' || userRole === 'administrator') return true; // Super admin and administrator see everything
+    return requiredRoles.includes(userRole);
+  };
+
+  // Streamlined navigation structure - user's custom workflow
   const navSections: NavSection[] = [
+    // 1. Core Mentoring (standalone items)
     {
       label: 'Dashboard',
       icon: (
@@ -92,7 +99,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     },
     {
-      label: 'People Management',
+      label: 'Mentors Directory',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -107,20 +114,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           ),
-        },
-        {
-          label: 'Mentor Incharge',
-          href: '/admin/mentor-incharge',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          ),
-        },
+        }
       ]
     },
     {
-      label: 'Mentoring Activities',
+      label: 'Counseling Sessions',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -135,9 +133,53 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           ),
-        },
+        }
       ]
     },
+    // 2. Mentor Incharge (standalone with divider)
+    // Visible to: super_admin, administrator, institution_admin (Principal/HOD), and mentor_incharge
+    {
+      label: 'Mentor Incharge',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      ),
+      requiredRoles: ['super_admin', 'administrator', 'institution_admin', 'mentor_incharge'],
+      items: [
+        {
+          label: 'Mentor Incharge',
+          href: '/admin/mentor-incharge',
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          ),
+        }
+      ]
+    },
+    // 3. Mentoring Guide (standalone with divider)
+    {
+      label: 'Mentoring Guide',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      ),
+      items: [
+        {
+          label: 'Mentoring Guide',
+          href: '/guide',
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          ),
+        }
+      ]
+    },
+    // 4. Academic Data (collapsible section with all 7 items)
+    // Visible to: super_admin and administrator ONLY
     {
       label: 'Academic Data',
       icon: (
@@ -145,6 +187,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
         </svg>
       ),
+      requiredRoles: ['super_admin', 'administrator'],
       items: [
         {
           label: 'Institutions',
@@ -211,46 +254,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
           ),
         },
       ]
-    },
-    {
-      label: 'Handbook',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
-      ),
-      items: [
-        {
-          label: 'Mentoring Guide',
-          href: '/guide',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-          ),
-        },
-      ]
-    },
-    {
-      label: 'Help & Support',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      ),
-      items: [
-        {
-          label: 'Settings',
-          href: '/settings',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          ),
-        },
-      ]
     }
+    // Note: Settings removed from navigation but still accessible via /settings URL
   ];
 
   const handleNavigation = (href: string, comingSoon?: boolean) => {
@@ -316,13 +321,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                 <h1 className="text-base font-bold text-neutral-800 mb-0.5">
                   Mentor & Mentee
                 </h1>
-                <p className="text-xs text-neutral-500 mb-2">
+                <p className="text-xs text-neutral-500">
                   Mentoring Platform
                 </p>
-                {/* Role Badge */}
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-neutral-100 text-neutral-600 border border-neutral-200">
-                  Mentee
-                </span>
               </div>
             </div>
 
@@ -352,7 +353,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-3 pt-4" aria-label="Primary navigation">
           <div className="space-y-2">
-            {navSections.map((section, sectionIndex) => {
+            {navSections.filter(section => hasRequiredRole(section.requiredRoles)).map((section, sectionIndex) => {
               const sectionId = section.label.toLowerCase();
               const isExpanded = expandedSections[sectionId] ?? true;
               const hasOnlyOneItem = section.items.length === 1;
@@ -401,8 +402,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
               // For sections with multiple items, show collapsible section
               return (
                 <div key={sectionIndex} className="space-y-1">
-                  {/* Add subtle divider before certain sections */}
-                  {(sectionId === 'academic data' || sectionId === 'handbook') && !isCollapsed && (
+                  {/* Add subtle divider before certain sections for visual grouping */}
+                  {(sectionId === 'mentor incharge' || sectionId === 'mentoring guide' || sectionId === 'academic data' || sectionId === 'settings') && !isCollapsed && (
                     <div className="h-px bg-neutral-200/60 my-3" />
                   )}
                   {/* Section Header */}

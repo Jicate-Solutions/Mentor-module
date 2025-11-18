@@ -91,7 +91,7 @@ export default function StudentFeedbackTab({ mentorId }: StudentFeedbackTabProps
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Responses */}
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
+          <div className="bg-white rounded-lg border border-brand-green/20 shadow-sm hover:shadow-md transition-all duration-200 p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium text-neutral-500 uppercase">Total Responses</p>
               <Users className="w-5 h-5 text-brand-green" />
@@ -103,7 +103,7 @@ export default function StudentFeedbackTab({ mentorId }: StudentFeedbackTabProps
           </div>
 
           {/* Avg Helpfulness */}
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
+          <div className="bg-white rounded-lg border border-brand-green/20 shadow-sm hover:shadow-md transition-all duration-200 p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium text-neutral-500 uppercase">Avg Helpfulness</p>
               <Star className="w-5 h-5 text-brand-yellow" />
@@ -130,7 +130,7 @@ export default function StudentFeedbackTab({ mentorId }: StudentFeedbackTabProps
           </div>
 
           {/* Avg Approachability */}
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
+          <div className="bg-white rounded-lg border border-brand-green/20 shadow-sm hover:shadow-md transition-all duration-200 p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium text-neutral-500 uppercase">Avg Approachability</p>
               <ThumbsUp className="w-5 h-5 text-brand-green" />
@@ -157,7 +157,7 @@ export default function StudentFeedbackTab({ mentorId }: StudentFeedbackTabProps
           </div>
 
           {/* Concerns Addressed */}
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
+          <div className="bg-white rounded-lg border border-brand-green/20 shadow-sm hover:shadow-md transition-all duration-200 p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium text-neutral-500 uppercase">Concerns Addressed</p>
               <CheckCircle className="w-5 h-5 text-green-600" />
@@ -209,10 +209,12 @@ export default function StudentFeedbackTab({ mentorId }: StudentFeedbackTabProps
       {/* Feedback List */}
       <div className="space-y-4">
         {filteredFeedback.length === 0 ? (
-          <div className="text-center py-12 bg-neutral-50 rounded-lg border border-neutral-200">
-            <ThumbsUp className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
-            <p className="text-neutral-600 font-medium">No feedback yet</p>
-            <p className="text-sm text-neutral-500 mt-1">
+          <div className="text-center py-12 bg-white rounded-lg border border-brand-green/20 shadow-sm">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-cream rounded-xl border border-brand-yellow/50 mb-4 mx-auto">
+              <ThumbsUp className="w-8 h-8 text-brand-green" />
+            </div>
+            <p className="text-brand-green font-semibold mb-1">No feedback yet</p>
+            <p className="text-sm text-neutral-600">
               Feedback requests are sent automatically when counseling sessions are created.
             </p>
           </div>
@@ -220,12 +222,12 @@ export default function StudentFeedbackTab({ mentorId }: StudentFeedbackTabProps
           filteredFeedback.map((item) => (
             <div
               key={item.id}
-              className="bg-white rounded-lg border border-neutral-200 p-4 hover:border-brand-green transition"
+              className="bg-white rounded-lg border border-brand-green/20 hover:border-brand-green/40 shadow-sm hover:shadow-md transition-all duration-200 p-5"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-neutral-900">
+                    <h4 className="font-semibold text-brand-green">
                       {item.is_anonymous ? 'Anonymous Student' : item.student?.name || 'Unknown Student'}
                     </h4>
                     {item.submitted_at ? (
@@ -238,10 +240,11 @@ export default function StudentFeedbackTab({ mentorId }: StudentFeedbackTabProps
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-neutral-500">
-                    {item.session?.sessionName || 'Session'} • {' '}
-                    {item.session?.date && new Date(item.session.date).toLocaleDateString()}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-600">
+                    <span>{item.session?.sessionName || 'Session'}</span>
+                    <span className="text-neutral-300">•</span>
+                    <span>{item.session?.date && new Date(item.session.date).toLocaleDateString()}</span>
+                  </div>
                 </div>
 
                 {/* Email Status */}

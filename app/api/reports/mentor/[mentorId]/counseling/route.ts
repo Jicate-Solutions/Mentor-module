@@ -47,19 +47,20 @@ export async function GET(
     console.log(`[Report API] Calculated date range: ${dateRange.start.toISOString()} to ${dateRange.end.toISOString()}`);
 
     // Generate report
-    const reportBuffer = await generateCounselingReport(mentorId, dateRange);
+    const { buffer: reportBuffer, mentorName } = await generateCounselingReport(mentorId, dateRange);
 
     console.log(`[Report API] Report generated successfully, size: ${reportBuffer.length} bytes`);
 
-    // Create filename
+    // Create filename with mentor name
     const dateStr = new Date().toISOString().split('T')[0];
-    const filename = `counseling-report-${mentorId}-${period}-${dateStr}.xlsx`;
+    const sanitizedMentorName = mentorName.replace(/[^a-zA-Z0-9]/g, '-');
+    const filename = `counseling-report-${sanitizedMentorName}-${period}-${dateStr}.xlsx`;
 
-    // Return Excel file
+    // Return Excel file with proper encoding headers
     return new NextResponse(new Uint8Array(reportBuffer), {
       headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; charset=UTF-8',
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
         'Content-Length': reportBuffer.length.toString(),
       },
     });

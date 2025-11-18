@@ -171,7 +171,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <p>© 2025 JKKN Institutions. All rights reserved.</p>
             <p className="flex items-center gap-2">
               Powered by
-              <span className="font-semibold text-brand-green">MyJKKN Auth</span>
+              <span className="font-semibold text-brand-green">JKKN Institutions</span>
             </p>
           </div>
         </footer>

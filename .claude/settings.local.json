@@ -42,7 +42,15 @@
       "Bash(npm run dev:*)",
       "mcp__filesystem__write_file",
       "mcp__filesystem__create_directory",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(claude:*)",
+      "Bash(powershell -ExecutionPolicy ByPass -c \"irm https://astral.sh/uv/install.ps1 | iex\")",
+      "Bash(set Path=C:UsersAdmin.localbin:*)",
+      "Bash(%Path%)",
+      "Bash(uv:*)",
+      "Bash(C:UsersAdmin.localbinuv.exe --version)",
+      "Bash(\"/c/Users/Admin/.local/bin/uv.exe\" --version)",
+      "Bash(\"/c/Users/Admin/AppData/Local/Programs/Python/Python312/python.exe\" --version)"
     ],
     "deny": [],
     "ask": []

@@ -423,30 +423,30 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
       {/* No Students Warning */}
       {students.length === 0 && (
-        <Card variant="elevated" className="mb-4 lg:mb-6">
-          <div className="text-center py-6">
-            <div className="text-4xl mb-3">⚠️</div>
-            <p className="text-[15px] font-medium text-brand-green mb-2">No Students Assigned</p>
-            <p className="text-[14px] text-neutral-600 leading-relaxed">
-              Please assign students first before creating counseling sessions.
-            </p>
-          </div>
-        </Card>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center mb-4 lg:mb-6">
+          <div className="text-4xl mb-3">⚠️</div>
+          <p className="text-[15px] font-medium text-neutral-900 mb-2">No Students Assigned</p>
+          <p className="text-[14px] text-neutral-600 leading-relaxed">
+            Please assign students first before creating counseling sessions.
+          </p>
+        </div>
       )}
 
       {/* Sessions List with Students Inside */}
       {sessions.length === 0 ? (
-        <Card variant="elevated">
-          <div className="text-center py-8 lg:py-12">
-            <div className="text-5xl mb-4">💬</div>
-            <h3 className="text-[16px] font-medium text-neutral-900 mb-2">
-              No counseling sessions yet
-            </h3>
-            <p className="text-[14px] text-neutral-600 leading-relaxed">
-              Create your first counseling session with a student
-            </p>
+        <div className="bg-white rounded-xl border border-neutral-200 p-8 lg:p-12 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-brand-yellow/10 flex items-center justify-center">
+            <svg className="w-8 h-8 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+            </svg>
           </div>
-        </Card>
+          <h3 className="text-[16px] font-medium text-neutral-900 mb-2">
+            No counseling sessions yet
+          </h3>
+          <p className="text-[14px] text-neutral-600 leading-relaxed">
+            Create your first counseling session with a student
+          </p>
+        </div>
       ) : (
         <div className="space-y-3 lg:space-y-4">
           {groupSessionsByDetails().map((groupedSession, index) => (

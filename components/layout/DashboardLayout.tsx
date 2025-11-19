@@ -84,11 +84,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       />
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-w-0 overflow-x-hidden transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 overflow-x-hidden transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-56'}`}>
         {/* Top Header Bar */}
         <header
           className={`bg-white border-b border-neutral-100 fixed top-0 left-0 right-0 z-30 transition-all duration-300 ${
-            sidebarCollapsed ? 'lg:left-16' : 'lg:left-64'
+            sidebarCollapsed ? 'lg:left-16' : 'lg:left-56'
           }`}
         >
           <div className="flex items-center justify-between px-4 py-2.5 lg:px-6 lg:py-3">
@@ -108,8 +108,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <button
                 onClick={toggleSidebarCollapse}
                 className="hidden lg:flex text-brand-green hover:bg-brand-green/10 p-2 rounded-lg transition-all duration-200 min-w-[40px] min-h-[40px] items-center justify-center focus:outline-none focus:ring-2 focus:ring-brand-green/20"
-                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-label="Toggle navigation menu"
+                title="Toggle navigation menu"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   {sidebarCollapsed ? (

@@ -495,3 +495,13 @@ h1, h2, h3, h4, h5, h6 {
   background-size: 800px 100%;
   animation: shimmer-subtle 1.5s linear infinite;
 }
+
+/* Hide scrollbar while maintaining scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}

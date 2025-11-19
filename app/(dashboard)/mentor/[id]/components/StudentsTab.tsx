@@ -253,41 +253,38 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-brand-green">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 lg:mb-6">
+        <h2 className="text-[17px] font-medium text-neutral-900">
           Assigned Students ({assignedStudents.length})
         </h2>
         <button
           onClick={() => setShowAddModal(true)}
-          className="group relative px-6 py-3.5 bg-brand-green hover:bg-brand-green/90 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3 overflow-hidden"
+          className="w-full sm:w-auto px-4 py-2.5 bg-brand-green hover:bg-brand-green/90 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2 text-[14px]"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-brand-green via-brand-green/90 to-brand-green opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="relative z-10 w-6 h-6 bg-brand-yellow rounded-full flex items-center justify-center group-hover:rotate-90 transition-transform duration-300">
-            <svg className="w-4 h-4 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </div>
-          <span className="relative z-10">Add Student</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Add Student</span>
         </button>
       </div>
 
       {/* Students List */}
       {assignedStudents.length === 0 ? (
         <Card variant="elevated">
-          <div className="text-center py-8">
-            <div className="text-6xl mb-4">👨‍🎓</div>
-            <h3 className="text-xl font-semibold text-brand-green mb-2">
+          <div className="text-center py-8 lg:py-12">
+            <div className="text-5xl mb-4">👨‍🎓</div>
+            <h3 className="text-[16px] font-medium text-neutral-900 mb-2">
               No students assigned yet
             </h3>
-            <p className="text-neutral-600 mb-4">
+            <p className="text-[14px] text-neutral-600 leading-relaxed mb-4">
               Click "Add Student" to assign students to this mentor
             </p>
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
           {assignedStudents.map((student) => (
-            <div key={student.id} className="bg-white rounded-lg border border-brand-green/20 hover:border-brand-green/40 shadow-sm hover:shadow-md transition-all duration-200 p-4">
+            <div key={student.id} className="bg-white rounded-xl border border-neutral-200 hover:border-brand-green/30 shadow-sm hover:shadow-md transition-all p-4">
                 <div className="flex items-start gap-3 mb-3">
                   {/* Avatar */}
                   <div className="flex-shrink-0">
@@ -295,10 +292,10 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
                       <img
                         src={student.avatar}
                         alt={student.name}
-                        className="w-12 h-12 rounded-full object-cover border border-brand-green/30"
+                        className="w-10 h-10 lg:w-12 lg:h-12 rounded-full object-cover border border-brand-green/20"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-brand-yellow/80 text-brand-green flex items-center justify-center text-base font-semibold border border-brand-green/30">
+                      <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-brand-yellow/20 text-brand-green flex items-center justify-center text-[14px] font-medium border border-brand-green/20">
                         {student.name.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -306,20 +303,20 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
 
                   {/* Student Info */}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-brand-green text-base mb-0.5 truncate">
+                    <h4 className="font-medium text-neutral-900 text-[15px] mb-0.5 truncate">
                       {student.name}
                     </h4>
-                    <p className="text-sm text-neutral-600 mb-2 font-medium">
+                    <p className="text-[13px] text-neutral-600 mb-2 font-medium">
                       {student.rollNumber}
                     </p>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 text-[12px] text-neutral-600 mb-1">
                       <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">
                         Year {student.year}
                       </span>
                       <span className="text-neutral-300">•</span>
                       <span>{student.department}</span>
                     </div>
-                    <p className="text-xs text-neutral-500 truncate">
+                    <p className="text-[12px] text-neutral-500 truncate">
                       {student.email}
                     </p>
                   </div>
@@ -328,7 +325,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
                 {/* Remove Button */}
                 <button
                   onClick={() => handleRemoveStudent(student.id)}
-                  className="w-full px-3 py-2 text-sm font-medium text-red-600 hover:text-white bg-white hover:bg-red-600 border border-red-300 hover:border-red-600 rounded-lg transition-all duration-200"
+                  className="w-full px-3 py-2 text-[13px] font-medium text-red-600 hover:text-white bg-white hover:bg-red-600 border border-red-300 hover:border-red-600 rounded-lg transition-all"
                 >
                   Remove Student
                 </button>

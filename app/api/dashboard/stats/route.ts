@@ -17,17 +17,14 @@ export async function GET(request: NextRequest) {
 
     // Build filter conditions
     let mentorQuery = supabase.from('mentors').select('id', { count: 'exact', head: true });
-    let studentQuery = supabase.from('students').select('id', { count: 'exact', head: true });
     let sessionQuery = supabase.from('counseling_sessions').select('id, status', { count: 'exact' });
 
     // Apply filters
     if (departmentId) {
       mentorQuery = mentorQuery.eq('department_id', departmentId);
-      studentQuery = studentQuery.eq('department_id', departmentId);
     }
     if (institutionId) {
       mentorQuery = mentorQuery.eq('institution_id', institutionId);
-      studentQuery = studentQuery.eq('institution_id', institutionId);
     }
 
     // Date filtering for sessions
@@ -38,23 +35,70 @@ export async function GET(request: NextRequest) {
       sessionQuery = sessionQuery.lte('date', dateTo);
     }
 
+    // Fetch total student count from JKKN API instead of local DB
+    // This ensures we show ALL students, not just those assigned to mentors
+    const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+    const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+    let totalStudents = 0;
+    let activeStudents = 0;
+
+    if (apiKey) {
+      try {
+        // Fetch first page to get metadata with total count
+        const studentsUrl = `${baseUrl}/api-management/students?page=1&limit=1`;
+        const studentsResponse = await fetch(studentsUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          next: { revalidate: 60 }, // Cache for 60 seconds
+        });
+
+        if (studentsResponse.ok) {
+          const studentsData = await studentsResponse.json();
+          totalStudents = studentsData.metadata?.total || 0;
+          // Assume all students from JKKN API are active
+          activeStudents = totalStudents;
+          console.log(`[Dashboard Stats] Fetched student count from JKKN API: ${totalStudents} total students`);
+        } else {
+          console.warn('[Dashboard Stats] Failed to fetch students from JKKN API, falling back to local count');
+          // Fallback to local DB count
+          const localStudentResult = await supabase.from('students').select('id', { count: 'exact', head: true });
+          totalStudents = localStudentResult.count || 0;
+          const localActiveResult = await supabase.from('students').select('id', { count: 'exact', head: true }).eq('is_active', true);
+          activeStudents = localActiveResult.count || 0;
+        }
+      } catch (error) {
+        console.error('[Dashboard Stats] Error fetching students from JKKN API:', error);
+        // Fallback to local DB count
+        const localStudentResult = await supabase.from('students').select('id', { count: 'exact', head: true });
+        totalStudents = localStudentResult.count || 0;
+        const localActiveResult = await supabase.from('students').select('id', { count: 'exact', head: true }).eq('is_active', true);
+        activeStudents = localActiveResult.count || 0;
+      }
+    } else {
+      // No API key configured, use local count
+      const localStudentResult = await supabase.from('students').select('id', { count: 'exact', head: true });
+      totalStudents = localStudentResult.count || 0;
+      const localActiveResult = await supabase.from('students').select('id', { count: 'exact', head: true }).eq('is_active', true);
+      activeStudents = localActiveResult.count || 0;
+    }
+
     // Execute queries in parallel
     const [
       mentorResult,
-      studentResult,
       sessionResult,
       activeMentorResult,
-      activeStudentResult,
       feedbackResult,
     ] = await Promise.all([
       mentorQuery,
-      studentQuery,
       sessionQuery,
       supabase
         .from('mentors')
         .select('id', { count: 'exact', head: true })
         .eq('is_active', true),
-      studentQuery.eq('is_active', true),
       supabase
         .from('counseling_sessions')
         .select('id, session_feedback(id)', { count: 'exact' })
@@ -113,8 +157,8 @@ export async function GET(request: NextRequest) {
     const stats = {
       totalMentors: mentorResult.count || 0,
       activeMentors: activeMentorResult.count || 0,
-      totalStudents: studentResult.count || 0,
-      activeStudents: activeStudentResult.count || 0,
+      totalStudents: totalStudents,
+      activeStudents: activeStudents,
       totalSessions: totalSessions,
       sessionsByStatus,
       pendingFeedback: feedbackResult.count || 0,

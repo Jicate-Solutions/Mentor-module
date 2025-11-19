@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import IDPForm from './IDPForm';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 interface IDPTabProps {
   mentorId: string;
@@ -11,6 +12,7 @@ interface IDPTabProps {
 }
 
 export default function IDPTab({ mentorId, students }: IDPTabProps) {
+  const { accessToken } = useAuth();
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,17 +21,21 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPlans();
-  }, [mentorId]);
+    if (accessToken) {
+      fetchPlans();
+    }
+  }, [mentorId, accessToken]);
 
   const fetchPlans = async () => {
+    if (!accessToken) return;
+
     try {
       setLoading(true);
       console.log('[IDP Tab] Fetching plans for mentor:', mentorId);
 
       const response = await fetch(`/api/idp?mentor_id=${mentorId}`, {
-        credentials: 'include',
         headers: {
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -58,10 +64,14 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
       return;
     }
 
+    if (!accessToken) return;
+
     try {
       const response = await fetch(`/api/idp/${planId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
       });
 
       if (!response.ok) {
@@ -81,11 +91,13 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
   };
 
   const handleStatusChange = async (planId: string, newStatus: string) => {
+    if (!accessToken) return;
+
     try {
       const response = await fetch(`/api/idp/${planId}`, {
         method: 'PUT',
-        credentials: 'include',
         headers: {
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ status: newStatus }),
@@ -138,77 +150,53 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-neutral-900">
-            Individual Development Plans (IDP)
-          </h3>
-          <p className="text-sm text-neutral-600 mt-1">
-            Track and manage student development goals
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 lg:mb-6">
+        <h2 className="text-[17px] font-medium text-neutral-900">
+          Individual Development Plans ({plans.length})
+        </h2>
         <button
           onClick={() => {
             setSelectedPlan(null);
             setShowForm(true);
           }}
-          className="group relative px-6 py-3.5 bg-brand-green hover:bg-brand-green/90 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3 overflow-hidden"
+          className="w-full sm:w-auto px-4 py-2.5 bg-brand-green hover:bg-brand-green/90 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2 text-[14px]"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-brand-green via-brand-green/90 to-brand-green opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="relative z-10 w-6 h-6 bg-brand-yellow rounded-full flex items-center justify-center group-hover:rotate-90 transition-transform duration-300">
-            <svg className="w-4 h-4 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </div>
-          <span className="relative z-10">Create New Plan</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Create New Plan</span>
         </button>
       </div>
 
       {/* Error State */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <p className="text-[14px] text-red-800">{error}</p>
         </div>
       )}
 
       {/* Plans List */}
       {plans.length === 0 ? (
-        <div className="bg-white rounded-lg border border-brand-green/20 shadow-sm p-12 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-cream rounded-xl border border-brand-yellow/50 mb-4">
-            <svg className="w-8 h-8 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-brand-green mb-2">
+        <div className="bg-white rounded-xl border border-neutral-200 p-8 lg:p-12 text-center">
+          <div className="text-5xl mb-4">📋</div>
+          <h3 className="text-[16px] font-medium text-neutral-900 mb-2">
             No IDP Plans Yet
           </h3>
-          <p className="text-sm text-neutral-600 mb-6">
+          <p className="text-[14px] text-neutral-600 leading-relaxed mb-4">
             Create individual development plans to track student growth and goals
           </p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="group relative px-6 py-3.5 bg-brand-green hover:bg-brand-green/90 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 inline-flex items-center gap-3 overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-brand-green via-brand-green/90 to-brand-green opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="relative z-10 w-6 h-6 bg-brand-yellow rounded-full flex items-center justify-center group-hover:rotate-90 transition-transform duration-300">
-              <svg className="w-4 h-4 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-            </div>
-            <span className="relative z-10">Create First Plan</span>
-          </button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 lg:space-y-4">
           {plans.map((plan) => (
-            <div key={plan.id} className="bg-white rounded-lg border border-brand-green/20 hover:border-brand-green/40 shadow-sm hover:shadow-md transition-all duration-200 p-5">
+            <div key={plan.id} className="bg-white rounded-xl border border-neutral-200 hover:border-brand-green/30 shadow-sm hover:shadow-md transition-all p-4 lg:p-5">
               {/* Plan Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h4 className="text-lg font-semibold text-brand-green">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 mb-4 pb-4 border-b border-neutral-100">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                    <h4 className="text-[15px] font-medium text-neutral-900">
                       {plan.student?.name || 'Unknown Student'}
                     </h4>
                     <div className="flex items-center gap-2">
@@ -216,7 +204,7 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                       <select
                         value={plan.status}
                         onChange={(e) => handleStatusChange(plan.id, e.target.value)}
-                        className="text-xs px-2 py-1 border border-neutral-300 rounded-md focus:ring-2 focus:ring-brand-green focus:border-transparent cursor-pointer"
+                        className="text-[12px] px-2 py-1 border border-neutral-300 rounded-md focus:ring-2 focus:ring-brand-green focus:border-transparent cursor-pointer"
                       >
                         <option value="draft">Draft</option>
                         <option value="in_progress">In Progress</option>
@@ -225,16 +213,16 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                       </select>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600">
+                  <div className="flex flex-wrap items-center gap-2 text-[13px] text-neutral-600">
                     <span className="flex items-center gap-1.5">
-                      <svg className="w-4 h-4 text-brand-green/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       {plan.student?.roll_number}
                     </span>
                     <span className="text-neutral-300">•</span>
                     <span className="flex items-center gap-1.5">
-                      <svg className="w-4 h-4 text-brand-green/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       Target: {formatDate(plan.target_date)}
@@ -243,7 +231,7 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                       <>
                         <span className="text-neutral-300">•</span>
                         <span className="flex items-center gap-1.5">
-                          <svg className="w-4 h-4 text-brand-green/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3.5 h-3.5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                           {plan.progress_percentage}% Complete
@@ -252,64 +240,60 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
                     onClick={() => setExpandedPlan(expandedPlan === plan.id ? null : plan.id)}
+                    className="px-3 py-1.5 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition text-[13px] font-medium text-neutral-700"
                   >
                     {expandedPlan === plan.id ? 'Hide Details' : 'View Details'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  </button>
+                  <button
                     onClick={() => handleEdit(plan)}
+                    className="p-1.5 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition text-neutral-700"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  </button>
+                  <button
                     onClick={() => handleDelete(plan.id)}
-                    className="text-red-600 hover:bg-red-50"
+                    className="p-1.5 border border-neutral-200 rounded-lg hover:bg-red-50 transition text-red-600"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                  </Button>
+                  </button>
                 </div>
               </div>
 
               {/* Area of Focus */}
-              <div className="bg-brand-cream/50 rounded-lg border-l-2 border-brand-yellow p-3 mb-4">
-                <p className="text-sm font-medium text-brand-green mb-1">Area of Focus</p>
-                <p className="text-sm text-neutral-700">{plan.area_of_focus}</p>
+              <div className="bg-brand-yellow/10 rounded-lg border-l-2 border-brand-yellow p-3 mb-3">
+                <p className="text-[13px] font-medium text-neutral-900 mb-1">Area of Focus</p>
+                <p className="text-[14px] text-neutral-700 leading-relaxed">{plan.area_of_focus}</p>
               </div>
 
               {/* SMART Goal */}
-              <div className="mb-4">
-                <p className="text-sm font-medium text-brand-green mb-1">SMART Goal</p>
-                <p className="text-sm text-neutral-600">{plan.smart_goal_statement}</p>
+              <div className="mb-3">
+                <p className="text-[13px] font-medium text-neutral-900 mb-1">SMART Goal</p>
+                <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.smart_goal_statement}</p>
               </div>
 
               {/* Expanded Details */}
               {expandedPlan === plan.id && (
-                <div className="border-t border-neutral-200 pt-4 mt-4 space-y-4">
+                <div className="border-t border-neutral-200 pt-4 mt-4 space-y-3 lg:space-y-4">
                   {/* Knowledge Development */}
                   {(plan.knowledge_to_develop || plan.knowledge_development_how) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
                       {plan.knowledge_to_develop && (
                         <div>
-                          <p className="text-sm font-medium text-neutral-700 mb-1">Knowledge to Develop</p>
-                          <p className="text-sm text-neutral-600">{plan.knowledge_to_develop}</p>
+                          <p className="text-[13px] font-medium text-neutral-900 mb-1">Knowledge to Develop</p>
+                          <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.knowledge_to_develop}</p>
                         </div>
                       )}
                       {plan.knowledge_development_how && (
                         <div>
-                          <p className="text-sm font-medium text-neutral-700 mb-1">How to Develop</p>
-                          <p className="text-sm text-neutral-600">{plan.knowledge_development_how}</p>
+                          <p className="text-[13px] font-medium text-neutral-900 mb-1">How to Develop</p>
+                          <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.knowledge_development_how}</p>
                         </div>
                       )}
                     </div>
@@ -317,17 +301,17 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
 
                   {/* Skills Development */}
                   {(plan.skills_to_gain || plan.skills_development_how) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
                       {plan.skills_to_gain && (
                         <div>
-                          <p className="text-sm font-medium text-neutral-700 mb-1">Skills to Gain</p>
-                          <p className="text-sm text-neutral-600">{plan.skills_to_gain}</p>
+                          <p className="text-[13px] font-medium text-neutral-900 mb-1">Skills to Gain</p>
+                          <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.skills_to_gain}</p>
                         </div>
                       )}
                       {plan.skills_development_how && (
                         <div>
-                          <p className="text-sm font-medium text-neutral-700 mb-1">How to Develop</p>
-                          <p className="text-sm text-neutral-600">{plan.skills_development_how}</p>
+                          <p className="text-[13px] font-medium text-neutral-900 mb-1">How to Develop</p>
+                          <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.skills_development_how}</p>
                         </div>
                       )}
                     </div>
@@ -335,18 +319,18 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
 
                   {/* Detailed Action Plan */}
                   <div>
-                    <p className="text-sm font-medium text-neutral-700 mb-1">Detailed Action Plan</p>
+                    <p className="text-[13px] font-medium text-neutral-900 mb-1">Detailed Action Plan</p>
                     <div className="bg-neutral-50 rounded-lg p-3">
-                      <p className="text-sm text-neutral-600 whitespace-pre-wrap">{plan.detailed_action_plan}</p>
+                      <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.detailed_action_plan}</p>
                     </div>
                   </div>
 
                   {/* Notes */}
                   {plan.mentor_notes && (
                     <div>
-                      <p className="text-sm font-medium text-neutral-700 mb-1">Mentor Notes</p>
+                      <p className="text-[13px] font-medium text-neutral-900 mb-1">Mentor Notes</p>
                       <div className="bg-blue-50 rounded-lg p-3">
-                        <p className="text-sm text-neutral-600">{plan.mentor_notes}</p>
+                        <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.mentor_notes}</p>
                       </div>
                     </div>
                   )}

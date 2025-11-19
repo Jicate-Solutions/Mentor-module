@@ -16,29 +16,43 @@ export async function GET(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    const { data, error } = await supabase
+    // Fetch all assignments
+    const { data: assignments, error } = await supabase
       .from('mentor_incharge_assignments')
-      .select(`
-        *,
-        incharge:users!incharge_id (
-          id,
-          full_name,
-          email,
-          department_id,
-          institution_id,
-          avatar_url
-        ),
-        assigner:users!assigned_by (
-          id,
-          full_name
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('[List Incharges] Error:', error);
+      console.error('[List Incharges] Error fetching assignments:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    // Fetch user details for all incharge_ids and assigned_by users
+    const userIds = new Set<string>();
+    assignments?.forEach((assignment: any) => {
+      if (assignment.incharge_id) userIds.add(assignment.incharge_id);
+      if (assignment.assigned_by) userIds.add(assignment.assigned_by);
+    });
+
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, full_name, email, department_id, institution_id, avatar_url')
+      .in('id', Array.from(userIds));
+
+    if (usersError) {
+      console.error('[List Incharges] Error fetching users:', usersError);
+    }
+
+    // Map users by ID for quick lookup
+    const usersMap = new Map();
+    users?.forEach((u: any) => usersMap.set(u.id, u));
+
+    // Combine data
+    const data = assignments?.map((assignment: any) => ({
+      ...assignment,
+      incharge: assignment.incharge_id ? [usersMap.get(assignment.incharge_id)] : [],
+      assigner: assignment.assigned_by ? [usersMap.get(assignment.assigned_by)] : [],
+    }));
 
     return NextResponse.json({
       success: true,

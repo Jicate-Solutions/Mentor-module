@@ -57,7 +57,7 @@ export default function CounselingSessionsPage() {
   const [userId, setUserId] = useState<string | null>(null); // Store users.id (UUID)
   const [isAdmin, setIsAdmin] = useState(false); // Check if user is admin (not a mentor)
 
-  // Filter configuration - Fetch options from JKKN API
+  // Filter configuration - Student-focused filters (institution, department, program)
   const filterConfigs: FilterConfig[] = [
     {
       key: 'institution',
@@ -135,20 +135,6 @@ export default function CounselingSessionsPage() {
         return [];
       },
       placeholder: 'All programs',
-      width: 'w-56',
-    },
-    {
-      key: 'designation',
-      label: 'Designation',
-      type: 'dropdown',
-      options: [
-        { value: 'professor', label: 'Professor' },
-        { value: 'associate professor', label: 'Associate Professor' },
-        { value: 'assistant professor', label: 'Assistant Professor' },
-        { value: 'lecturer', label: 'Lecturer' },
-        { value: 'tutor', label: 'Tutor' },
-      ],
-      placeholder: 'All designations',
       width: 'w-56',
     },
   ];
@@ -260,38 +246,51 @@ export default function CounselingSessionsPage() {
       );
     }
 
-    // Apply institution filter (filter by student's institution)
+    // Apply institution filter (filter by student's institution from JKKN data)
     if (filters.institution && filters.institution !== '') {
-      grouped = grouped.filter(s =>
-        s.students.some((student: any) =>
-          student.institution?.toLowerCase().includes((filters.institution as string).toLowerCase())
-        )
+      const institutionFilter = (filters.institution as string).toLowerCase();
+      // Find sessions where at least one student matches the institution filter
+      const matchingSessions = sessions.filter(session =>
+        session.student?.institution?.toLowerCase().includes(institutionFilter)
+      );
+      const matchingSessionKeys = new Set(
+        matchingSessions.map(s => `${s.sessionName}_${s.date}_${s.time}`)
+      );
+      grouped = grouped.filter(g =>
+        matchingSessionKeys.has(`${g.sessionName}_${g.date}_${g.time}`)
       );
     }
 
-    // Apply department filter (filter by student's department)
+    // Apply department filter (filter by student's department from JKKN data)
     if (filters.department && filters.department !== '') {
-      grouped = grouped.filter(s =>
-        s.students.some((student: any) =>
-          student.department?.toLowerCase().includes((filters.department as string).toLowerCase())
-        )
+      const departmentFilter = (filters.department as string).toLowerCase();
+      const matchingSessions = sessions.filter(session =>
+        session.student?.departmentName?.toLowerCase().includes(departmentFilter)
+      );
+      const matchingSessionKeys = new Set(
+        matchingSessions.map(s => `${s.sessionName}_${s.date}_${s.time}`)
+      );
+      grouped = grouped.filter(g =>
+        matchingSessionKeys.has(`${g.sessionName}_${g.date}_${g.time}`)
       );
     }
 
-    // Apply program filter (filter by student's program)
+    // Apply program filter (filter by student's program from JKKN data)
     if (filters.program && filters.program !== '') {
-      grouped = grouped.filter(s =>
-        s.students.some((student: any) =>
-          student.program?.toLowerCase().includes((filters.program as string).toLowerCase())
-        )
+      const programFilter = (filters.program as string).toLowerCase();
+      const matchingSessions = sessions.filter(session =>
+        session.student?.programName?.toLowerCase().includes(programFilter)
+      );
+      const matchingSessionKeys = new Set(
+        matchingSessions.map(s => `${s.sessionName}_${s.date}_${s.time}`)
+      );
+      grouped = grouped.filter(g =>
+        matchingSessionKeys.has(`${g.sessionName}_${g.date}_${g.time}`)
       );
     }
 
-    // Apply designation filter (Note: This would be for mentor's designation if available)
-    if (filters.designation && filters.designation !== '') {
-      // Designation filtering logic - to be implemented when designation data is available
-      // grouped = grouped.filter(s => ...);
-    }
+    // Designation filter is not applicable for counseling sessions
+    // Sessions are student-focused, not mentor-designation focused
 
     setFilteredSessions(grouped);
   }, [sessions, activeTab, searchQuery, filters]);
@@ -366,7 +365,7 @@ export default function CounselingSessionsPage() {
       setLoading(true);
       setError(null);
 
-      // Build query based on user role
+      // Build query based on user role - fetch full student data from JKKN for filtering
       let query = supabase
         .from('counseling_sessions')
         .select(`
@@ -399,29 +398,36 @@ export default function CounselingSessionsPage() {
       if (fetchError) throw fetchError;
 
       // Transform data to match CounselingSession interface
-      const transformedData: CounselingSession[] = (data || []).map(session => ({
-        id: session.id,
-        mentorId: session.mentor_id,
-        studentId: session.student_id,
-        studentName: session.student?.name || 'Unknown Student',
-        student: session.student ? {
-          id: session.student.id,
-          name: session.student.name,
-          email: session.student.email,
-          rollNumber: session.student.roll_number,
-          department: session.student.department_id,
-          year: session.student.year,
-          avatar: session.student.avatar_url
-        } : undefined,
-        sessionName: session.session_name,
-        date: session.date,
-        time: session.time,
-        notes: session.notes,
-        attachment: session.attachment_url,
-        status: session.status as 'scheduled' | 'completed' | 'cancelled',
-        createdAt: session.created_at,
-        updatedAt: session.updated_at
-      }));
+      const transformedData: CounselingSession[] = (data || []).map((session) => {
+        return {
+          id: session.id,
+          mentorId: session.mentor_id,
+          studentId: session.student_id,
+          studentName: session.student?.name || 'Unknown Student',
+          student: session.student ? {
+            id: session.student.id,
+            name: session.student.name,
+            email: session.student.email,
+            rollNumber: session.student.roll_number,
+            department: session.student.department_id,
+            year: session.student.year,
+            avatar: session.student.avatar_url,
+            // Note: JKKN student data not available as jkkn_student_id field doesn't exist
+            // Filters will work based on local student data instead
+            institution: undefined,
+            departmentName: undefined,
+            programName: undefined,
+          } : undefined,
+          sessionName: session.session_name,
+          date: session.date,
+          time: session.time,
+          notes: session.notes,
+          attachment: session.attachment_url,
+          status: session.status as 'scheduled' | 'completed' | 'cancelled',
+          createdAt: session.created_at,
+          updatedAt: session.updated_at
+        };
+      });
 
       setSessions(transformedData);
     } catch (err: any) {
@@ -550,15 +556,15 @@ export default function CounselingSessionsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-6">
       {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-6">
-        <div className="flex items-start justify-between relative z-10">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-neutral-900 mb-2">
+      <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-4 lg:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between relative z-10">
+          <div className="flex-1">
+            <h1 className="text-[18px] lg:text-[22px] font-medium text-neutral-900 mb-1.5 lg:mb-2 tracking-tight">
               Counseling Sessions
             </h1>
-            <p className="text-neutral-600 text-sm lg:text-base">
+            <p className="text-neutral-600 text-[13px] lg:text-[14px] leading-relaxed">
               {isAdmin
                 ? 'View and monitor all counseling sessions across the institution'
                 : 'Manage and track your counseling sessions'}
@@ -570,6 +576,7 @@ export default function CounselingSessionsPage() {
               onClick={openCreateModal}
               variant="primary"
               size="md"
+              className="w-full lg:w-auto flex items-center justify-center min-h-[44px] lg:min-h-0"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -582,19 +589,20 @@ export default function CounselingSessionsPage() {
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-white rounded-xl border border-neutral-200/50 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-white rounded-xl border border-neutral-200/50 p-4 lg:p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-3 lg:mb-4">
+          <svg className="w-4 h-4 lg:w-5 lg:h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
           </svg>
-          <h2 className="text-lg font-semibold text-neutral-700">Filters & Search</h2>
+          <h2 className="text-[16px] lg:text-lg font-semibold text-neutral-700">Filters & Search</h2>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 lg:space-y-4">
           <SearchInput
             value={searchQuery}
             onChange={(value) => setSearchQuery(value)}
             placeholder="Search sessions..."
+            className="w-full"
           />
 
           <HorizontalFilterBar
@@ -609,13 +617,13 @@ export default function CounselingSessionsPage() {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`
-              px-4 py-2 rounded-lg font-medium text-sm transition-all
+              px-4 py-2.5 lg:py-2 rounded-lg font-medium text-[13px] lg:text-sm transition-all whitespace-nowrap min-h-[44px] lg:min-h-0 flex items-center
               ${activeTab === tab.id
                 ? 'bg-white text-brand-green border border-neutral-200 shadow-sm'
                 : 'text-neutral-600 hover:bg-white/50 hover:text-neutral-800'

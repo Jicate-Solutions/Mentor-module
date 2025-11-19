@@ -2,7 +2,7 @@
  * Get current authenticated user from MyJKKN token
  */
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { validateToken } from './token-validation';
 
@@ -18,16 +18,29 @@ export interface CurrentUser {
 }
 
 /**
- * Get current user from MyJKKN access token stored in cookies
+ * Get current user from MyJKKN access token
+ * Supports both Authorization header and cookie-based authentication
  * This function validates the MyJKKN token and returns the user from our database
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
+    let accessToken: string | undefined;
+
+    // Try to get token from Authorization header first (for API calls from client)
+    const headersList = await headers();
+    const authHeader = headersList.get('authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      accessToken = authHeader.substring(7);
+    }
+
+    // Fallback to cookies if no Authorization header (for server-side rendering)
+    if (!accessToken) {
+      const cookieStore = await cookies();
+      accessToken = cookieStore.get('access_token')?.value;
+    }
 
     if (!accessToken) {
-      console.error('[Auth] No access token found in cookies');
+      console.error('[Auth] No access token found in headers or cookies');
       return null;
     }
 

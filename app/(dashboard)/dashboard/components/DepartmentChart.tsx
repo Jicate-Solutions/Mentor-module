@@ -37,8 +37,8 @@ export const DepartmentChart = ({ data, loading }: DepartmentChartProps) => {
   return (
     <Card variant="elevated" className="h-full">
       <div className="mb-6">
-        <h3 className="text-lg font-bold text-neutral-900">Department Distribution</h3>
-        <p className="text-sm text-neutral-600 mt-1">Sessions by department</p>
+        <h3 className="text-[17px] font-medium text-neutral-900">Department Distribution</h3>
+        <p className="text-[13px] text-neutral-600 mt-1 leading-relaxed">Sessions by department</p>
       </div>
 
       {loading ? (
@@ -56,8 +56,8 @@ export const DepartmentChart = ({ data, loading }: DepartmentChartProps) => {
               </svg>
             </div>
           </div>
-          <h4 className="text-base font-semibold text-neutral-900 mb-2">No distribution data</h4>
-          <p className="text-sm text-neutral-500 text-center max-w-sm">
+          <h4 className="text-[16px] font-medium text-neutral-900 mb-2">No distribution data</h4>
+          <p className="text-[14px] text-neutral-500 text-center max-w-sm leading-relaxed">
             Department session distribution will be displayed here once data becomes available
           </p>
         </div>

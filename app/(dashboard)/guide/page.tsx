@@ -181,8 +181,8 @@ export default function GuideDocumentsPage() {
         <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 relative z-10">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-neutral-900 mb-2">Mentoring Guide</h1>
-              <p className="text-neutral-600 text-sm lg:text-base">
+              <h1 className="text-[22px] font-medium text-neutral-900 mb-2 tracking-tight">Mentoring Guide</h1>
+              <p className="text-neutral-600 text-[14px] leading-relaxed">
                 Access mentoring resources, templates, and best practice documents
               </p>
             </div>

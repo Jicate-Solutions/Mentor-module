@@ -238,10 +238,10 @@ export default function MentorListingPage() {
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
       {/* Hero Header */}
       <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
-        <h1 className="text-2xl lg:text-3xl font-bold text-brand-green mb-2">
+        <h1 className="text-[22px] font-medium text-brand-green mb-2 tracking-tight">
           Mentor Directory
         </h1>
-        <p className="text-neutral-600 text-sm lg:text-base">
+        <p className="text-neutral-600 text-[14px] leading-relaxed">
           Connect with faculty mentors to manage student counseling, guidance, and academic progress
         </p>
       </div>
@@ -256,8 +256,8 @@ export default function MentorListingPage() {
             className="w-full sm:max-w-xl"
           />
 
-          {/* View Toggle */}
-          <div className="flex items-center gap-1 bg-white rounded-xl border border-neutral-200/50 p-1 shadow-sm">
+          {/* View Toggle - Hidden on mobile */}
+          <div className="hidden lg:flex items-center gap-1 bg-white rounded-xl border border-neutral-200/50 p-1 shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
               className={`px-4 py-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center gap-2 text-sm font-medium ${
@@ -328,7 +328,7 @@ export default function MentorListingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-neutral-800 mb-2">
+              <h3 className="text-lg font-semibold text-neutral-800 mb-2">
                 Search for Mentors
               </h3>
               <p className="text-neutral-600 text-sm mb-1">
@@ -389,7 +389,7 @@ export default function MentorListingPage() {
 
                       {/* Mentor Basic Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-bold text-neutral-800 mb-1 line-clamp-2 group-hover:text-brand-green transition-colors">
+                        <h3 className="text-base font-semibold text-neutral-800 mb-1 line-clamp-2 group-hover:text-brand-green transition-colors">
                           {mentor.name}
                         </h3>
 

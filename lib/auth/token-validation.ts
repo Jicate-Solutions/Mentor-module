@@ -25,10 +25,26 @@ export interface ValidationResponse {
 }
 
 /**
+ * Token validation cache
+ * Caches validation results for 2 minutes to reduce auth server load
+ */
+const validationCache = new Map<string, { result: ValidationResponse; expiresAt: number }>();
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+/**
  * Validates an access token with the MyJKKN Auth Server
+ * Results are cached for 2 minutes to prevent excessive validation calls
  */
 export async function validateToken(accessToken: string): Promise<ValidationResponse> {
+  // Check cache first
+  const cached = validationCache.get(accessToken);
+  if (cached && Date.now() < cached.expiresAt) {
+    console.log('[Token Validation] Using cached validation result');
+    return cached.result;
+  }
+
   try {
+    console.log('[Token Validation] Validating token with auth server...');
     const response = await fetch(`${authConfig.authServerUrl}/api/auth/validate`, {
       method: 'POST',
       headers: {
@@ -41,15 +57,44 @@ export async function validateToken(accessToken: string): Promise<ValidationResp
     });
 
     if (!response.ok) {
-      return { valid: false, error: 'Token validation failed' };
+      const result = { valid: false, error: 'Token validation failed' };
+      // Don't cache failures
+      return result;
     }
 
     const data = await response.json();
-    return { valid: true, user: data.user };
+    const result = { valid: true, user: data.user };
+
+    // Cache successful validation
+    validationCache.set(accessToken, {
+      result,
+      expiresAt: Date.now() + CACHE_DURATION,
+    });
+
+    console.log('[Token Validation] ✓ Token validated and cached');
+    return result;
   } catch (error) {
-    console.error('Token validation error:', error);
+    console.error('[Token Validation] Validation request failed:', error);
     return { valid: false, error: 'Validation request failed' };
   }
+}
+
+/**
+ * Clear expired entries from validation cache
+ * Called periodically to prevent memory leaks
+ */
+function cleanupValidationCache() {
+  const now = Date.now();
+  for (const [token, entry] of validationCache.entries()) {
+    if (now >= entry.expiresAt) {
+      validationCache.delete(token);
+    }
+  }
+}
+
+// Cleanup cache every 5 minutes
+if (typeof setInterval !== 'undefined') {
+  setInterval(cleanupValidationCache, 5 * 60 * 1000);
 }
 
 /**

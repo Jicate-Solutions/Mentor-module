@@ -126,11 +126,11 @@ export default function HorizontalFilterBar({
   };
 
   return (
-    <div className={`bg-white border border-neutral-200 rounded-lg p-3 ${className}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Filter Icon and Label */}
-        <div className="flex items-center gap-2 text-sm font-medium text-neutral-700">
-          <Filter className="h-4 w-4" />
+    <div className={`bg-white border border-neutral-200 rounded-lg p-2 lg:p-3 ${className}`}>
+      <div className="flex flex-wrap items-center gap-1.5 lg:gap-2">
+        {/* Filter Icon and Label - Hidden on mobile */}
+        <div className="hidden sm:flex items-center gap-2 text-xs lg:text-sm font-medium text-neutral-700">
+          <Filter className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
           <span>Filters:</span>
         </div>
 
@@ -148,7 +148,7 @@ export default function HorizontalFilterBar({
                 onClick={(e) => toggleDropdown(filter.key, e)}
                 disabled={loading || isLoading}
                 className={`
-                  flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm font-medium
+                  flex items-center gap-1.5 lg:gap-2 px-2 py-1 lg:px-3 lg:py-1.5 rounded-md border text-xs lg:text-sm font-medium
                   transition-all duration-200
                   ${isActive
                     ? 'bg-brand-green text-white border-brand-green shadow-sm'
@@ -163,21 +163,21 @@ export default function HorizontalFilterBar({
 
                 {isActive ? (
                   <X
-                    className="h-3.5 w-3.5 hover:scale-110 transition-transform"
+                    className="h-3 w-3 lg:h-3.5 lg:w-3.5 hover:scale-110 transition-transform"
                     onClick={(e) => clearFilter(filter.key, e)}
                   />
                 ) : (
-                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-3 w-3 lg:h-3.5 lg:w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                 )}
               </button>
 
               {/* Dropdown Menu */}
               {isOpen && !loading && (
-                <div className="absolute top-full left-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-50 min-w-[200px] max-h-64 overflow-auto">
+                <div className="absolute top-full left-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-50 min-w-[180px] lg:min-w-[200px] max-h-64 overflow-auto">
                   {isLoading ? (
-                    <div className="px-4 py-3 text-sm text-neutral-500">Loading...</div>
+                    <div className="px-3 py-2 lg:px-4 lg:py-3 text-xs lg:text-sm text-neutral-500">Loading...</div>
                   ) : options.length === 0 ? (
-                    <div className="px-4 py-3 text-sm text-neutral-500">No options available</div>
+                    <div className="px-3 py-2 lg:px-4 lg:py-3 text-xs lg:text-sm text-neutral-500">No options available</div>
                   ) : (
                     options.map((option) => {
                       const isSelected = filter.type === 'multi-select'
@@ -190,7 +190,7 @@ export default function HorizontalFilterBar({
                           onClick={() => handleOptionSelect(filter, option.value)}
                           disabled={option.disabled}
                           className={`
-                            w-full px-4 py-2 text-left text-sm transition-colors
+                            w-full px-3 py-1.5 lg:px-4 lg:py-2 text-left text-xs lg:text-sm transition-colors
                             ${isSelected
                               ? 'bg-brand-green/10 text-brand-green font-medium'
                               : 'text-neutral-700 hover:bg-neutral-50'
@@ -201,7 +201,7 @@ export default function HorizontalFilterBar({
                           <div className="flex items-center justify-between">
                             <span>{option.label}</span>
                             {isSelected && filter.type === 'multi-select' && (
-                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                              <svg className="h-3.5 w-3.5 lg:h-4 lg:w-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
                             )}
@@ -219,13 +219,14 @@ export default function HorizontalFilterBar({
         {/* Clear All Button */}
         {activeFiltersCount > 0 && (
           <>
-            <div className="h-6 w-px bg-neutral-300 mx-1" />
+            <div className="hidden sm:block h-6 w-px bg-neutral-300 mx-0.5 lg:mx-1" />
             <button
               onClick={onClearAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-neutral-600 hover:text-red-600 hover:bg-red-50 transition-colors"
+              className="flex items-center gap-1 lg:gap-1.5 px-2 py-1 lg:px-3 lg:py-1.5 rounded-md text-xs lg:text-sm font-medium text-neutral-600 hover:text-red-600 hover:bg-red-50 transition-colors"
             >
-              <X className="h-3.5 w-3.5" />
-              Clear all ({activeFiltersCount})
+              <X className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
+              <span className="hidden sm:inline">Clear all ({activeFiltersCount})</span>
+              <span className="sm:hidden">Clear ({activeFiltersCount})</span>
             </button>
           </>
         )}

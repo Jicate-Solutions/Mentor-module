@@ -294,7 +294,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       <aside
         className={`
           fixed top-0 left-0 z-50 h-full
-          ${isCollapsed ? 'lg:w-16' : 'w-64'}
+          ${isCollapsed ? 'lg:w-16' : 'w-56'}
           bg-white border-r border-neutral-200
           transform transition-all duration-300 ease-in-out
           lg:translate-x-0 lg:fixed
@@ -318,10 +318,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
 
               {/* Title and Subtitle */}
               <div className="flex-1 min-w-0">
-                <h1 className="text-sm font-bold text-neutral-800 leading-tight">
+                <h1 className="text-[14px] font-medium text-neutral-800 leading-tight">
                   Mentor & Mentee
                 </h1>
-                <p className="text-xs text-neutral-500">
+                <p className="text-[11px] text-neutral-500 leading-relaxed">
                   Mentoring Platform
                 </p>
               </div>
@@ -368,10 +368,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                       onClick={() => handleNavigation(item.href, item.comingSoon)}
                       className={`
                         w-full flex items-center gap-2.5 rounded-lg
-                        font-medium transition-all text-sm
+                        font-medium transition-all text-[14px]
                         ${isCollapsed ? 'lg:justify-center lg:px-2 lg:py-2.5' : 'px-2.5 py-2'}
                         ${active
-                          ? 'bg-brand-green text-white shadow-sm'
+                          ? 'bg-gradient-to-br from-brand-green/5 to-primary-100/30 border border-brand-green/10 text-brand-green shadow-sm'
                           : 'text-neutral-600 hover:bg-neutral-50'
                         }
                         ${item.comingSoon ? 'opacity-60' : ''}
@@ -380,7 +380,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                       aria-current={active ? 'page' : undefined}
                       title={isCollapsed ? item.label : undefined}
                     >
-                      <span className={active ? 'text-white' : 'text-neutral-400'}>
+                      <span className={active ? 'text-brand-green' : 'text-neutral-400'}>
                         {item.icon}
                       </span>
                       <span className={`flex-1 text-left ${isCollapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
@@ -411,7 +411,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                     <button
                       onClick={() => toggleSection(sectionId)}
                       className={`
-                        w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium
+                        w-full flex items-center gap-2.5 px-3 py-2.5 text-[14px] font-medium
                         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/20 rounded-lg
                         ${isExpanded
                           ? 'text-neutral-700 bg-neutral-50/80'
@@ -457,10 +457,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                           onClick={() => handleNavigation(item.href, item.comingSoon)}
                           className={`
                             w-full flex items-center gap-3 rounded-lg
-                            font-normal text-sm transition-all
+                            font-normal text-[14px] transition-all
                             ${isCollapsed ? 'lg:justify-center lg:px-3 lg:py-2.5' : 'px-3 py-2 pl-11'}
                             ${active
-                              ? 'bg-brand-green text-white shadow-sm'
+                              ? 'bg-gradient-to-br from-brand-green/5 to-primary-100/30 border border-brand-green/10 text-brand-green shadow-sm'
                               : 'text-neutral-600 hover:bg-neutral-50'
                             }
                             ${item.comingSoon ? 'opacity-60' : ''}
@@ -469,7 +469,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                           aria-current={active ? 'page' : undefined}
                           title={isCollapsed ? item.label : undefined}
                         >
-                          <span className={`${isCollapsed ? '' : 'hidden'} ${active ? 'text-white' : 'text-neutral-400'}`}>
+                          <span className={`${isCollapsed ? '' : 'hidden'} ${active ? 'text-brand-green' : 'text-neutral-400'}`}>
                             {item.icon}
                           </span>
                           <span className={`flex-1 text-left ${isCollapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
@@ -502,10 +502,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                 {user.full_name.charAt(0).toUpperCase()}
               </div>
               <div className={`flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                <p className="font-medium text-neutral-800 truncate text-xs">
+                <p className="font-medium text-neutral-800 truncate text-[13px]">
                   {user.full_name}
                 </p>
-                <p className="text-xs text-neutral-500 truncate">
+                <p className="text-[11px] text-neutral-500 truncate">
                   {user.email}
                 </p>
               </div>

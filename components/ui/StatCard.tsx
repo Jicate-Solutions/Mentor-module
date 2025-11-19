@@ -38,19 +38,19 @@ export default function StatCard({
     <div
       className={`
         relative overflow-hidden rounded-xl border p-5
-        transition-all duration-200 hover:shadow-md
+        transition-all duration-200 hover:shadow-sm hover:border-brand-green/20
         ${variantStyles[variant]}
         ${className}
       `}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-neutral-600 mb-1">{title}</p>
+          <p className="text-[13px] font-medium text-neutral-600 mb-2 tracking-wide uppercase">{title}</p>
           <div className="flex items-baseline gap-2">
-            <h3 className="text-3xl font-bold text-neutral-900">{value}</h3>
+            <h3 className="text-[28px] font-medium text-neutral-900 tracking-tight">{value}</h3>
             {trend && (
               <span
-                className={`text-xs font-medium flex items-center gap-0.5 ${
+                className={`text-[12px] font-medium flex items-center gap-0.5 ${
                   trend.isPositive ? 'text-success-600' : 'text-error-600'
                 }`}
               >
@@ -81,14 +81,14 @@ export default function StatCard({
             )}
           </div>
           {subtitle && (
-            <p className="text-xs text-neutral-500 mt-1">{subtitle}</p>
+            <p className="text-[13px] text-neutral-500 mt-2 leading-relaxed">{subtitle}</p>
           )}
         </div>
 
         {icon && (
           <div
             className={`
-              w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0
+              w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
               ${iconBgStyles[variant]}
             `}
           >
@@ -100,7 +100,7 @@ export default function StatCard({
       {/* Decorative element */}
       <div
         className={`
-          absolute -bottom-1 -right-1 w-24 h-24 rounded-full blur-2xl opacity-20
+          absolute -bottom-2 -right-2 w-28 h-28 rounded-full blur-3xl opacity-10
           ${variant === 'primary' ? 'bg-brand-green' : ''}
           ${variant === 'accent' ? 'bg-brand-yellow' : ''}
         `}

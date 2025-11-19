@@ -62,10 +62,10 @@ export const ActivityFeed = ({ activities, loading }: ActivityFeedProps) => {
     <Card variant="elevated" className="h-full">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-bold text-neutral-900">Recent Activity</h3>
-          <p className="text-sm text-neutral-600 mt-1">Latest updates from your system</p>
+          <h3 className="text-[17px] font-medium text-neutral-900">Recent Activity</h3>
+          <p className="text-[13px] text-neutral-600 mt-1 leading-relaxed">Latest updates from your system</p>
         </div>
-        <button className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors">
+        <button className="text-[13px] text-primary-600 hover:text-primary-700 font-medium transition-colors">
           View all
         </button>
       </div>
@@ -90,8 +90,8 @@ export const ActivityFeed = ({ activities, loading }: ActivityFeedProps) => {
               <CalendarIcon className="w-12 h-12 text-brand-green/60" />
             </div>
           </div>
-          <h4 className="text-base font-semibold text-neutral-900 mt-4 mb-1">No activity yet</h4>
-          <p className="text-sm text-neutral-500 text-center max-w-xs">
+          <h4 className="text-[16px] font-medium text-neutral-900 mt-4 mb-1">No activity yet</h4>
+          <p className="text-[14px] text-neutral-500 text-center max-w-xs leading-relaxed">
             Activity will appear here as you interact with the mentoring system
           </p>
         </div>
@@ -110,14 +110,14 @@ export const ActivityFeed = ({ activities, loading }: ActivityFeedProps) => {
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <h4 className="text-sm font-semibold text-neutral-900 group-hover:text-primary-600 transition-colors">
+                  <h4 className="text-[14px] font-medium text-neutral-900 group-hover:text-primary-600 transition-colors">
                     {activity.title}
                   </h4>
-                  <span className="text-xs text-neutral-500 whitespace-nowrap">
+                  <span className="text-[12px] text-neutral-500 whitespace-nowrap">
                     {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
                   </span>
                 </div>
-                <p className="text-sm text-neutral-600 mt-1 line-clamp-2">
+                <p className="text-[13px] text-neutral-600 mt-1 line-clamp-2 leading-relaxed">
                   {activity.description}
                 </p>
                 {activity.user && (

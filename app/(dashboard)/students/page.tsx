@@ -19,6 +19,7 @@ export default function StudentsPage() {
   // API status
   const [isConfigured, setIsConfigured] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Checking API...');
+  const [isCheckingApi, setIsCheckingApi] = useState(true);
 
   // Students data
   const [students, setStudents] = useState<Student[]>([]);
@@ -186,6 +187,7 @@ export default function StudentsPage() {
    * Check API configuration status
    */
   const checkStatus = async () => {
+    setIsCheckingApi(true);
     try {
       const status = await checkApiStatus();
       setIsConfigured(status.configured);
@@ -193,6 +195,8 @@ export default function StudentsPage() {
     } catch (err: any) {
       setIsConfigured(false);
       setStatusMessage('Failed to check API status');
+    } finally {
+      setIsCheckingApi(false);
     }
   };
 
@@ -265,10 +269,10 @@ export default function StudentsPage() {
       <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-brand-green mb-2">
+            <h1 className="text-[22px] font-medium text-brand-green mb-2 tracking-tight">
               JKKN Students
             </h1>
-            <p className="text-neutral-600 text-sm lg:text-base">
+            <p className="text-neutral-600 text-[14px] leading-relaxed">
               Browse and manage student records from MyJKKN database
             </p>
           </div>
@@ -280,16 +284,26 @@ export default function StudentsPage() {
         </div>
       </div>
 
+      {/* Initial API Check Loading */}
+      {isCheckingApi && (
+        <div className="bg-white rounded-xl border border-neutral-200/50 p-12 shadow-sm">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-brand-green border-t-transparent mb-3"></div>
+            <p className="text-neutral-600 text-sm">Checking API configuration...</p>
+          </div>
+        </div>
+      )}
+
       {/* API Not Configured Warning */}
-      {!isConfigured && (
+      {!isCheckingApi && !isConfigured && (
         <div className="bg-yellow-50/80 rounded-xl border border-yellow-200/60 p-5 shadow-sm">
           <div className="flex items-start gap-3">
             <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
             <div>
-              <p className="text-base font-semibold text-yellow-800 mb-1">API Not Configured</p>
-              <p className="text-sm text-yellow-700">
+              <p className="text-[16px] font-medium text-yellow-800 mb-1">API Not Configured</p>
+              <p className="text-[14px] text-yellow-700 leading-relaxed">
                 {statusMessage}. Please add NEXT_PUBLIC_MYJKKN_API_KEY to your .env.local file to view students data.
               </p>
             </div>

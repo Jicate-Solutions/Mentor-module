@@ -56,7 +56,9 @@
       "Bash(npx tsx:*)",
       "Bash(npx dotenv-cli:*)",
       "Bash(del test-report.mjs test-report.ts test-counseling-report.xlsx)",
-      "Skill(brand-styling)"
+      "Skill(brand-styling)",
+      "Bash(timeout 10 bash:*)",
+      "mcp__filesystem__read_text_file"
     ],
     "deny": [],
     "ask": []

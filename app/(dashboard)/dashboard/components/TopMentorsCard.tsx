@@ -35,8 +35,8 @@ export const TopMentorsCard = ({ mentors, loading }: TopMentorsCardProps) => {
       <div className="flex items-center gap-2 mb-6">
         <TrophyIcon className="w-6 h-6 text-accent-600" />
         <div>
-          <h3 className="text-lg font-bold text-neutral-900">Top Mentors</h3>
-          <p className="text-sm text-neutral-600 mt-1">Most active this month</p>
+          <h3 className="text-[17px] font-medium text-neutral-900">Top Mentors</h3>
+          <p className="text-[13px] text-neutral-600 mt-1 leading-relaxed">Most active this month</p>
         </div>
       </div>
 
@@ -60,8 +60,8 @@ export const TopMentorsCard = ({ mentors, loading }: TopMentorsCardProps) => {
               <TrophyIcon className="w-12 h-12 text-brand-yellow/60" />
             </div>
           </div>
-          <h4 className="text-base font-semibold text-neutral-900 mb-2">No mentor rankings yet</h4>
-          <p className="text-sm text-neutral-500 text-center max-w-sm">
+          <h4 className="text-[16px] font-medium text-neutral-900 mb-2">No mentor rankings yet</h4>
+          <p className="text-[14px] text-neutral-500 text-center max-w-sm leading-relaxed">
             Top performing mentors will be displayed here based on their session activity
           </p>
         </div>

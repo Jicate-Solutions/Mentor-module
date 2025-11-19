@@ -33,10 +33,10 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
   return (
     <Card variant="elevated" className="h-full">
       <div className="mb-6">
-        <h3 className="text-lg font-bold text-neutral-900">
+        <h3 className="text-[17px] font-medium text-neutral-900">
           {format(today, 'MMMM yyyy')}
         </h3>
-        <p className="text-sm text-neutral-600 mt-1">Upcoming counseling sessions</p>
+        <p className="text-[13px] text-neutral-600 mt-1 leading-relaxed">Upcoming counseling sessions</p>
       </div>
 
       {loading ? (

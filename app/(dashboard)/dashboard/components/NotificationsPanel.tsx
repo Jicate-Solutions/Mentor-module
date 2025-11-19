@@ -50,8 +50,8 @@ export const NotificationsPanel = ({
     <Card variant="elevated" className="h-full">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-bold text-neutral-900">Notifications</h3>
-          <p className="text-sm text-neutral-600 mt-1">
+          <h3 className="text-[17px] font-medium text-neutral-900">Notifications</h3>
+          <p className="text-[13px] text-neutral-600 mt-1 leading-relaxed">
             {notifications.length} pending {notifications.length === 1 ? 'item' : 'items'}
           </p>
         </div>
@@ -95,10 +95,10 @@ export const NotificationsPanel = ({
                   {getNotificationIcon(notification.type)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-neutral-900 mb-1">
+                  <h4 className="text-[14px] font-medium text-neutral-900 mb-1">
                     {notification.title}
                   </h4>
-                  <p className="text-sm text-neutral-600 leading-relaxed">
+                  <p className="text-[13px] text-neutral-600 leading-relaxed">
                     {notification.description}
                   </p>
                   {notification.actionLabel && (

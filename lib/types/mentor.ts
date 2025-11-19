@@ -20,6 +20,9 @@ export interface Student {
   year: string;
   avatar?: string;
   isActive?: boolean;
+  institution?: string;
+  departmentName?: string;
+  programName?: string;
 }
 
 export interface CounselingSession {

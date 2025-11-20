@@ -61,6 +61,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Get page title from pathname
   const getPageTitle = () => {
     if (pathname === '/dashboard') return 'Dashboard';
+    if (pathname?.startsWith('/mentor-activity')) return 'Mentor Activity';
     if (pathname?.startsWith('/mentor')) return 'Mentor Management';
     if (pathname?.startsWith('/staff')) return 'Staff';
     if (pathname?.startsWith('/institutions')) return 'Institutions';

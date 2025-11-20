@@ -6,6 +6,7 @@ import { sendFeedbackRequestEmail } from '@/lib/email/send-feedback-request';
 import { sendSessionCreatedEmail } from '@/lib/email/send-session-notification';
 import { getUserAccess, canManageMentor } from '@/lib/middleware/access-control';
 import { getCurrentUser } from '@/lib/auth/get-current-user';
+import { logSessionCreated } from '@/lib/utils/activity-logger';
 
 /**
  * Helper function to send session creation notification email
@@ -539,6 +540,19 @@ export async function POST(
     }
 
     console.log(`[Counseling API] ✅ Successfully created counseling session ${newSession.id}`);
+
+    // Log activity (non-blocking)
+    logSessionCreated(
+      mentor!.id,
+      newSession.id,
+      sessionName,
+      student.id,
+      studentData?.name || student.name || 'Student',
+      date,
+      user!.id
+    ).catch(err => {
+      console.error('[Counseling API] Failed to log activity:', err);
+    });
 
     // Create feedback record and send email asynchronously (non-blocking)
     // We need to get mentor name for the email

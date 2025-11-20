@@ -44,6 +44,11 @@ export function canViewAllDepartments(userAccess: UserAccess): boolean {
     return true;
   }
 
+  // Mentor in-charge can see all departments in their assigned institution
+  if (userAccess.isMentorIncharge) {
+    return true;
+  }
+
   return false;
 }
 
@@ -65,6 +70,11 @@ export function canViewStudent(
     return true;
   }
 
+  // Mentor in-charge can view students in their assigned institution
+  if (userAccess.isMentorIncharge && userAccess.mentorInchargeInstitutionId === studentInstitutionId) {
+    return true;
+  }
+
   return false;
 }
 
@@ -83,6 +93,11 @@ export function canViewStaff(
 
   // Institution admin can view staff in their institution
   if (userAccess.role === 'institution_admin' && userAccess.institutionId === staffInstitutionId) {
+    return true;
+  }
+
+  // Mentor in-charge can view staff/mentors in their assigned institution
+  if (userAccess.isMentorIncharge && userAccess.mentorInchargeInstitutionId === staffInstitutionId) {
     return true;
   }
 
@@ -121,7 +136,7 @@ export function canManageDepartments(userAccess: UserAccess, institutionId?: str
 
 /**
  * Check if user can manage students
- * Super admin and institution admin can manage students (within their scope)
+ * Super admin, institution admin, and mentor in-charge can manage students (within their scope)
  */
 export function canManageStudents(
   userAccess: UserAccess,
@@ -142,12 +157,21 @@ export function canManageStudents(
     return true;
   }
 
+  // Mentor in-charge can manage students in their assigned institution
+  if (
+    userAccess.isMentorIncharge &&
+    studentInstitutionId &&
+    userAccess.mentorInchargeInstitutionId === studentInstitutionId
+  ) {
+    return true;
+  }
+
   return false;
 }
 
 /**
  * Check if user can manage staff/mentors
- * Super admin and institution admin can manage staff (within their scope)
+ * Super admin, institution admin, and mentor in-charge can manage staff (within their scope)
  */
 export function canManageStaff(
   userAccess: UserAccess,
@@ -164,6 +188,15 @@ export function canManageStaff(
     userAccess.role === 'institution_admin' &&
     staffInstitutionId &&
     userAccess.institutionId === staffInstitutionId
+  ) {
+    return true;
+  }
+
+  // Mentor in-charge can manage staff/mentors in their assigned institution
+  if (
+    userAccess.isMentorIncharge &&
+    staffInstitutionId &&
+    userAccess.mentorInchargeInstitutionId === staffInstitutionId
   ) {
     return true;
   }
@@ -192,7 +225,7 @@ export function getAccessibleInstitutionIds(userAccess: UserAccess): string[] | 
 
 /**
  * Get accessible department IDs for user
- * Returns null for super admin and institution admin (all departments)
+ * Returns null for super admin, institution admin, and mentor in-charge (all departments)
  */
 export function getAccessibleDepartmentIds(userAccess: UserAccess): string[] | null {
   // Super admin can access all departments
@@ -202,6 +235,11 @@ export function getAccessibleDepartmentIds(userAccess: UserAccess): string[] | n
 
   // Institution admin can access all departments in their institution
   if (userAccess.role === 'institution_admin') {
+    return null; // Will be filtered by institution
+  }
+
+  // Mentor in-charge can access all departments in their assigned institution
+  if (userAccess.isMentorIncharge) {
     return null; // Will be filtered by institution
   }
 

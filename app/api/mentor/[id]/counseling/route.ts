@@ -4,6 +4,8 @@ import type { CounselingSession } from '@/lib/types/mentor';
 import { randomBytes } from 'crypto';
 import { sendFeedbackRequestEmail } from '@/lib/email/send-feedback-request';
 import { sendSessionCreatedEmail } from '@/lib/email/send-session-notification';
+import { getUserAccess, canManageMentor } from '@/lib/middleware/access-control';
+import { getCurrentUser } from '@/lib/auth/get-current-user';
 
 /**
  * Helper function to send session creation notification email
@@ -296,10 +298,17 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    // Get current user and access level
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
-    if (!token) {
+    const userAccess = await getUserAccess();
+    if (!userAccess) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -370,6 +379,32 @@ export async function POST(
     // Use actual mentor or fallback values
     const departmentId = mentor?.department_id || '00000000-0000-0000-0000-000000000001';
     const institutionId = mentor?.institution_id || '00000000-0000-0000-0000-000000000001';
+
+    // AUTHORIZATION CHECK: Can the current user create counseling sessions for this mentor?
+    const canManage = await canManageMentor(
+      userAccess,
+      mentor.id,
+      institutionId
+    );
+
+    if (!canManage) {
+      console.log('[Counseling API] Authorization failed:', {
+        userId: userAccess.userId,
+        role: userAccess.role,
+        isMentorIncharge: userAccess.isMentorIncharge,
+        targetMentorId: mentor.id,
+        targetInstitutionId: institutionId,
+      });
+      return NextResponse.json(
+        {
+          error: 'Forbidden: You do not have permission to create counseling sessions for this mentor',
+          details: 'Regular mentors can only create sessions for themselves. Mentor in-charges can create for all mentors in their institution.'
+        },
+        { status: 403 }
+      );
+    }
+
+    console.log('[Counseling API] ✅ Authorization passed');
 
     // Fetch real student email from JKKN API
     console.log('[Counseling API] Fetching student details from JKKN API:', student.id);

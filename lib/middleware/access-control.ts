@@ -1,8 +1,12 @@
 /**
  * Access Control Middleware
- * Implements 2-level access control:
+ * Implements 3-level access control:
  * - Level 1: Super Admin (all access)
  * - Level 2: Institution Admin (institution-wide access)
+ * - Level 3: Mentor (with optional Mentor In-charge assignment for elevated permissions)
+ *
+ * Mentor In-charge is an assignment, not a separate role.
+ * It gives mentors elevated permissions within their institution.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -18,10 +22,13 @@ export interface UserAccess {
   institutionId: string | null;
   departmentId: string | null;
   isSuperAdmin: boolean;
+  isMentorIncharge: boolean; // Whether user has mentor in-charge assignment
+  mentorInchargeInstitutionId: string | null; // Institution where user is mentor in-charge
 }
 
 /**
  * Get current user's access level
+ * Includes mentor in-charge status check
  */
 export async function getUserAccess(): Promise<UserAccess | null> {
   try {
@@ -33,12 +40,22 @@ export async function getUserAccess(): Promise<UserAccess | null> {
       return null;
     }
 
+    // Check if user has mentor in-charge assignment
+    const supabase = createAdminClient();
+    const { data: inchargeAssignment } = await supabase
+      .from('mentor_incharge_assignments')
+      .select('institution_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
     return {
       userId: user.id,
       role: user.role as AccessLevel,
       institutionId: user.institution_id,
       departmentId: user.department_id,
       isSuperAdmin: user.is_super_admin || user.role === 'super_admin',
+      isMentorIncharge: !!inchargeAssignment,
+      mentorInchargeInstitutionId: inchargeAssignment?.institution_id || null,
     };
   } catch (error) {
     console.error('[Access Control] Error getting user access:', error);
@@ -63,6 +80,16 @@ export function canAccessInstitution(
     return true;
   }
 
+  // Level 3: Mentor in-charge can access their assigned institution
+  if (userAccess.isMentorIncharge && userAccess.mentorInchargeInstitutionId === targetInstitutionId) {
+    return true;
+  }
+
+  // Regular mentor/student can only access their own institution
+  if (userAccess.institutionId === targetInstitutionId) {
+    return true;
+  }
+
   return false;
 }
 
@@ -84,6 +111,15 @@ export function canAccessDepartment(
     userAccess.role === 'institution_admin' &&
     targetInstitutionId &&
     userAccess.institutionId === targetInstitutionId
+  ) {
+    return true;
+  }
+
+  // Level 3: Mentor in-charge can access all departments in their assigned institution
+  if (
+    userAccess.isMentorIncharge &&
+    targetInstitutionId &&
+    userAccess.mentorInchargeInstitutionId === targetInstitutionId
   ) {
     return true;
   }
@@ -212,9 +248,8 @@ export async function isMentorIncharge(userId: string): Promise<boolean> {
     const { data, error } = await supabase
       .from('mentor_incharge_assignments')
       .select('id')
-      .eq('incharge_id', userId)
-      .eq('is_active', true)
-      .single();
+      .eq('user_id', userId)
+      .maybeSingle();
 
     return !error && !!data;
   } catch (error) {
@@ -232,20 +267,20 @@ export async function getMentorInchargeScope(userId: string): Promise<InchargeSc
 
     const { data, error } = await supabase
       .from('mentor_incharge_assignments')
-      .select('scope_type, institution_id, department_ids')
-      .eq('incharge_id', userId)
-      .eq('is_active', true)
-      .single();
+      .select('institution_id, department_id')
+      .eq('user_id', userId)
+      .maybeSingle();
 
     if (error || !data) {
       console.error('[Access Control] No active incharge assignment found for user:', userId);
       return null;
     }
 
+    // If department_id is null, it's institution-wide scope
     return {
-      scopeType: data.scope_type,
+      scopeType: data.department_id ? 'department' : 'institution',
       institutionId: data.institution_id,
-      departmentIds: data.department_ids || [],
+      departmentIds: data.department_id ? [data.department_id] : [],
     };
   } catch (error) {
     console.error('[Access Control] Error getting incharge scope:', error);
@@ -269,6 +304,73 @@ export function canAccessMentor(
   // Department or multi-department scope
   if (mentorDepartmentId && inchargeScope.departmentIds.length > 0) {
     return inchargeScope.departmentIds.includes(mentorDepartmentId);
+  }
+
+  return false;
+}
+
+/**
+ * Check if user can manage (CRUD) a specific mentor's data
+ * Used for counseling sessions, student assignments, etc.
+ */
+export async function canManageMentor(
+  userAccess: UserAccess,
+  targetMentorId: string,
+  targetMentorInstitutionId: string
+): Promise<boolean> {
+  // Super admin can manage anyone
+  if (userAccess.isSuperAdmin) {
+    return true;
+  }
+
+  // Institution admin can manage mentors in their institution
+  if (userAccess.role === 'institution_admin' && userAccess.institutionId === targetMentorInstitutionId) {
+    return true;
+  }
+
+  // Mentor in-charge can manage mentors in their assigned institution
+  if (userAccess.isMentorIncharge && userAccess.mentorInchargeInstitutionId === targetMentorInstitutionId) {
+    return true;
+  }
+
+  // Regular mentors cannot manage other mentors
+  return false;
+}
+
+/**
+ * Check if user can assign students
+ */
+export async function canAssignStudents(
+  userAccess: UserAccess,
+  targetMentorId: string,
+  targetMentorInstitutionId: string
+): Promise<boolean> {
+  // Super admin can assign to anyone
+  if (userAccess.isSuperAdmin) {
+    return true;
+  }
+
+  // Institution admin can assign students in their institution
+  if (userAccess.role === 'institution_admin' && userAccess.institutionId === targetMentorInstitutionId) {
+    return true;
+  }
+
+  // Mentor in-charge can assign students to mentors in their institution
+  if (userAccess.isMentorIncharge && userAccess.mentorInchargeInstitutionId === targetMentorInstitutionId) {
+    return true;
+  }
+
+  // Check if the user is trying to assign to themselves (get their mentor record)
+  const supabase = createAdminClient();
+  const { data: mentor } = await supabase
+    .from('mentors')
+    .select('id')
+    .eq('user_id', userAccess.userId)
+    .maybeSingle();
+
+  // Regular mentors can only assign students to themselves
+  if (mentor && mentor.id === targetMentorId) {
+    return true;
   }
 
   return false;

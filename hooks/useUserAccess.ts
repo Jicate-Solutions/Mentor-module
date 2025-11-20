@@ -15,6 +15,8 @@ export interface UserAccessInfo {
   departmentId: string | null;
   isSuperAdmin: boolean;
   isInstitutionAdmin: boolean;
+  isMentorIncharge: boolean;
+  mentorInchargeInstitutionId: string | null;
 }
 
 export function useUserAccess() {
@@ -23,18 +25,42 @@ export function useUserAccess() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      const role = (user.role || 'student') as AccessLevel;
+    async function fetchAccessInfo() {
+      if (user) {
+        const role = (user.role || 'student') as AccessLevel;
 
-      setAccessInfo({
-        role,
-        institutionId: user.institution_id || null,
-        departmentId: user.department_id || null,
-        isSuperAdmin: role === 'super_admin',
-        isInstitutionAdmin: role === 'institution_admin',
-      });
+        // For mentors, check if they have mentor in-charge assignment
+        let isMentorIncharge = false;
+        let mentorInchargeInstitutionId: string | null = null;
+
+        if (role === 'mentor') {
+          try {
+            // This would require an API endpoint to check mentor incharge status
+            // For now, we'll set it to false and rely on server-side checks
+            // In a full implementation, you'd call an API like:
+            // const response = await fetch('/api/user/access-info');
+            // const data = await response.json();
+            // isMentorIncharge = data.isMentorIncharge;
+            // mentorInchargeInstitutionId = data.mentorInchargeInstitutionId;
+          } catch (error) {
+            console.error('[useUserAccess] Error checking mentor incharge status:', error);
+          }
+        }
+
+        setAccessInfo({
+          role,
+          institutionId: user.institution_id || null,
+          departmentId: user.department_id || null,
+          isSuperAdmin: role === 'super_admin',
+          isInstitutionAdmin: role === 'institution_admin',
+          isMentorIncharge,
+          mentorInchargeInstitutionId,
+        });
+      }
+      setLoading(false);
     }
-    setLoading(false);
+
+    fetchAccessInfo();
   }, [user]);
 
   return { accessInfo, loading };

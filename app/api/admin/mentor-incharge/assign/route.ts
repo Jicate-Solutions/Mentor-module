@@ -17,29 +17,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userId, scopeType, institutionId, departmentIds, notes } = body;
+    const { userId, institutionId, departmentId, notes } = body;
 
     // Validate required fields
-    if (!userId || !scopeType) {
+    if (!userId || !institutionId) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, scopeType' },
-        { status: 400 }
-      );
-    }
-
-    // Validate scope type
-    if (!['department', 'institution', 'multi_department'].includes(scopeType)) {
-      return NextResponse.json(
-        { error: 'Invalid scope_type. Must be: department, institution, or multi_department' },
-        { status: 400 }
-      );
-    }
-
-    // Validate department requirements
-    if ((scopeType === 'department' || scopeType === 'multi_department') &&
-        (!departmentIds || departmentIds.length === 0)) {
-      return NextResponse.json(
-        { error: 'department_ids required for department/multi_department scope' },
+        { error: 'Missing required fields: userId, institutionId' },
         { status: 400 }
       );
     }
@@ -49,7 +32,7 @@ export async function POST(request: NextRequest) {
     // Verify user exists and is a mentor
     const { data: targetUser, error: userCheckError } = await supabase
       .from('users')
-      .select('id, role, full_name')
+      .select('id, role, full_name, institution_id')
       .eq('id', userId)
       .single();
 
@@ -64,36 +47,72 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create assignment record (upsert in case re-assigning)
-    const { data: assignment, error: assignError } = await supabase
-      .from('mentor_incharge_assignments')
-      .upsert({
-        incharge_id: userId,
-        scope_type: scopeType,
-        institution_id: institutionId || null,
-        department_ids: departmentIds || [],
-        assigned_by: user.id,
-        is_active: true,
-        notes: notes || null,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'incharge_id',
-      })
-      .select()
-      .single();
-
-    if (assignError) {
-      console.error('[Assign Incharge] Error creating assignment:', assignError);
-      return NextResponse.json({ error: assignError.message }, { status: 500 });
+    // Verify institution matches user's institution (optional but recommended)
+    if (targetUser.institution_id && targetUser.institution_id !== institutionId) {
+      console.warn(`[Assign Incharge] Warning: User institution (${targetUser.institution_id}) differs from assignment institution (${institutionId})`);
     }
 
-    console.log(`[Assign Incharge] Successfully assigned ${targetUser.full_name} as Mentor Incharge`);
+    // Check if user already has an assignment
+    const { data: existingAssignment } = await supabase
+      .from('mentor_incharge_assignments')
+      .select('id, institution_id, department_id')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-    return NextResponse.json({
-      success: true,
-      message: 'Mentor Incharge assigned successfully',
-      assignment,
-    });
+    if (existingAssignment) {
+      // Update existing assignment
+      const { data: assignment, error: updateError } = await supabase
+        .from('mentor_incharge_assignments')
+        .update({
+          institution_id: institutionId,
+          department_id: departmentId || null,
+          assigned_by: user.id,
+          notes: notes || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingAssignment.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('[Assign Incharge] Error updating assignment:', updateError);
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+
+      console.log(`[Assign Incharge] Successfully updated ${targetUser.full_name} as Mentor Incharge`);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Mentor Incharge assignment updated successfully',
+        assignment,
+      });
+    } else {
+      // Create new assignment
+      const { data: assignment, error: assignError } = await supabase
+        .from('mentor_incharge_assignments')
+        .insert({
+          user_id: userId,
+          institution_id: institutionId,
+          department_id: departmentId || null,
+          assigned_by: user.id,
+          notes: notes || null,
+        })
+        .select()
+        .single();
+
+      if (assignError) {
+        console.error('[Assign Incharge] Error creating assignment:', assignError);
+        return NextResponse.json({ error: assignError.message }, { status: 500 });
+      }
+
+      console.log(`[Assign Incharge] Successfully assigned ${targetUser.full_name} as Mentor Incharge`);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Mentor Incharge assigned successfully',
+        assignment,
+      });
+    }
   } catch (error: any) {
     console.error('[Assign Incharge] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

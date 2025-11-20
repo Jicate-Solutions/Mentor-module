@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { getUserAccess, canAssignStudents } from '@/lib/middleware/access-control';
+import { getCurrentUser } from '@/lib/auth/get-current-user';
 
 /**
  * GET /api/mentor/[id]/students
@@ -119,10 +121,17 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    // Get current user and access level
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
-    if (!token) {
+    const userAccess = await getUserAccess();
+    if (!userAccess) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -313,6 +322,62 @@ export async function POST(
 
     console.log('[Students API] Using mentor:', mentor);
 
+    // AUTHORIZATION CHECK: Can the current user assign students to this mentor?
+    const canAssign = await canAssignStudents(
+      userAccess,
+      mentor!.id,
+      mentor!.institution_id
+    );
+
+    if (!canAssign) {
+      console.log('[Students API] Authorization failed:', {
+        userId: userAccess.userId,
+        role: userAccess.role,
+        isMentorIncharge: userAccess.isMentorIncharge,
+        targetMentorId: mentor!.id,
+        targetInstitutionId: mentor!.institution_id,
+      });
+      return NextResponse.json(
+        {
+          error: 'Forbidden: You do not have permission to assign students to this mentor',
+          details: 'Regular mentors can only assign students to themselves. Mentor in-charges can assign within their institution.'
+        },
+        { status: 403 }
+      );
+    }
+
+    console.log('[Students API] ✅ Authorization passed');
+
+    // Use actual mentor or fallback values
+    const departmentId = mentor?.department_id || '00000000-0000-0000-0000-000000000001';
+    const institutionId = mentor?.institution_id || '00000000-0000-0000-0000-000000000001';
+
+    // INSTITUTION BOUNDARY CHECK: Ensure student is being assigned within the same institution
+    // (Student institution will be set to mentor's institution during upsert, but we validate here)
+    if (!userAccess.isSuperAdmin) {
+      // Non-super admins cannot cross institution boundaries
+      if (userAccess.institutionId && institutionId !== userAccess.institutionId && !userAccess.isMentorIncharge) {
+        return NextResponse.json(
+          {
+            error: 'Forbidden: Cannot assign students across institution boundaries',
+            details: 'You can only assign students within your own institution.'
+          },
+          { status: 403 }
+        );
+      }
+
+      // Mentor in-charge can only assign within their assigned institution
+      if (userAccess.isMentorIncharge && institutionId !== userAccess.mentorInchargeInstitutionId) {
+        return NextResponse.json(
+          {
+            error: 'Forbidden: Cannot assign students outside your assigned institution',
+            details: 'Mentor in-charges can only assign students within their assigned institution.'
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     // Check if student is already assigned to this mentor
     const { data: existing, error: checkError } = await supabaseAdmin
       .from('mentor_students')
@@ -327,10 +392,6 @@ export async function POST(
         { status: 400 }
       );
     }
-
-    // Use actual mentor or fallback values
-    const departmentId = mentor?.department_id || '00000000-0000-0000-0000-000000000001';
-    const institutionId = mentor?.institution_id || '00000000-0000-0000-0000-000000000001';
 
     // First, upsert student data into students table with required fields
     console.log('[Students API] Upserting student with values:', {

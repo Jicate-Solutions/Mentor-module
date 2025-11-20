@@ -19,7 +19,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { scopeType, institutionId, departmentIds, isActive, notes } = body;
+    const { institutionId, departmentId, notes } = body;
 
     const supabase = createAdminClient();
 
@@ -27,10 +27,8 @@ export async function PUT(
       updated_at: new Date().toISOString(),
     };
 
-    if (scopeType !== undefined) updateData.scope_type = scopeType;
     if (institutionId !== undefined) updateData.institution_id = institutionId;
-    if (departmentIds !== undefined) updateData.department_ids = departmentIds;
-    if (isActive !== undefined) updateData.is_active = isActive;
+    if (departmentId !== undefined) updateData.department_id = departmentId;
     if (notes !== undefined) updateData.notes = notes;
 
     const { data, error } = await supabase
@@ -78,7 +76,7 @@ export async function DELETE(
     // Get assignment to log the removal
     const { data: assignment, error: fetchError } = await supabase
       .from('mentor_incharge_assignments')
-      .select('incharge_id')
+      .select('user_id')
       .eq('id', id)
       .single();
 
@@ -97,7 +95,7 @@ export async function DELETE(
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
-    console.log(`[Delete Incharge] Removed mentor incharge assignment for user ${assignment.incharge_id}`);
+    console.log(`[Delete Incharge] Removed mentor incharge assignment for user ${assignment.user_id}`);
 
     return NextResponse.json({
       success: true,

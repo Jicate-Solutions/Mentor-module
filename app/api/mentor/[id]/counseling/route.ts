@@ -92,12 +92,18 @@ async function createFeedbackRecordsAndSendEmails(
 
     if (feedbackError) {
       console.error(`[Feedback] Failed to create feedback record:`, feedbackError);
-      return;
+      console.error(`[Feedback] Error code:`, feedbackError.code);
+      console.error(`[Feedback] Full error:`, JSON.stringify(feedbackError, null, 2));
+
+      // Even if feedback record creation fails, we should still send the notification
+      // This can happen if duplicate records exist
+      console.warn(`[Feedback] Skipping feedback record creation but will still send email`);
+    } else {
+      console.log(`[Feedback] Created feedback record ${feedbackRecord.id}`);
     }
 
-    console.log(`[Feedback] Created feedback record ${feedbackRecord.id}`);
-
-    // Send email (non-blocking, catch errors)
+    // Send email regardless of whether feedback record was created
+    // The session creation notification is more important than the feedback record
     try {
       console.log(`[Feedback] Preparing to send email to ${studentEmail}`);
       console.log(`[Feedback] Email data:`, {
@@ -119,11 +125,13 @@ async function createFeedbackRecordsAndSendEmails(
       });
 
       if (emailSent) {
-        // Update email_sent_at timestamp
-        await supabaseAdmin
-          .from('student_feedback')
-          .update({ email_sent_at: new Date().toISOString() })
-          .eq('id', feedbackRecord.id);
+        // Update email_sent_at timestamp only if feedback record was created
+        if (feedbackRecord?.id) {
+          await supabaseAdmin
+            .from('student_feedback')
+            .update({ email_sent_at: new Date().toISOString() })
+            .eq('id', feedbackRecord.id);
+        }
 
         console.log(`[Feedback] ✅ Email sent successfully to ${studentEmail}`);
       } else {
@@ -392,7 +400,7 @@ export async function POST(
 
     // Verify student exists in Supabase (should exist from assignment)
     console.log('[Counseling API] Checking if student exists:', student.id);
-    const { data: studentData, error: studentError } = await supabaseAdmin
+    let { data: studentData, error: studentError } = await supabaseAdmin
       .from('students')
       .select('id, name, roll_number, email')
       .eq('id', student.id)
@@ -403,6 +411,26 @@ export async function POST(
       studentData,
       error: studentError
     });
+
+    // If student exists but has placeholder email, update with real email from JKKN API
+    if (studentData && realStudentEmail && studentData.email?.includes('@student.jkkn.ac.in')) {
+      console.log('[Counseling API] Updating student with real email from JKKN API');
+      const { data: updatedStudent } = await supabaseAdmin
+        .from('students')
+        .update({
+          email: realStudentEmail,
+          name: realStudentData?.name || studentData.name,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', student.id)
+        .select('id, name, roll_number, email')
+        .single();
+
+      if (updatedStudent) {
+        studentData = updatedStudent;
+        console.log('[Counseling API] ✅ Updated student email to:', realStudentEmail);
+      }
+    }
 
     // If student not found, create them (fallback)
     if (studentError || !studentData) {
@@ -497,7 +525,14 @@ export async function POST(
     });
 
     // Send session creation notification email (primary notification)
-    if (studentEmail && !studentEmail.includes('@student.jkkn.ac.in')) {
+    // Send emails if we have a valid email address (not empty and not a placeholder)
+    const hasValidEmail = studentEmail &&
+                         studentEmail.trim() !== '' &&
+                         !studentEmail.includes('@student.jkkn.ac.in');
+
+    if (hasValidEmail) {
+      console.log('[Counseling API] ✅ Valid email found, sending notifications:', studentEmail);
+
       // Send session creation notification (non-blocking)
       sendSessionCreationNotification(
         newSession.id,
@@ -528,7 +563,12 @@ export async function POST(
         console.error('[Counseling API] Background feedback creation failed:', err);
       });
     } else {
-      console.warn(`[Counseling API] Skipping emails - no valid email for student ${student.id}`);
+      console.warn(`[Counseling API] ⚠️ Skipping emails - no valid email for student ${student.id}`);
+      console.warn(`[Counseling API] Email details:`, {
+        studentEmail,
+        isPlaceholder: studentEmail?.includes('@student.jkkn.ac.in'),
+        realEmailFromJKKN: realStudentEmail,
+      });
     }
 
     // Transform to frontend interface

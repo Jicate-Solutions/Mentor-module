@@ -71,7 +71,8 @@
       "Bash(timeout:*)",
       "Bash(del /f \".next\\dev\\lock\" 2)",
       "Bash(exit 0)",
-      "Bash(del \"hooks\\dashboard\\useDepartmentSessions.ts\")"
+      "Bash(del \"hooks\\dashboard\\useDepartmentSessions.ts\")",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

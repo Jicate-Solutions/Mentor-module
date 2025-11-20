@@ -3,6 +3,52 @@ import { createAdminClient } from '@/lib/supabase/server';
 import type { CounselingSession } from '@/lib/types/mentor';
 import { randomBytes } from 'crypto';
 import { sendFeedbackRequestEmail } from '@/lib/email/send-feedback-request';
+import { sendSessionCreatedEmail } from '@/lib/email/send-session-notification';
+
+/**
+ * Helper function to send session creation notification email
+ * Runs asynchronously after session creation
+ */
+async function sendSessionCreationNotification(
+  sessionId: string,
+  studentId: string,
+  mentorId: string,
+  studentEmail: string,
+  studentName: string,
+  mentorName: string,
+  sessionName: string,
+  sessionDate: string,
+  sessionTime: string,
+  sessionNotes?: string
+) {
+  try {
+    console.log(`[Session Email] Sending session creation notification for session ${sessionId}`);
+    console.log(`[Session Email] Recipient: ${studentEmail}`);
+
+    const emailSent = await sendSessionCreatedEmail({
+      studentEmail,
+      studentName,
+      studentId,
+      mentorName,
+      mentorId,
+      sessionId,
+      sessionName,
+      sessionDate,
+      sessionTime,
+      sessionNotes,
+      sessionStatus: 'scheduled',
+    });
+
+    if (emailSent) {
+      console.log(`[Session Email] ✅ Session creation notification sent successfully to ${studentEmail}`);
+    } else {
+      console.error(`[Session Email] ❌ Failed to send session creation notification to ${studentEmail}`);
+    }
+  } catch (error) {
+    console.error(`[Session Email] ❌ Exception while sending session creation notification:`, error);
+    // Don't throw - session creation should succeed even if email fails
+  }
+}
 
 /**
  * Helper function to create feedback records and send emails
@@ -53,7 +99,17 @@ async function createFeedbackRecordsAndSendEmails(
 
     // Send email (non-blocking, catch errors)
     try {
-      await sendFeedbackRequestEmail({
+      console.log(`[Feedback] Preparing to send email to ${studentEmail}`);
+      console.log(`[Feedback] Email data:`, {
+        studentEmail,
+        studentName,
+        mentorName,
+        sessionName,
+        sessionDate,
+        feedbackToken: feedbackToken.substring(0, 10) + '...',
+      });
+
+      const emailSent = await sendFeedbackRequestEmail({
         studentEmail,
         studentName,
         mentorName,
@@ -62,15 +118,20 @@ async function createFeedbackRecordsAndSendEmails(
         feedbackToken,
       });
 
-      // Update email_sent_at timestamp
-      await supabaseAdmin
-        .from('student_feedback')
-        .update({ email_sent_at: new Date().toISOString() })
-        .eq('id', feedbackRecord.id);
+      if (emailSent) {
+        // Update email_sent_at timestamp
+        await supabaseAdmin
+          .from('student_feedback')
+          .update({ email_sent_at: new Date().toISOString() })
+          .eq('id', feedbackRecord.id);
 
-      console.log(`[Feedback] ✅ Email sent to ${studentEmail}`);
+        console.log(`[Feedback] ✅ Email sent successfully to ${studentEmail}`);
+      } else {
+        console.error(`[Feedback] ❌ Email sending returned false for ${studentEmail}`);
+      }
     } catch (emailError) {
-      console.error(`[Feedback] Failed to send email to ${studentEmail}:`, emailError);
+      console.error(`[Feedback] ❌ Exception while sending email to ${studentEmail}`);
+      console.error('[Feedback] Email error details:', emailError);
       // Don't throw - we still want the session to be created successfully
     }
   } catch (error) {
@@ -302,6 +363,33 @@ export async function POST(
     const departmentId = mentor?.department_id || '00000000-0000-0000-0000-000000000001';
     const institutionId = mentor?.institution_id || '00000000-0000-0000-0000-000000000001';
 
+    // Fetch real student email from JKKN API
+    console.log('[Counseling API] Fetching student details from JKKN API:', student.id);
+    let realStudentEmail = student.email || '';
+    let realStudentData = null;
+
+    try {
+      const jkknResponse = await fetch(`${process.env.NEXT_PUBLIC_MYJKKN_BASE_URL}/api-management/students/${student.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_MYJKKN_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store',
+      });
+
+      if (jkknResponse.ok) {
+        const jkknData = await jkknResponse.json();
+        realStudentData = jkknData.data;
+        realStudentEmail = realStudentData?.email || realStudentData?.college_email || student.email || '';
+        console.log('[Counseling API] ✅ Got real student email from JKKN API:', realStudentEmail);
+      } else {
+        console.warn('[Counseling API] Could not fetch student from JKKN API, will use provided email');
+      }
+    } catch (jkknError) {
+      console.error('[Counseling API] Error fetching student from JKKN API:', jkknError);
+    }
+
     // Verify student exists in Supabase (should exist from assignment)
     console.log('[Counseling API] Checking if student exists:', student.id);
     const { data: studentData, error: studentError } = await supabaseAdmin
@@ -329,12 +417,12 @@ export async function POST(
         .from('students')
         .upsert({
           id: student.id,
-          name: student.name,
-          email: student.email || `${student.id}@student.jkkn.ac.in`,
-          roll_number: student.rollNumber || student.id,
+          name: realStudentData?.name || student.name,
+          email: realStudentEmail || `${student.id}@student.jkkn.ac.in`,  // Use real email from JKKN API
+          roll_number: realStudentData?.roll_number || student.rollNumber || student.id,
           department_id: departmentId,
           institution_id: institutionId,
-          year: student.year || null,
+          year: realStudentData?.year || student.year || null,
           is_active: true,
           updated_at: new Date().toISOString(),
         }, {
@@ -398,11 +486,35 @@ export async function POST(
       .single();
 
     const mentorName = mentorUserData?.full_name || 'Your Mentor';
-    const studentEmail = studentData?.email || student.email || '';
+    // Use the real email from JKKN API, fallback to Supabase, then request data
+    const studentEmail = realStudentEmail || studentData?.email || student.email || '';
 
-    // Only create feedback if we have a valid email
-    if (studentEmail) {
-      // Run asynchronously without blocking response
+    console.log('[Counseling API] Email resolution:', {
+      realStudentEmail,
+      supabaseEmail: studentData?.email,
+      requestEmail: student.email,
+      finalEmail: studentEmail
+    });
+
+    // Send session creation notification email (primary notification)
+    if (studentEmail && !studentEmail.includes('@student.jkkn.ac.in')) {
+      // Send session creation notification (non-blocking)
+      sendSessionCreationNotification(
+        newSession.id,
+        student.id,
+        mentor!.id,
+        studentEmail,
+        studentData?.name || student.name || 'Student',
+        mentorName,
+        sessionName,
+        date,
+        time,
+        notes
+      ).catch(err => {
+        console.error('[Counseling API] Background session notification failed:', err);
+      });
+
+      // Also create feedback record and send feedback email (non-blocking)
       createFeedbackRecordsAndSendEmails(
         newSession.id,
         student.id,
@@ -416,7 +528,7 @@ export async function POST(
         console.error('[Counseling API] Background feedback creation failed:', err);
       });
     } else {
-      console.warn(`[Counseling API] Skipping feedback email - no email for student ${student.id}`);
+      console.warn(`[Counseling API] Skipping emails - no valid email for student ${student.id}`);
     }
 
     // Transform to frontend interface

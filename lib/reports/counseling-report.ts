@@ -2,10 +2,190 @@ import { createAdminClient } from '@/lib/supabase/server';
 import * as XLSX from 'xlsx';
 import type { ReportDateRange, CounselingReportRow } from '@/lib/types/reports';
 
+// JKKN API interfaces
+interface JKKNStudent {
+  id: string;
+  first_name: string;
+  last_name: string;
+  roll_number: string;
+  year?: string;
+  semester?: string;
+  department?: {
+    id: string;
+    name: string;
+  } | string;
+  program?: {
+    id: string;
+    name: string;
+  } | string;
+}
+
+/**
+ * Fetch department name from JKKN API
+ */
+async function fetchDepartmentFromJKKN(departmentId: string): Promise<string> {
+  try {
+    const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+    const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+    if (!apiKey) {
+      console.warn('[JKKN API] API key not configured, cannot fetch department');
+      return '';
+    }
+
+    const url = `${baseUrl}/api-management/departments/${departmentId}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      console.error(`[JKKN API] Failed to fetch department ${departmentId}:`, response.statusText);
+      return '';
+    }
+
+    const result = await response.json();
+    const department = result.data;
+
+    if (!department) {
+      return '';
+    }
+
+    return department.name || department.department_name || '';
+  } catch (error) {
+    console.error('[JKKN API] Error fetching department:', error);
+    return '';
+  }
+}
+
+/**
+ * Fetch all students from JKKN API and create a map by roll number
+ */
+async function fetchAllStudentsFromJKKN(): Promise<Map<string, JKKNStudent>> {
+  const studentMap = new Map<string, JKKNStudent>();
+
+  try {
+    const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+    const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+    if (!apiKey) {
+      console.warn('[JKKN API] API key not configured, skipping JKKN data enrichment');
+      return studentMap;
+    }
+
+    console.log('[JKKN API] Fetching all students for data enrichment...');
+
+    // Fetch all students (multiple pages if needed)
+    let allStudents: any[] = [];
+    let currentPage = 1;
+    const maxLimit = 1000;
+    let hasMore = true;
+    const maxPages = 15;
+
+    while (hasMore && currentPage <= maxPages) {
+      const url = `${baseUrl}/api-management/students?page=${currentPage}&limit=${maxLimit}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        console.error(`[JKKN API] Failed to fetch students page ${currentPage}:`, response.statusText);
+        break;
+      }
+
+      const pageData = await response.json();
+      const students = pageData.data || [];
+
+      console.log(`[JKKN API] Fetched page ${currentPage}: ${students.length} students`);
+
+      allStudents = [...allStudents, ...students];
+
+      // Check if there are more pages
+      hasMore = students.length === maxLimit;
+
+      if (pageData.metadata) {
+        const totalPages = pageData.metadata.totalPages || pageData.metadata.total_pages;
+        if (totalPages && currentPage >= totalPages) {
+          hasMore = false;
+        }
+      }
+
+      currentPage++;
+    }
+
+    console.log(`[JKKN API] Total students fetched: ${allStudents.length}`);
+
+    // DEBUG: Log first student to see all available fields
+    if (allStudents.length > 0) {
+      console.log('[JKKN API] Sample student fields:', Object.keys(allStudents[0]));
+      console.log('[JKKN API] Sample student data:', JSON.stringify(allStudents[0], null, 2));
+    }
+
+    // Build map with roll_number as key
+    allStudents.forEach((student: any) => {
+      const rollNumber = (student.roll_number || student.rollNumber || student.roll_no || '').toLowerCase();
+
+      if (rollNumber) {
+        // Try to extract year/semester from various possible fields
+        const yearValue = student.year ||
+                         student.current_year ||
+                         student.semester ||
+                         student.current_semester ||
+                         student.batch ||
+                         student.academic_year ||
+                         '';
+
+        studentMap.set(rollNumber, {
+          id: student.id || student.student_id,
+          first_name: student.first_name || student.firstName || '',
+          last_name: student.last_name || student.lastName || '',
+          roll_number: student.roll_number || student.rollNumber || student.roll_no || '',
+          year: yearValue,
+          semester: yearValue,
+          department: student.department
+            ? (typeof student.department === 'object'
+                ? {
+                    id: student.department.id || student.department.department_id,
+                    name: student.department.name || student.department.department_name || ''
+                  }
+                : student.department)
+            : (student.department_name || ''),
+          program: student.program
+            ? (typeof student.program === 'object'
+                ? {
+                    id: student.program.id || student.program.program_id,
+                    name: student.program.name || student.program.program_name || ''
+                  }
+                : student.program)
+            : (student.program_name || ''),
+        });
+      }
+    });
+
+    console.log(`[JKKN API] Built student map with ${studentMap.size} entries`);
+
+    return studentMap;
+  } catch (error) {
+    console.error('[JKKN API] Error fetching students:', error);
+    return studentMap;
+  }
+}
+
 export async function generateCounselingReport(
   mentorId: string,
   dateRange: ReportDateRange
-): Promise<{ buffer: Buffer; mentorName: string }> {
+): Promise<{ buffer: Buffer; mentorName: string; sessionCount: number }> {
   console.log(`[Report] Starting report generation for mentor ${mentorId}`);
   console.log(`[Report] Date range: ${dateRange.start.toISOString()} to ${dateRange.end.toISOString()}`);
 
@@ -46,21 +226,14 @@ export async function generateCounselingReport(
   const actualMentorId = mentor.id;
   console.log(`[Report] Found mentor record (Mentor ID: ${actualMentorId})`);
 
-  // Fetch department name separately if department_id exists
+  // Fetch mentor's department name from JKKN API
   let departmentName = '';
   if (mentorUser.department_id) {
-    const { data: dept, error: deptErr } = await supabase
-      .from('departments')
-      .select('department_name')
-      .eq('id', mentorUser.department_id)
-      .single();
-
-    if (deptErr) {
-      console.warn('[Report] Could not fetch mentor department:', deptErr);
-    }
-
-    departmentName = dept?.department_name || '';
-    console.log(`[Report] Mentor department: ${departmentName || 'N/A'}`);
+    console.log(`[Report] Fetching mentor department from JKKN API: ${mentorUser.department_id}`);
+    departmentName = await fetchDepartmentFromJKKN(mentorUser.department_id);
+    console.log(`[Report] Mentor department from JKKN: ${departmentName || 'Not found'}`);
+  } else {
+    console.warn('[Report] Mentor has no department_id');
   }
 
   // Fetch mentor's institution name
@@ -139,6 +312,11 @@ export async function generateCounselingReport(
     console.warn('  3. mentor_id matches');
   }
 
+  // Fetch student data from JKKN API for enrichment
+  console.log('[Report] Fetching student data from JKKN API...');
+  const jkknStudentMap = await fetchAllStudentsFromJKKN();
+  console.log(`[Report] JKKN student map loaded with ${jkknStudentMap.size} students`);
+
   // Fetch department names for all unique department_ids from students
   const departmentIds = [...new Set(
     sessions
@@ -177,6 +355,39 @@ export async function generateCounselingReport(
 
     console.log(`[Report] Session ${index + 1}: ${session.session_name}, has feedback: ${!!feedback}`);
 
+    // Try to get enriched student data from JKKN API
+    const rollNumber = session.student?.roll_number || '';
+    const jkknStudent = rollNumber ? jkknStudentMap.get(rollNumber.toLowerCase()) : null;
+
+    // Use JKKN data if available, fallback to Supabase data
+    let studentCourse = '';
+    let studentSemester = '';
+
+    if (jkknStudent) {
+      // Extract department/program name from JKKN data
+      if (typeof jkknStudent.program === 'object' && jkknStudent.program.name) {
+        studentCourse = jkknStudent.program.name;
+      } else if (typeof jkknStudent.program === 'string') {
+        studentCourse = jkknStudent.program;
+      } else if (typeof jkknStudent.department === 'object' && jkknStudent.department.name) {
+        studentCourse = jkknStudent.department.name;
+      } else if (typeof jkknStudent.department === 'string') {
+        studentCourse = jkknStudent.department;
+      }
+
+      studentSemester = jkknStudent.year || jkknStudent.semester || '';
+
+      console.log(`[Report] Enriched student ${rollNumber} with JKKN data: course=${studentCourse}, semester=${studentSemester}`);
+    } else {
+      // Fallback to Supabase data
+      studentCourse = session.student?.department_id ? (departmentMap[session.student.department_id] || '') : '';
+      studentSemester = session.student?.year || '';
+
+      if (rollNumber) {
+        console.warn(`[Report] No JKKN data found for student ${rollNumber}, using Supabase data`);
+      }
+    }
+
     const row = {
       serialNo: index + 1,
       sessionName: session.session_name,
@@ -184,10 +395,10 @@ export async function generateCounselingReport(
       time: session.time,
       staffCodeAndName: `${mentorUser.jkkn_user_id} - ${mentorUser.full_name}`,
       department: departmentName,
-      studentRegnNo: session.student?.roll_number || '',
+      studentRegnNo: rollNumber,
       studentName: session.student?.name || 'Unknown Student',
-      studentCourse: session.student?.department_id ? (departmentMap[session.student.department_id] || '') : '',
-      studentSemester: session.student?.year || '',
+      studentCourse: studentCourse,
+      studentSemester: studentSemester,
       academicYear: getCurrentAcademicYear(),
       studentQuery: feedback?.counseling_queries || '',
       queryDate: feedback?.submitted_at ? formatDate(feedback.submitted_at) : '',
@@ -209,7 +420,7 @@ export async function generateCounselingReport(
   console.log(`[Report] Generating Excel file with ${reportData.length} rows`);
   const buffer = generateExcelFile(institutionName, mentorUser.full_name, reportData);
   console.log(`[Report] Excel file generated successfully, size: ${buffer.length} bytes`);
-  return { buffer, mentorName: mentorUser.full_name };
+  return { buffer, mentorName: mentorUser.full_name, sessionCount: sessions?.length || 0 };
 }
 
 function formatDate(dateString: string): string {

@@ -40,18 +40,31 @@ export default function StudentsPage() {
       label: 'Institution',
       type: 'dropdown',
       options: async () => {
-        // Extract unique institutions from students data
-        const uniqueInstitutions = new Map();
-        students.forEach((student) => {
-          const inst = student.institution;
-          if (typeof inst === 'object' && inst.id && inst.name) {
-            uniqueInstitutions.set(inst.id, inst.name);
+        // Fetch ALL institutions from API, not just from current students page
+        try {
+          const response = await fetch('/api/jkkn/institutions?page=1&limit=100', {
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            console.error('Failed to fetch institutions for filter');
+            return [];
           }
-        });
-        return Array.from(uniqueInstitutions.entries()).map(([id, name]) => ({
-          value: id,
-          label: name,
-        }));
+
+          const result = await response.json();
+
+          if (result.success && result.data) {
+            return result.data.map((inst: any) => ({
+              value: inst.id,
+              label: inst.name,
+            }));
+          }
+
+          return [];
+        } catch (error) {
+          console.error('Error fetching institutions:', error);
+          return [];
+        }
       },
       placeholder: 'All institutions',
       width: 'w-56',
@@ -61,18 +74,31 @@ export default function StudentsPage() {
       label: 'Department',
       type: 'dropdown',
       options: async () => {
-        // Extract unique departments from students data
-        const uniqueDepartments = new Map();
-        students.forEach((student) => {
-          const dept = student.department;
-          if (typeof dept === 'object' && dept.id && dept.name) {
-            uniqueDepartments.set(dept.id, dept.name);
+        // Fetch ALL departments from API
+        try {
+          const response = await fetch('/api/jkkn/departments?page=1&limit=500', {
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            console.error('Failed to fetch departments for filter');
+            return [];
           }
-        });
-        return Array.from(uniqueDepartments.entries()).map(([id, name]) => ({
-          value: id,
-          label: name,
-        }));
+
+          const result = await response.json();
+
+          if (result.success && result.data) {
+            return result.data.map((dept: any) => ({
+              value: dept.id,
+              label: dept.name,
+            }));
+          }
+
+          return [];
+        } catch (error) {
+          console.error('Error fetching departments:', error);
+          return [];
+        }
       },
       placeholder: 'All departments',
       width: 'w-56',
@@ -83,18 +109,31 @@ export default function StudentsPage() {
       label: 'Program',
       type: 'dropdown',
       options: async () => {
-        // Extract unique programs from students data
-        const uniquePrograms = new Map();
-        students.forEach((student) => {
-          const prog = student.program;
-          if (typeof prog === 'object' && prog.id && prog.name) {
-            uniquePrograms.set(prog.id, prog.name);
+        // Fetch ALL programs from API
+        try {
+          const response = await fetch('/api/jkkn/programs?page=1&limit=1000', {
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            console.error('Failed to fetch programs for filter');
+            return [];
           }
-        });
-        return Array.from(uniquePrograms.entries()).map(([id, name]) => ({
-          value: id,
-          label: name,
-        }));
+
+          const result = await response.json();
+
+          if (result.success && result.data) {
+            return result.data.map((prog: any) => ({
+              value: prog.id,
+              label: prog.name,
+            }));
+          }
+
+          return [];
+        } catch (error) {
+          console.error('Error fetching programs:', error);
+          return [];
+        }
       },
       placeholder: 'All programs',
       width: 'w-56',
@@ -124,6 +163,12 @@ export default function StudentsPage() {
 
   // Filter students based on search and filters
   useEffect(() => {
+    console.log('[Filter Effect] Running filter...', {
+      totalStudents: students.length,
+      searchQuery,
+      filters
+    });
+
     let filtered = [...students];
 
     // Apply search filter
@@ -144,14 +189,46 @@ export default function StudentsPage() {
           `${student.first_name} ${student.last_name}`.toLowerCase().includes(query)
         );
       });
+      console.log('[Filter Effect] After search filter:', filtered.length);
     }
 
     // Apply institution filter
     if (filters.institution_id && filters.institution_id !== '') {
+      console.log('[Filter Effect] Applying institution filter:', filters.institution_id);
+
+      // Debug: Show sample student institution data
+      if (students.length > 0) {
+        console.log('[Filter Effect] Sample student institution data:', {
+          first3: students.slice(0, 3).map(s => ({
+            name: `${s.first_name} ${s.last_name}`,
+            institution: s.institution,
+            instId: typeof s.institution === 'object' ? s.institution.id : s.institution
+          }))
+        });
+      }
+
+      const beforeCount = filtered.length;
       filtered = filtered.filter((student) => {
         const inst = student.institution;
         const instId = typeof inst === 'object' ? inst.id : inst;
-        return instId === filters.institution_id;
+        const matches = instId === filters.institution_id;
+
+        // Debug first 5 non-matches
+        if (!matches && beforeCount < 5) {
+          console.log('[Filter Debug] No match:', {
+            student: `${student.first_name} ${student.last_name}`,
+            instId,
+            filterValue: filters.institution_id,
+            institution: inst
+          });
+        }
+
+        return matches;
+      });
+      console.log('[Filter Effect] After institution filter:', {
+        before: beforeCount,
+        after: filtered.length,
+        filterValue: filters.institution_id
       });
     }
 
@@ -202,21 +279,46 @@ export default function StudentsPage() {
 
   /**
    * Load students data
+   * Note: Loads ALL students (10000) to enable client-side filtering
+   * This is necessary because filters need access to complete dataset
    */
   const loadStudents = async (page: number = 1) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetchStudents(page, 10);
+      // Load ALL students (10000) for filtering to work properly
+      // Using page=1, limit=10000 to get complete dataset
+      console.log('[Students Page] Fetching students with limit=10000...');
+      const response = await fetchStudents(1, 10000);
+
+      console.log('[Students Page] Received students:', {
+        count: response.data.length,
+        metadata: response.metadata,
+        firstStudent: response.data[0],
+        lastStudent: response.data[response.data.length - 1]
+      });
+
+      // Debug: Check unique institutions in loaded data
+      const uniqueInstitutions = new Map();
+      response.data.forEach((student: any) => {
+        const inst = student.institution;
+        if (typeof inst === 'object' && inst.id && inst.name) {
+          uniqueInstitutions.set(inst.id, inst.name);
+        }
+      });
+      console.log('[Students Page] Unique institutions in loaded data:',
+        Array.from(uniqueInstitutions.entries()).map(([id, name]) => ({ id, name }))
+      );
 
       setStudents(response.data);
       setFilteredStudents(response.data);
-      setCurrentPage(response.metadata.page);
-      setTotalPages(response.metadata.totalPages);
-      setTotal(response.metadata.total);
+      setCurrentPage(1); // Always page 1 since we load all data
+      setTotalPages(1); // Single page with all data
+      setTotal(response.data.length); // Total = actual data length
     } catch (err: any) {
       const apiError = err as ApiError;
+      console.error('[Students Page] Error loading students:', apiError);
       setError(apiError.message || 'Failed to fetch students data');
     } finally {
       setLoading(false);

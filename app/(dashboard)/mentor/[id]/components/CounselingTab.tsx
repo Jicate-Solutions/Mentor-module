@@ -48,6 +48,24 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
 
+  // Edit Session Modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingSession, setEditingSession] = useState<CounselingSession | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    sessionName: '',
+    date: '',
+    time: '',
+    notes: '',
+    attachment: '',
+    status: 'scheduled' as 'scheduled' | 'completed' | 'cancelled'
+  });
+
+  // Delete confirmation
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingSession, setDeletingSession] = useState<CounselingSession | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Group sessions by session details (same session name, date, time = same group session)
   const groupSessionsByDetails = () => {
     const grouped = new Map<string, {
@@ -106,7 +124,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
           headers: { 'Authorization': `Bearer ${accessToken}` },
         });
 
-          if (sessionsRes.ok) {
+        if (sessionsRes.ok) {
           const data = await sessionsRes.json();
           setSessions(data.sessions || []);
         } else {
@@ -295,11 +313,11 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
     }
   };
 
-  // Submit feedback
+  // Submit session log
   const handleSubmitFeedback = async () => {
     // Validate required fields
     if (!accessToken || !selectedSession || !feedbackData.counselingQueries || !feedbackData.actionTaken) {
-      toast.warning('Missing feedback', 'Please fill in all feedback fields');
+      toast.warning('Missing information', 'Please fill in all required fields');
       return;
     }
 
@@ -313,7 +331,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         setUploadingFile(true);
         const formData = new FormData();
         formData.append('file', feedbackData.attachment);
-        formData.append('bucket', 'counseling-attachments');
+        formData.append('bucket', 'documents');
         formData.append('path', `feedback/${selectedSession.id}`);
 
         const uploadResponse = await fetch('/api/upload', {
@@ -356,7 +374,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
           s.id === selectedSession.id ? data.session : s
         ));
         setSelectedSession(data.session);
-        toast.success('Feedback submitted', 'Your feedback has been saved successfully');
+        toast.success('Session log submitted', 'Your session log has been saved successfully');
         // Clear feedback form
         setFeedbackData({
           counselingQueries: '',
@@ -365,13 +383,113 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         });
       } else {
         const errorData = await response.json();
-        toast.error('Failed to submit feedback', errorData.error || 'An error occurred');
+        toast.error('Failed to submit session log', errorData.error || 'An error occurred');
       }
     } catch (error) {
-      toast.error('Error submitting feedback', 'An unexpected error occurred. Please try again');
+      toast.error('Error submitting session log', 'An unexpected error occurred. Please try again');
     } finally {
       setSubmittingFeedback(false);
       setUploadingFile(false);
+    }
+  };
+
+  // Open edit modal
+  const handleEditSession = (session: CounselingSession) => {
+    setEditingSession(session);
+    setEditFormData({
+      sessionName: session.sessionName,
+      date: session.date,
+      time: session.time,
+      notes: session.notes || '',
+      attachment: session.attachment || '',
+      status: session.status
+    });
+    setShowEditModal(true);
+  };
+
+  // Update session
+  const handleUpdateSession = async () => {
+    if (!accessToken || !editingSession) return;
+
+    // Validate required fields
+    if (!editFormData.sessionName || !editFormData.date || !editFormData.time) {
+      toast.warning('Missing fields', 'Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setUpdating(true);
+
+      const response = await fetch(`/api/mentor/${mentorId}/counseling/${editingSession.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionName: editFormData.sessionName,
+          date: editFormData.date,
+          time: editFormData.time,
+          notes: editFormData.notes,
+          attachment: editFormData.attachment,
+          status: editFormData.status
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update session in list
+        setSessions(sessions.map(s =>
+          s.id === editingSession.id ? data.session : s
+        ));
+        toast.success('Session updated', 'Counseling session has been updated successfully');
+        setShowEditModal(false);
+        setEditingSession(null);
+      } else {
+        const errorData = await response.json();
+        toast.error('Failed to update session', errorData.error || 'An error occurred');
+      }
+    } catch (error) {
+      toast.error('Error updating session', 'An unexpected error occurred. Please try again');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Open delete confirmation
+  const handleDeleteClick = (session: CounselingSession) => {
+    setDeletingSession(session);
+    setShowDeleteModal(true);
+  };
+
+  // Delete session
+  const handleDeleteSession = async () => {
+    if (!accessToken || !deletingSession) return;
+
+    try {
+      setDeleting(true);
+
+      const response = await fetch(`/api/mentor/${mentorId}/counseling/${deletingSession.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (response.ok) {
+        // Remove session from list
+        setSessions(sessions.filter(s => s.id !== deletingSession.id));
+        toast.success('Session deleted', 'Counseling session has been deleted successfully');
+        setShowDeleteModal(false);
+        setDeletingSession(null);
+      } else {
+        const errorData = await response.json();
+        toast.error('Failed to delete session', errorData.error || 'An error occurred');
+      }
+    } catch (error) {
+      toast.error('Error deleting session', 'An unexpected error occurred. Please try again');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -471,9 +589,33 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-[15px] font-medium text-neutral-900 mb-2">
-                    {groupedSession.sessionName}
-                  </h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-[15px] font-medium text-neutral-900">
+                      {groupedSession.sessionName}
+                    </h3>
+
+                    {/* Edit and Delete Actions */}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleEditSession(groupedSession.students[0].session)}
+                        className="p-1.5 text-brand-green hover:bg-brand-green/10 rounded-md transition-colors"
+                        title="Edit session"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(groupedSession.students[0].session)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                        title="Delete session"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
 
                   <div className="flex flex-wrap items-center gap-2 lg:gap-3 text-[13px] text-neutral-600">
                     <div className="flex items-center gap-1.5">
@@ -501,11 +643,10 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                       <span className="font-medium text-brand-green">{groupedSession.students.length}</span>
                     </div>
                     <span className="text-neutral-300">•</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[12px] font-medium ${
-                      groupedSession.status === 'completed'
+                    <span className={`px-2 py-0.5 rounded-full text-[12px] font-medium ${groupedSession.status === 'completed'
                         ? 'bg-green-50 text-green-700 border border-green-200'
                         : 'bg-blue-50 text-blue-700 border border-blue-200'
-                    }`}>
+                      }`}>
                       {groupedSession.status === 'completed' ? 'Completed' : 'Scheduled'}
                     </span>
                   </div>
@@ -569,7 +710,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                   </svg>
-                                  Feedback
+                                  Logged
                                 </span>
                               </>
                             )}
@@ -662,11 +803,10 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 filteredStudents.map((student) => (
                   <label
                     key={student.id}
-                    className={`flex items-center gap-4 p-4 cursor-pointer rounded-xl transition-all border-2 ${
-                      formData.selectedStudentIds.includes(student.id)
+                    className={`flex items-center gap-4 p-4 cursor-pointer rounded-xl transition-all border-2 ${formData.selectedStudentIds.includes(student.id)
                         ? 'bg-brand-yellow/30 border-brand-yellow hover:bg-brand-yellow/40'
                         : 'bg-white border-brand-green/10 hover:bg-brand-cream hover:border-brand-green/30'
-                    }`}
+                      }`}
                   >
                     <input
                       type="checkbox"
@@ -852,7 +992,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         </div>
       </Modal>
 
-      {/* View Session Modal with Student Profile & Feedback Form */}
+      {/* View Session Modal with Student Profile & Session Log Form */}
       {selectedSession && (
         <Modal
           isOpen={showViewModal}
@@ -930,7 +1070,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   <Badge
                     variant={
                       selectedSession.status === 'completed' ? 'success' :
-                      selectedSession.status === 'scheduled' ? 'info' : 'default'
+                        selectedSession.status === 'scheduled' ? 'info' : 'default'
                     }
                   >
                     {selectedSession.status.toUpperCase()}
@@ -987,11 +1127,11 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               )}
             </Card>
 
-            {/* Feedback Form */}
+            {/* Session Log Form */}
             <div>
               <h3 className="text-xl font-bold text-brand-green mb-4 flex items-center gap-2">
                 <span>📝</span>
-                Session Feedback
+                Session Log
               </h3>
 
               {selectedSession.feedback ? (
@@ -1043,7 +1183,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 <Card variant="default">
                   <div className="space-y-4">
                     <p className="text-neutral-600 mb-4">
-                      Please provide feedback for this counseling session:
+                      Please provide the session log for this counseling session:
                     </p>
 
                     <TextArea
@@ -1113,11 +1253,215 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                       disabled={submittingFeedback || uploadingFile || !feedbackData.counselingQueries || !feedbackData.actionTaken}
                       className="w-full"
                     >
-                      {uploadingFile ? 'Uploading file...' : submittingFeedback ? 'Submitting Feedback...' : 'Submit Feedback'}
+                      {uploadingFile ? 'Uploading file...' : submittingFeedback ? 'Submitting...' : 'Submit'}
                     </Button>
                   </div>
                 </Card>
               )}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit Session Modal */}
+      {editingSession && (
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          title="Edit Counseling Session"
+          size="lg"
+        >
+          <div className="space-y-6">
+            {/* Session Name */}
+            <div>
+              <label className="block text-sm font-medium text-brand-green mb-2">
+                Session Name <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                value={editFormData.sessionName}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, sessionName: e.target.value }))}
+                placeholder="e.g., Academic Progress Review, Career Guidance"
+                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green"
+                required
+              />
+            </div>
+
+            {/* Date and Time */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-brand-green mb-2">
+                  Date <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={editFormData.date}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, date: e.target.value }))}
+                  className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-brand-green mb-2">
+                  Time <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="time"
+                  value={editFormData.time}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, time: e.target.value }))}
+                  className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-sm font-medium text-brand-green mb-2">
+                Status
+              </label>
+              <select
+                value={editFormData.status}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value as 'scheduled' | 'completed' | 'cancelled' }))}
+                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+              >
+                <option value="scheduled">Scheduled</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-brand-green mb-2">
+                Notes / Agenda
+              </label>
+              <textarea
+                value={editFormData.notes}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Add any notes, agenda items, or discussion topics for this session..."
+                rows={4}
+                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green resize-none"
+              />
+            </div>
+
+            {/* Attachment */}
+            <div>
+              <label className="block text-sm font-medium text-brand-green mb-2">
+                Attachment URL (Optional)
+              </label>
+              <input
+                type="url"
+                value={editFormData.attachment}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, attachment: e.target.value }))}
+                placeholder="https://example.com/document.pdf"
+                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-brand-yellow/30">
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="flex-1 px-6 py-3.5 rounded-xl border-2 border-brand-green/30 bg-white hover:bg-brand-cream text-brand-green font-semibold transition-all duration-200 hover:border-brand-green"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateSession}
+                disabled={updating || !editFormData.sessionName || !editFormData.date || !editFormData.time}
+                className="flex-1 px-6 py-3.5 rounded-xl bg-brand-green hover:bg-brand-green/90 text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+              >
+                {updating ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Update Session
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingSession && (
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          title="Delete Counseling Session"
+          size="md"
+        >
+          <div className="space-y-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                  Are you sure you want to delete this session?
+                </h3>
+                <p className="text-sm text-neutral-600 mb-4">
+                  This action cannot be undone. This will permanently delete the counseling session:
+                </p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="font-semibold text-brand-green mb-1">{deletingSession.sessionName}</p>
+                  <p className="text-sm text-neutral-600">
+                    {new Date(deletingSession.date).toLocaleDateString()} at {deletingSession.time}
+                  </p>
+                  <p className="text-sm text-neutral-600 mt-1">
+                    Student: {deletingSession.studentName}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-neutral-200">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-6 py-3.5 rounded-xl border-2 border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-700 font-semibold transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSession}
+                disabled={deleting}
+                className="flex-1 px-6 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete Session
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </Modal>

@@ -2,13 +2,14 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { ArrowLeft, User, Users, MessageSquare, Calendar, FileText, Target, Download, ThumbsUp } from 'lucide-react';
+import { ArrowLeft, User, Users, MessageSquare, Calendar, FileText, Target, Download, ThumbsUp, Award } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import CounselingTab from './components/CounselingTab';
 import StudentsTab from './components/StudentsTab';
 import AttendanceTab from './components/AttendanceTab';
 import ExamResultsTab from './components/ExamResultsTab';
 import IDPTab from './components/IDPTab';
+import AchievementTab from './components/AchievementTab';
 import ReportsTab from './components/ReportsTab';
 import StudentFeedbackTab from './components/StudentFeedbackTab';
 
@@ -24,7 +25,7 @@ interface Mentor {
   pendingFeedback?: number;
 }
 
-type TabType = 'students' | 'counseling' | 'attendance' | 'examResults' | 'idp' | 'reports' | 'studentFeedback';
+type TabType = 'students' | 'counseling' | 'attendance' | 'examResults' | 'idp' | 'achievement' | 'reports' | 'studentFeedback';
 
 export default function MentorDetailPage() {
   const params = useParams();
@@ -89,18 +90,36 @@ export default function MentorDetailPage() {
           });
 
           // Fetch students for IDP tab
-          const studentsResponse = await fetch(`/api/mentor/${mentorId}/students`, {
+          // Fetch ONLY students assigned to THIS mentor
+          console.log('[Mentor Page] Fetching assigned students for mentor:', mentorId);
+          const assignedStudentsResponse = await fetch(`/api/mentor/${mentorId}/students`, {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
             },
           });
 
-          if (studentsResponse.ok) {
-            const studentsData = await studentsResponse.json();
-            if (studentsData.success && studentsData.students) {
-              setStudents(studentsData.students);
+          let studentsToShow = [];
+
+          if (assignedStudentsResponse.ok) {
+            const assignedStudentsData = await assignedStudentsResponse.json();
+            if (assignedStudentsData.students && Array.isArray(assignedStudentsData.students)) {
+              // Use the students directly from the mentor's assigned students
+              studentsToShow = assignedStudentsData.students.map((student: any) => ({
+                id: student.id,
+                name: student.name || `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unknown',
+                email: student.email || '',
+                rollNumber: student.roll_number || student.rollNumber || '',
+                roll_number: student.roll_number || student.rollNumber || '',
+                department: student.department,
+                year: student.year || '',
+              }));
+              console.log(`[Mentor Page] Loaded ${studentsToShow.length} assigned students for mentor`);
             }
+          } else {
+            console.warn('[Mentor Page] Failed to fetch assigned students:', assignedStudentsResponse.status);
           }
+
+          setStudents(studentsToShow);
         } else {
           throw new Error('Mentor not found');
         }
@@ -172,6 +191,7 @@ export default function MentorDetailPage() {
     { id: 'attendance' as TabType, label: 'Attendance', icon: Calendar },
     { id: 'examResults' as TabType, label: 'Exam Results', icon: FileText },
     { id: 'idp' as TabType, label: 'IDP', icon: Target },
+    { id: 'achievement' as TabType, label: 'Achievement', icon: Award },
     { id: 'studentFeedback' as TabType, label: 'Student Feedback', icon: ThumbsUp },
     { id: 'reports' as TabType, label: 'Reports', icon: Download },
   ];
@@ -329,6 +349,11 @@ export default function MentorDetailPage() {
             {/* IDP Tab */}
             {activeTab === 'idp' && (
               <IDPTab mentorId={mentorId} students={students} />
+            )}
+
+            {/* Achievement Tab */}
+            {activeTab === 'achievement' && (
+              <AchievementTab mentorId={mentorId} />
             )}
 
             {/* Student Feedback Tab */}

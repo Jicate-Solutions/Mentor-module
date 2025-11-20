@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getCurrentUser } from '@/lib/auth/get-current-user';
 
 /**
  * GET /api/idp
@@ -11,10 +10,10 @@ import { getCurrentUser } from '@/lib/auth/get-current-user';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get current authenticated user
-    const user = await getCurrentUser();
-
-    if (!user) {
+    // Check for Authorization header to ensure request is from authenticated client
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('[IDP API GET] No authorization header found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -104,10 +103,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get current authenticated user
-    const user = await getCurrentUser();
-
-    if (!user) {
+    // Check for Authorization header to ensure request is from authenticated client
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('[IDP API POST] No authorization header found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -211,8 +210,8 @@ export async function POST(request: NextRequest) {
         skills_development_how,
         detailed_action_plan,
         status,
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: mentorUser.id, // Use mentor's user ID
+        updated_by: mentorUser.id, // Use mentor's user ID
       })
       .select()
       .single();

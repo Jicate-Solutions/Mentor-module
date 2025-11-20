@@ -93,16 +93,24 @@ export function canAccessDepartment(
 
 /**
  * Get institution filter for queries based on user access
- * Returns null for super admin (no filter needed)
- * Returns institution_id for institution admins
+ * Returns null for super admin and administrator (no filter needed - see all institutions)
+ * Returns institution_id for mentors and other roles
  */
 export function getInstitutionFilter(userAccess: UserAccess): string | null {
-  // Super admin sees everything
+  // Super admin and institution admin see everything (all institutions for super admin, their institution for institution admin)
   if (userAccess.isSuperAdmin || userAccess.role === 'super_admin') {
+    console.log('[Access Control] Super Admin - No institution filter applied');
     return null;
   }
 
-  // Institution admins are filtered by institution
+  // Institution admin sees only their institution
+  if (userAccess.role === 'institution_admin') {
+    console.log(`[Access Control] Institution Admin - Filtering by institution: ${userAccess.institutionId}`);
+    return userAccess.institutionId;
+  }
+
+  // Mentors and other roles are filtered by their institution
+  console.log(`[Access Control] Non-admin user (${userAccess.role}) - Filtering by institution: ${userAccess.institutionId}`);
   return userAccess.institutionId;
 }
 

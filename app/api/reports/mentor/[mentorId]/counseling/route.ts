@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateCounselingReport } from '@/lib/reports/counseling-report';
 import { getCurrentUser } from '@/lib/auth/get-current-user';
+import { createAdminClient } from '@/lib/supabase/server';
 import type { ReportDateRange } from '@/lib/types/reports';
 
 /**
@@ -47,14 +48,43 @@ export async function GET(
     console.log(`[Report API] Calculated date range: ${dateRange.start.toISOString()} to ${dateRange.end.toISOString()}`);
 
     // Generate report
-    const { buffer: reportBuffer, mentorName } = await generateCounselingReport(mentorId, dateRange);
+    const { buffer: reportBuffer, mentorName, sessionCount } = await generateCounselingReport(mentorId, dateRange);
 
-    console.log(`[Report API] Report generated successfully, size: ${reportBuffer.length} bytes`);
+    console.log(`[Report API] Report generated successfully, size: ${reportBuffer.length} bytes, sessions: ${sessionCount}`);
 
     // Create filename with mentor name
     const dateStr = new Date().toISOString().split('T')[0];
     const sanitizedMentorName = mentorName.replace(/[^a-zA-Z0-9]/g, '-');
     const filename = `counseling-report-${sanitizedMentorName}-${period}-${dateStr}.xlsx`;
+
+    // Save report metadata to database
+    try {
+      const supabase = createAdminClient();
+      const { error: insertError } = await supabase
+        .from('generated_reports')
+        .insert({
+          mentor_id: mentorId,
+          mentor_name: mentorName,
+          report_type: 'counseling',
+          period,
+          start_date: dateRange.start.toISOString(),
+          end_date: dateRange.end.toISOString(),
+          filename,
+          session_count: sessionCount,
+          generated_by: user.id,
+          institution_id: user.institution_id,
+        });
+
+      if (insertError) {
+        console.error('[Report API] Failed to save report metadata:', insertError);
+        // Don't fail the request, just log the error
+      } else {
+        console.log(`[Report API] Report metadata saved successfully`);
+      }
+    } catch (metadataError) {
+      console.error('[Report API] Error saving metadata:', metadataError);
+      // Continue anyway
+    }
 
     // Return Excel file with proper encoding headers
     return new NextResponse(new Uint8Array(reportBuffer), {

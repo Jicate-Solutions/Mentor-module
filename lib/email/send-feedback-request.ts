@@ -137,6 +137,11 @@ Note: This link is unique to you and will expire in 7 days. Your feedback can be
   try {
     if (EMAIL_SERVICE === 'resend' && RESEND_API_KEY) {
       // Use Resend
+      console.log('[Email] Attempting to send via Resend...');
+      console.log('[Email] FROM:', `${FROM_NAME} <${FROM_EMAIL}>`);
+      console.log('[Email] TO:', data.studentEmail);
+      console.log('[Email] Subject:', subject);
+
       const resend = new Resend(RESEND_API_KEY);
       const result = await resend.emails.send({
         from: `${FROM_NAME} <${FROM_EMAIL}>`,
@@ -145,8 +150,9 @@ Note: This link is unique to you and will expire in 7 days. Your feedback can be
         html: htmlContent,
         text: textContent,
       });
-      
-      console.log('[Email] Feedback request sent via Resend:', result);
+
+      console.log('[Email] ✅ Feedback request sent via Resend successfully!');
+      console.log('[Email] Resend response:', JSON.stringify(result, null, 2));
       return true;
     } else {
       // Use Nodemailer (SMTP)
@@ -172,7 +178,12 @@ Note: This link is unique to you and will expire in 7 days. Your feedback can be
       return true;
     }
   } catch (error) {
-    console.error('[Email] Failed to send feedback request:', error);
+    console.error('[Email] ❌ Failed to send feedback request');
+    console.error('[Email] Error details:', error);
+    if (error instanceof Error) {
+      console.error('[Email] Error message:', error.message);
+      console.error('[Email] Error stack:', error.stack);
+    }
     return false;
   }
 }

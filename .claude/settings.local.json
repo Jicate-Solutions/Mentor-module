@@ -58,7 +58,20 @@
       "Bash(del test-report.mjs test-report.ts test-counseling-report.xlsx)",
       "Skill(brand-styling)",
       "Bash(timeout 10 bash:*)",
-      "mcp__filesystem__read_text_file"
+      "mcp__filesystem__read_text_file",
+      "mcp__supabase__get_logs",
+      "Bash(git checkout:*)",
+      "Bash(timeout 5 bash:*)",
+      "Bash(timeout 3 bash:*)",
+      "Bash(timeout 20 bash -c:*)",
+      "Bash(set NEXT_PRIVATE_DISABLE_TURBOPACK=1)",
+      "Bash(timeout 15 bash:*)",
+      "Bash(timeout 8 bash:*)",
+      "Bash(timeout 2 bash:*)",
+      "Bash(timeout:*)",
+      "Bash(del /f \".next\\dev\\lock\" 2)",
+      "Bash(exit 0)",
+      "Bash(del \"hooks\\dashboard\\useDepartmentSessions.ts\")"
     ],
     "deny": [],
     "ask": []

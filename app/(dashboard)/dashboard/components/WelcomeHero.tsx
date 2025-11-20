@@ -30,14 +30,14 @@ export const WelcomeHero = () => {
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xl">👋</span>
-            <p className="text-[14px] font-medium text-brand-green">
+            <p className="text-[14px] font-medium text-brand-green" suppressHydrationWarning>
               {getGreeting()}, {user?.full_name?.split(' ')[0] || 'there'}!
             </p>
           </div>
           <h1 className="text-[22px] font-medium text-neutral-900 mb-1.5 tracking-tight">
             Welcome back to your dashboard
           </h1>
-          <p className="text-[14px] text-neutral-600 max-w-2xl leading-relaxed">
+          <p className="text-[14px] text-neutral-600 max-w-2xl leading-relaxed" suppressHydrationWarning>
             {getMotivationalMessage()}
           </p>
         </div>

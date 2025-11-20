@@ -62,15 +62,21 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     fetchStudents();
   }, [fetchStudents]);
 
-  // Search for students
-  const handleSearch = async () => {
-    if (!searchQuery.trim() || !accessToken) return;
+  // Search for students (memoized to prevent unnecessary re-renders)
+  const handleSearch = useCallback(async (query: string) => {
+    if (!query.trim() || !accessToken) {
+      setSearchResults([]);
+      return;
+    }
+
+    console.log('[StudentsTab] Searching for students with query:', query);
 
     try {
       setSearching(true);
       const response = await fetch(
-        `/api/students/search?q=${encodeURIComponent(searchQuery)}`,
+        `/api/students/search?q=${encodeURIComponent(query)}`,
         {
+          credentials: 'include', // Important: Send cookies for server-side authentication
           headers: {
             'Authorization': `Bearer ${accessToken}`,
           },
@@ -79,34 +85,66 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('[StudentsTab] Search API response:', {
+          query,
+          resultsCount: data.students?.length || 0,
+          success: data.success
+        });
+
         // Show all students (don't filter out assigned ones)
         setSearchResults(data.students || []);
+
+        if (data.students?.length === 0) {
+          console.warn('[StudentsTab] No students found for query:', query);
+        }
       } else {
-        toast.error('Search failed', 'Could not search for students');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[StudentsTab] Search API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+
+        toast.error(
+          'Search failed',
+          errorData.error || errorData.details || 'Could not search for students'
+        );
+        setSearchResults([]);
       }
     } catch (error) {
-      toast.error('Search error', 'An unexpected error occurred while searching');
+      console.error('[StudentsTab] Search error:', error);
+      toast.error(
+        'Search error',
+        error instanceof Error ? error.message : 'An unexpected error occurred while searching'
+      );
+      setSearchResults([]);
     } finally {
       setSearching(false);
     }
-  };
+  }, [accessToken, toast]);
 
-  // Automatic debounced search (300ms delay, 2 character minimum)
+  // Automatic debounced search (500ms delay, 2 character minimum)
   useEffect(() => {
     // Only search if query has at least 2 characters
     if (searchQuery.length < 2) {
       setSearchResults([]);
+      setSearching(false);
       return;
     }
 
+    // Show searching state immediately
+    setSearching(true);
+
     // Set up debounce timer
     const debounceTimer = setTimeout(() => {
-      handleSearch();
-    }, 300);
+      handleSearch(searchQuery);
+    }, 500);
 
     // Cleanup function to cancel timer if query changes
-    return () => clearTimeout(debounceTimer);
-  }, [searchQuery]); // Re-run when searchQuery changes
+    return () => {
+      clearTimeout(debounceTimer);
+    };
+  }, [searchQuery, handleSearch]);
 
   // Toggle student selection
   const toggleStudentSelection = (student: Student) => {

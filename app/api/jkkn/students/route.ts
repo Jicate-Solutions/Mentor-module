@@ -113,36 +113,113 @@ export async function GET(request: NextRequest) {
 
     // Get pagination params from query
     const searchParams = request.nextUrl.searchParams;
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const requestedLimit = parseInt(searchParams.get('limit') || '10', 10);
 
-    // Call JKKN API
-    const url = `${baseUrl}/api-management/students?page=${page}&limit=${limit}`;
+    // IMPORTANT: JKKN API has a max limit of 1000 students per page
+    // To fetch all students (10,000+), we need to loop through multiple pages
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      // Add cache control for better performance
-      next: { revalidate: 60 }, // Cache for 60 seconds
-    });
+    console.log(`[Students API] Requested limit: ${requestedLimit}`);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+    let allStudents: any[] = [];
+    let currentPage = 1;
+    const maxLimit = 1000; // JKKN API max per page
+    let hasMore = true;
+    const maxPages = 15; // Safety limit (15 pages × 1000 = 15,000 max students)
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: errorData.message || `JKKN API Error: ${response.statusText}`,
-          status: response.status,
+    // If requested limit is large (e.g., 10000), fetch all pages
+    const shouldFetchAll = requestedLimit >= 1000;
+
+    let data: any;
+
+    if (shouldFetchAll) {
+      console.log('[Students API] Fetching ALL students across multiple pages...');
+
+      while (hasMore && currentPage <= maxPages) {
+        const url = `${baseUrl}/api-management/students?page=${currentPage}&limit=${maxLimit}`;
+
+        console.log(`[Students API] Fetching page ${currentPage}...`);
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          return NextResponse.json(
+            {
+              success: false,
+              error: errorData.message || `JKKN API Error: ${response.statusText}`,
+              status: response.status,
+            },
+            { status: response.status }
+          );
+        }
+
+        const pageData = await response.json();
+        const students = pageData.data || [];
+
+        console.log(`[Students API] Page ${currentPage}: received ${students.length} students`);
+
+        allStudents = [...allStudents, ...students];
+
+        // Check if there are more pages
+        // If we got less than maxLimit, we've reached the end
+        hasMore = students.length === maxLimit;
+
+        // Also check metadata if available
+        if (pageData.metadata) {
+          const totalPages = pageData.metadata.totalPages || pageData.metadata.total_pages;
+          if (totalPages && currentPage >= totalPages) {
+            hasMore = false;
+          }
+        }
+
+        currentPage++;
+      }
+
+      console.log(`[Students API] Finished fetching. Total students: ${allStudents.length} from ${currentPage - 1} pages`);
+
+      // Create combined response
+      data = {
+        data: allStudents,
+        metadata: {
+          page: 1,
+          totalPages: 1,
+          total: allStudents.length,
+        }
+      };
+    } else {
+      // For small limits, fetch single page
+      const url = `${baseUrl}/api-management/students?page=1&limit=${requestedLimit}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
         },
-        { status: response.status }
-      );
-    }
+        cache: 'no-store',
+      });
 
-    const data = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return NextResponse.json(
+          {
+            success: false,
+            error: errorData.message || `JKKN API Error: ${response.statusText}`,
+            status: response.status,
+          },
+          { status: response.status }
+        );
+      }
+
+      data = await response.json();
+    }
 
     // Debug: Log the actual API response to see field names
     console.log('Students API Response:', JSON.stringify(data, null, 2));
@@ -164,8 +241,17 @@ export async function GET(request: NextRequest) {
       ...extractInstitutionDepartmentIds(student)
     }));
 
+    console.log(`[BEFORE Access Control] Total students: ${studentsWithIds.length}`);
+    console.log(`[User Access] Role: ${userAccess.role}, InstitutionID: ${userAccess.institutionId}, IsSuperAdmin: ${userAccess.isSuperAdmin}`);
+
     // Apply access control filtering
     const filteredData = applyAccessFilters(studentsWithIds, userAccess);
+
+    console.log(`[AFTER Access Control] Filtered students: ${filteredData.length} (from ${studentsWithIds.length})`);
+
+    // Debug: Show unique institutions in filtered data
+    const uniqueInsts = new Set(filteredData.map((s: any) => s.institution_id));
+    console.log(`[Filtered Data] Unique institutions (${uniqueInsts.size}):`, Array.from(uniqueInsts));
 
     // Update metadata
     const filtersApplied = wereFiltersApplied(userAccess);

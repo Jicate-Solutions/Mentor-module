@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CounselingSession } from '@/lib/types/mentor';
+import { sendFeedbackRequestEmail } from '@/lib/email/send-feedback-request';
+import { randomBytes } from 'crypto';
 
 /**
  * POST /api/mentor/[id]/counseling/[sessionId]/feedback
@@ -36,12 +38,43 @@ export async function POST(
     // Create admin client for this request
     const supabaseAdmin = createAdminClient();
 
+    // IMPORTANT: mentorId is the JKKN staff ID, we need to find the Supabase mentor.id
+    // First, find the user by jkkn_user_id
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('jkkn_user_id', mentorId)
+      .single();
+
+    if (!user) {
+      console.error('[Feedback API] User not found for JKKN ID:', mentorId);
+      return NextResponse.json(
+        { error: 'Mentor not found' },
+        { status: 404 }
+      );
+    }
+
+    // Then find the mentor record
+    const { data: mentor } = await supabaseAdmin
+      .from('mentors')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!mentor) {
+      console.error('[Feedback API] Mentor record not found for user:', user.id);
+      return NextResponse.json(
+        { error: 'Mentor record not found' },
+        { status: 404 }
+      );
+    }
+
     // Verify session exists and belongs to this mentor
     const { data: session, error: sessionError } = await supabaseAdmin
       .from('counseling_sessions')
       .select('id, mentor_id, student_id')
       .eq('id', sessionId)
-      .eq('mentor_id', mentorId)
+      .eq('mentor_id', mentor.id) // Use resolved mentor.id
       .single();
 
     if (sessionError || !session) {
@@ -57,7 +90,7 @@ export async function POST(
       session_id: sessionId,
       counseling_queries: counselingQueries,
       action_taken: actionTaken,
-      submitted_by: mentorId,
+      submitted_by: user.id, // Use user.id instead of mentor.id to match FK constraint
     };
 
     if (attachmentUrl) {
@@ -130,7 +163,7 @@ export async function POST(
           counselingQueries: feedback.counseling_queries,
           actionTaken: feedback.action_taken,
           submittedAt: feedback.submitted_at,
-          submittedBy: feedback.submitted_by || mentorId,
+          submittedBy: feedback.submitted_by || user.id,
         },
       });
     }
@@ -152,7 +185,7 @@ export async function POST(
         actionTaken: updatedSession.feedback.action_taken,
         attachmentUrl: updatedSession.feedback.attachment_url || undefined,
         submittedAt: updatedSession.feedback.submitted_at,
-        submittedBy: updatedSession.feedback.submitted_by || mentorId,
+        submittedBy: updatedSession.feedback.submitted_by || user.id,
       } : undefined,
       createdAt: updatedSession.created_at,
       updatedAt: updatedSession.updated_at,

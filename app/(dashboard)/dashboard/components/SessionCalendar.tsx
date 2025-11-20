@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Card from '@/components/ui/Card';
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
 import { ClockIcon, UserIcon } from '@heroicons/react/24/outline';
@@ -20,9 +21,14 @@ interface SessionCalendarProps {
 }
 
 export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarProps) => {
+  const [mounted, setMounted] = useState(false);
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const getSessionsForDate = (date: Date) => {
     return upcomingSessions.filter((session) =>
@@ -33,7 +39,7 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
   return (
     <Card variant="elevated" className="h-full">
       <div className="mb-6">
-        <h3 className="text-[17px] font-medium text-neutral-900">
+        <h3 className="text-[17px] font-medium text-neutral-900" suppressHydrationWarning>
           {format(today, 'MMMM yyyy')}
         </h3>
         <p className="text-[13px] text-neutral-600 mt-1 leading-relaxed">Upcoming counseling sessions</p>
@@ -84,8 +90,9 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
                           : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'
                       }
                     `}
+                    suppressHydrationWarning
                   >
-                    <div className="text-sm font-semibold">
+                    <div className="text-sm font-semibold" suppressHydrationWarning>
                       {format(date, 'd')}
                     </div>
                     {sessionsCount > 0 && (
@@ -146,7 +153,7 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
                   <div className="flex items-center gap-4 text-xs text-neutral-600">
                     <div className="flex items-center gap-1">
                       <ClockIcon className="w-4 h-4" />
-                      <span>
+                      <span suppressHydrationWarning>
                         {format(new Date(session.date), 'MMM d')} • {session.time}
                       </span>
                     </div>

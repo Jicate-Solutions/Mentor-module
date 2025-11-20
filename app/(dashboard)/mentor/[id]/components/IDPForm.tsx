@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 interface IDPFormProps {
   mentorId: string;
@@ -19,6 +20,7 @@ export default function IDPForm({
   onSuccess,
   onCancel,
 }: IDPFormProps) {
+  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +45,12 @@ export default function IDPForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!accessToken) {
+      setError('No authentication token available. Please log in again.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -57,7 +65,10 @@ export default function IDPForm({
       const response = await fetch(url, {
         method,
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(payload),
       });
 
@@ -128,7 +139,7 @@ export default function IDPForm({
                 <option value="">Select student</option>
                 {students.map((student) => (
                   <option key={student.id} value={student.id}>
-                    {student.name} ({student.roll_number})
+                    {student.name} ({student.roll_number || student.rollNumber || student.id})
                   </option>
                 ))}
               </select>

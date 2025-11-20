@@ -130,6 +130,7 @@ export async function fetchInstitutions(
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       }
     );
 
@@ -212,6 +213,7 @@ export async function fetchInstitution(id: string): Promise<Institution> {
 
 /**
  * Check if API is configured (backend will return error if not)
+ * Uses public test endpoint that doesn't require authentication
  */
 export async function checkApiStatus(): Promise<{
   configured: boolean;
@@ -219,34 +221,37 @@ export async function checkApiStatus(): Promise<{
 }> {
   try {
     console.log('[checkApiStatus] Checking API configuration...');
-    const response = await fetch('/api/jkkn/institutions?page=1&limit=1');
+
+    // Use public test endpoint that doesn't require authentication
+    const response = await fetch('/api/jkkn/test-connection');
     const result = await response.json();
 
     console.log('[checkApiStatus] Response:', {
       status: response.status,
       ok: response.ok,
-      success: result.success,
+      configured: result.configured,
+      message: result.message,
       error: result.error,
     });
 
-    if (response.ok && result.success) {
-      console.log('[checkApiStatus] API is configured');
+    if (result.configured) {
+      console.log('[checkApiStatus] API is configured and connected');
       return {
         configured: true,
-        message: 'API connected successfully',
+        message: result.message || 'Connected to MyJKKN API',
       };
     }
 
     console.warn('[checkApiStatus] API not configured:', result.error);
     return {
       configured: false,
-      message: result.error || 'API not configured',
+      message: result.error || result.message || 'API not configured',
     };
   } catch (error: any) {
     console.error('[checkApiStatus] Error checking API:', error);
     return {
       configured: false,
-      message: error.message || 'Connection failed',
+      message: error.message || 'Failed to check API status',
     };
   }
 }
@@ -300,6 +305,7 @@ export async function fetchDepartments(
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       }
     );
 
@@ -397,6 +403,7 @@ export async function fetchPrograms(
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       }
     );
 
@@ -699,6 +706,7 @@ export async function fetchStudents(
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       }
     );
 

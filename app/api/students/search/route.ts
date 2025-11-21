@@ -11,17 +11,7 @@ import { getUserAccess } from '@/lib/middleware/access-control';
  */
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    const token = authHeader?.replace('Bearer ', '');
-
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Get user access level and institution
+    // Get user access level and institution (uses cookie-based auth)
     const userAccess = await getUserAccess();
 
     if (!userAccess) {

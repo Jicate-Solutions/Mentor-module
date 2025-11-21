@@ -32,7 +32,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
     date: '',
     time: '',
     notes: '',
-    attachment: ''
+    attachment: '',
+    attachmentFile: null as File | null
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectAll, setSelectAll] = useState(false);
@@ -148,7 +149,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
   }, [accessToken, mentorId]);
 
   // Handle form input changes
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | File | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -209,6 +210,35 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
     try {
       setCreating(true);
 
+      // Upload file first if present
+      let attachmentUrl = formData.attachment;
+      if (formData.attachmentFile) {
+        try {
+          const uploadFormData = new FormData();
+          uploadFormData.append('file', formData.attachmentFile);
+          uploadFormData.append('bucket', 'documents');
+          uploadFormData.append('path', 'counseling-attachments');
+
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+            body: uploadFormData,
+          });
+
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json();
+            attachmentUrl = uploadData.url;
+          } else {
+            toast.warning('File upload failed', 'Session will be created without attachment');
+          }
+        } catch (uploadError) {
+          console.error('File upload error:', uploadError);
+          toast.warning('File upload failed', 'Session will be created without attachment');
+        }
+      }
+
       // Create a session for each selected student
       let successCount = 0;
       let failCount = 0;
@@ -239,7 +269,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               date: formData.date,
               time: formData.time,
               notes: formData.notes,
-              attachment: formData.attachment
+              attachment: attachmentUrl
             }),
           });
 
@@ -274,7 +304,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
           date: '',
           time: '',
           notes: '',
-          attachment: ''
+          attachment: '',
+          attachmentFile: null
         });
         setSearchQuery('');
         setSelectAll(false);
@@ -894,13 +925,57 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   <label className="block text-sm font-medium text-brand-green mb-2">
                     Time <span className="text-red-600">*</span>
                   </label>
-                  <input
-                    type="time"
-                    value={formData.time}
-                    onChange={(e) => handleInputChange('time', e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
-                    required
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={formData.time ? (parseInt(formData.time.split(':')[0]) > 12 ? (parseInt(formData.time.split(':')[0]) - 12).toString().padStart(2, '0') : formData.time.split(':')[0] === '00' ? '12' : formData.time.split(':')[0]) : ''}
+                      onChange={(e) => {
+                        const hour = e.target.value;
+                        const currentMin = formData.time ? formData.time.split(':')[1] : '00';
+                        const currentPeriod = formData.time ? (parseInt(formData.time.split(':')[0]) >= 12 ? 'PM' : 'AM') : 'AM';
+                        let hour24 = parseInt(hour);
+                        if (currentPeriod === 'PM' && hour24 !== 12) hour24 += 12;
+                        if (currentPeriod === 'AM' && hour24 === 12) hour24 = 0;
+                        handleInputChange('time', `${hour24.toString().padStart(2, '0')}:${currentMin}`);
+                      }}
+                      className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                      required
+                    >
+                      <option value="">Hour</option>
+                      {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => (
+                        <option key={h} value={h.toString().padStart(2, '0')}>{h}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={formData.time ? formData.time.split(':')[1] : ''}
+                      onChange={(e) => {
+                        const currentHour = formData.time ? formData.time.split(':')[0] : '09';
+                        handleInputChange('time', `${currentHour}:${e.target.value}`);
+                      }}
+                      className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                      required
+                    >
+                      <option value="">Min</option>
+                      {['00', '15', '30', '45'].map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={formData.time ? (parseInt(formData.time.split(':')[0]) >= 12 ? 'PM' : 'AM') : 'AM'}
+                      onChange={(e) => {
+                        if (!formData.time) return;
+                        let hour24 = parseInt(formData.time.split(':')[0]);
+                        const min = formData.time.split(':')[1];
+                        const hour12 = hour24 % 12 || 12;
+                        if (e.target.value === 'PM' && hour24 < 12) hour24 = hour12 + 12;
+                        if (e.target.value === 'AM' && hour24 >= 12) hour24 = hour12 === 12 ? 0 : hour12;
+                        handleInputChange('time', `${hour24.toString().padStart(2, '0')}:${min}`);
+                      }}
+                      className="w-20 px-2 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green font-medium"
+                    >
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -933,25 +1008,94 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               {/* Attachment */}
               <div>
                 <label className="block text-sm font-medium text-brand-green mb-2">
-                  Attachment URL (Optional)
+                  Attachment (Optional)
                 </label>
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-green/60">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                    </svg>
+                <div className="space-y-3">
+                  {/* File Upload */}
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="attachment-file"
+                      accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        // Validate file size (max 10MB)
+                        if (file.size > 10 * 1024 * 1024) {
+                          alert('File size must be less than 10MB');
+                          return;
+                        }
+
+                        // Store file for upload later
+                        handleInputChange('attachmentFile', file);
+                        handleInputChange('attachment', file.name);
+                      }}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="attachment-file"
+                      className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2 border-dashed border-brand-green/30 bg-brand-cream/50 hover:bg-brand-cream hover:border-brand-green/50 cursor-pointer transition-all"
+                    >
+                      <div className="p-2 bg-brand-green/10 rounded-lg">
+                        <svg className="w-5 h-5 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-brand-green">
+                          {formData.attachmentFile ? formData.attachmentFile.name : 'Choose file to upload'}
+                        </span>
+                        <p className="text-xs text-neutral-500">
+                          Images, videos, audio, PDF, Word, Excel, PPT (max 10MB)
+                        </p>
+                      </div>
+                      {formData.attachmentFile && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleInputChange('attachmentFile', null);
+                            handleInputChange('attachment', '');
+                          }}
+                          className="p-1 hover:bg-red-100 rounded-full transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </label>
                   </div>
-                  <input
-                    type="url"
-                    value={formData.attachment}
-                    onChange={(e) => handleInputChange('attachment', e.target.value)}
-                    placeholder="https://example.com/document.pdf"
-                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green"
-                  />
+
+                  {/* OR Divider */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-brand-green/20"></div>
+                    <span className="text-xs text-neutral-500 font-medium">OR</span>
+                    <div className="flex-1 h-px bg-brand-green/20"></div>
+                  </div>
+
+                  {/* URL Input */}
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-green/60">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                    </div>
+                    <input
+                      type="url"
+                      value={!formData.attachmentFile ? formData.attachment : ''}
+                      onChange={(e) => {
+                        handleInputChange('attachmentFile', null);
+                        handleInputChange('attachment', e.target.value);
+                      }}
+                      placeholder="https://example.com/document.pdf"
+                      disabled={!!formData.attachmentFile}
+                      className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green disabled:bg-neutral-100 disabled:cursor-not-allowed"
+                    />
+                  </div>
                 </div>
-                <p className="mt-2 text-xs text-neutral-600">
-                  Add a link to any supporting documents or materials
-                </p>
               </div>
             </div>
           </div>
@@ -1305,13 +1449,57 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 <label className="block text-sm font-medium text-brand-green mb-2">
                   Time <span className="text-red-600">*</span>
                 </label>
-                <input
-                  type="time"
-                  value={editFormData.time}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, time: e.target.value }))}
-                  className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
-                  required
-                />
+                <div className="flex gap-2">
+                  <select
+                    value={editFormData.time ? (parseInt(editFormData.time.split(':')[0]) > 12 ? (parseInt(editFormData.time.split(':')[0]) - 12).toString().padStart(2, '0') : editFormData.time.split(':')[0] === '00' ? '12' : editFormData.time.split(':')[0]) : ''}
+                    onChange={(e) => {
+                      const hour = e.target.value;
+                      const currentMin = editFormData.time ? editFormData.time.split(':')[1] : '00';
+                      const currentPeriod = editFormData.time ? (parseInt(editFormData.time.split(':')[0]) >= 12 ? 'PM' : 'AM') : 'AM';
+                      let hour24 = parseInt(hour);
+                      if (currentPeriod === 'PM' && hour24 !== 12) hour24 += 12;
+                      if (currentPeriod === 'AM' && hour24 === 12) hour24 = 0;
+                      setEditFormData(prev => ({ ...prev, time: `${hour24.toString().padStart(2, '0')}:${currentMin}` }));
+                    }}
+                    className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                    required
+                  >
+                    <option value="">Hour</option>
+                    {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => (
+                      <option key={h} value={h.toString().padStart(2, '0')}>{h}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={editFormData.time ? editFormData.time.split(':')[1] : ''}
+                    onChange={(e) => {
+                      const currentHour = editFormData.time ? editFormData.time.split(':')[0] : '09';
+                      setEditFormData(prev => ({ ...prev, time: `${currentHour}:${e.target.value}` }));
+                    }}
+                    className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                    required
+                  >
+                    <option value="">Min</option>
+                    {['00', '15', '30', '45'].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={editFormData.time ? (parseInt(editFormData.time.split(':')[0]) >= 12 ? 'PM' : 'AM') : 'AM'}
+                    onChange={(e) => {
+                      if (!editFormData.time) return;
+                      let hour24 = parseInt(editFormData.time.split(':')[0]);
+                      const min = editFormData.time.split(':')[1];
+                      const hour12 = hour24 % 12 || 12;
+                      if (e.target.value === 'PM' && hour24 < 12) hour24 = hour12 + 12;
+                      if (e.target.value === 'AM' && hour24 >= 12) hour24 = hour12 === 12 ? 0 : hour12;
+                      setEditFormData(prev => ({ ...prev, time: `${hour24.toString().padStart(2, '0')}:${min}` }));
+                    }}
+                    className="w-20 px-2 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green font-medium"
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
               </div>
             </div>
 

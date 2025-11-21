@@ -54,11 +54,41 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
     // Get user from our database
     const supabaseAdmin = createAdminClient();
-    const { data: user, error } = await supabaseAdmin
+
+    // First try to find by jkkn_user_id
+    let { data: user, error } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('jkkn_user_id', validation.user.id)
       .single();
+
+    // If not found by jkkn_user_id, try by email (handles JKKN ID changes)
+    if (error || !user) {
+      console.log('[Auth] User not found by jkkn_user_id, trying email lookup...');
+      const { data: userByEmail, error: emailError } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('email', validation.user.email)
+        .single();
+
+      if (userByEmail) {
+        // Update the jkkn_user_id to the new one
+        console.log(`[Auth] Found user by email, updating jkkn_user_id: ${userByEmail.jkkn_user_id} → ${validation.user.id}`);
+        await supabaseAdmin
+          .from('users')
+          .update({
+            jkkn_user_id: validation.user.id,
+            institution_id: validation.user.institution_id || userByEmail.institution_id,
+            department_id: validation.user.department_id || userByEmail.department_id,
+          })
+          .eq('id', userByEmail.id);
+
+        user = { ...userByEmail, jkkn_user_id: validation.user.id };
+        error = null;
+      } else {
+        error = emailError;
+      }
+    }
 
     if (error || !user) {
       console.error('[Auth] User not found in database:', error);

@@ -27,14 +27,31 @@ export async function GET(
     console.log(`[Report API] Generating ${period} report for mentor ${mentorId}`);
     console.log(`[Report API] Date range: ${startDate || 'auto'} to ${endDate || 'auto'}`);
 
+    const supabase = createAdminClient();
+
     // Authorization: Check if user can access this mentor's reports
-    // Mentors can only access their own reports
-    // Admins and institution admins can access any mentor's reports
-    if (
-      !user.is_super_admin &&
-      user.role !== 'institution_admin' &&
-      user.jkkn_user_id !== mentorId
-    ) {
+    let canAccess = user.is_super_admin || user.role === 'institution_admin';
+
+    if (!canAccess) {
+      // Direct JKKN ID match
+      if (user.jkkn_user_id === mentorId) {
+        canAccess = true;
+      } else {
+        // Check if this is the user's own mentor page (handles JKKN ID changes)
+        const { data: mentorRecord } = await supabase
+          .from('mentors')
+          .select('user_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (mentorRecord) {
+          canAccess = true;
+          console.log(`[Report API] User ${user.id} authorized via mentor record`);
+        }
+      }
+    }
+
+    if (!canAccess) {
       console.log(`[Report API] Access denied for user ${user.jkkn_user_id} to mentor ${mentorId}`);
       return NextResponse.json(
         { error: 'You do not have permission to access this report' },
@@ -47,8 +64,8 @@ export async function GET(
 
     console.log(`[Report API] Calculated date range: ${dateRange.start.toISOString()} to ${dateRange.end.toISOString()}`);
 
-    // Generate report
-    const { buffer: reportBuffer, mentorName, sessionCount } = await generateCounselingReport(mentorId, dateRange);
+    // Generate report - pass user.id for fallback lookup when JKKN ID has changed
+    const { buffer: reportBuffer, mentorName, sessionCount } = await generateCounselingReport(mentorId, dateRange, user.id);
 
     console.log(`[Report API] Report generated successfully, size: ${reportBuffer.length} bytes, sessions: ${sessionCount}`);
 

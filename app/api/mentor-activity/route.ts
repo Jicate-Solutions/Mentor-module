@@ -53,9 +53,21 @@ export async function GET(request: NextRequest) {
 
     // Authorization: If not admin/mentor-incharge, can only view own activities
     let targetMentorId = mentorId;
-    const isAdminOrIncharge = userAccess.role === 'super_admin' || userAccess.role === 'institution_admin' || userAccess.isSuperAdmin || userAccess.isMentorIncharge;
+    let institutionFilter: string | null = null;
+    const isSuperAdmin = userAccess.role === 'super_admin' || userAccess.isSuperAdmin;
+    const isInstitutionAdmin = userAccess.role === 'institution_admin';
+    const isMentorIncharge = userAccess.isMentorIncharge;
 
-    if (!isAdminOrIncharge) {
+    if (isSuperAdmin) {
+      // Super admin can see all activities across all institutions
+      // No filters applied
+    } else if (isInstitutionAdmin) {
+      // Institution admin can see all activities in their institution
+      institutionFilter = userAccess.institutionId;
+    } else if (isMentorIncharge) {
+      // Mentor incharge can see all activities in their assigned institution
+      institutionFilter = userAccess.mentorInchargeInstitutionId;
+    } else {
       // Regular users can only view their own mentor activities
       const { data: mentor } = await supabaseAdmin
         .from('mentors')
@@ -73,8 +85,16 @@ export async function GET(request: NextRequest) {
       targetMentorId = mentor.id;
     }
 
-    // If mentor ID not specified and user is admin, show all activities
-    // (admins can view all mentor activities without filtering)
+    // For mentor incharge and institution admin, get mentor IDs in their institution
+    let mentorIdsInInstitution: string[] = [];
+    if (institutionFilter && !targetMentorId) {
+      const { data: mentorsInInstitution } = await supabaseAdmin
+        .from('mentors')
+        .select('id')
+        .eq('institution_id', institutionFilter);
+
+      mentorIdsInInstitution = (mentorsInInstitution || []).map(m => m.id);
+    }
 
     // Build query
     let query = supabaseAdmin
@@ -91,6 +111,7 @@ export async function GET(request: NextRequest) {
         created_at,
         mentors!mentor_id (
           id,
+          institution_id,
           users!mentors_user_id_fkey (
             full_name
           )
@@ -108,6 +129,9 @@ export async function GET(request: NextRequest) {
     // Apply filters
     if (targetMentorId) {
       query = query.eq('mentor_id', targetMentorId);
+    } else if (mentorIdsInInstitution.length > 0) {
+      // Filter by mentors in the institution for mentor incharge / institution admin
+      query = query.in('mentor_id', mentorIdsInInstitution);
     }
 
     if (activityTypes.length > 0) {
@@ -155,6 +179,8 @@ export async function GET(request: NextRequest) {
 
     if (targetMentorId) {
       countQuery = countQuery.eq('mentor_id', targetMentorId);
+    } else if (mentorIdsInInstitution.length > 0) {
+      countQuery = countQuery.in('mentor_id', mentorIdsInInstitution);
     }
 
     const { count: totalCount } = await countQuery;

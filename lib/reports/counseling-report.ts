@@ -184,7 +184,8 @@ async function fetchAllStudentsFromJKKN(): Promise<Map<string, JKKNStudent>> {
 
 export async function generateCounselingReport(
   mentorId: string,
-  dateRange: ReportDateRange
+  dateRange: ReportDateRange,
+  userId?: string // Optional: Supabase user ID for fallback lookup when JKKN ID changes
 ): Promise<{ buffer: Buffer; mentorName: string; sessionCount: number }> {
   console.log(`[Report] Starting report generation for mentor ${mentorId}`);
   console.log(`[Report] Date range: ${dateRange.start.toISOString()} to ${dateRange.end.toISOString()}`);
@@ -193,7 +194,8 @@ export async function generateCounselingReport(
 
   // Convert JKKN mentor ID to Supabase mentor ID
   // First get the user, then get their mentor record
-  const { data: mentorUser, error: mentorError } = await supabase
+  // Try by jkkn_user_id first, then fallback to user ID lookup (handles JKKN ID changes)
+  let { data: mentorUser, error: mentorError } = await supabase
     .from('users')
     .select(`
       id,
@@ -202,10 +204,25 @@ export async function generateCounselingReport(
       department_id
     `)
     .eq('jkkn_user_id', mentorId)
-    .single();
+    .maybeSingle();
 
-  if (mentorError || !mentorUser) {
-    console.error('[Report] Mentor user not found:', { mentorId, error: mentorError });
+  // If not found by JKKN ID and we have a userId, use that instead
+  if (!mentorUser && userId) {
+    console.log(`[Report] User not found by jkkn_user_id, trying userId: ${userId}`);
+    const { data: userById } = await supabase
+      .from('users')
+      .select('id, full_name, jkkn_user_id, department_id')
+      .eq('id', userId)
+      .single();
+
+    if (userById) {
+      mentorUser = userById;
+      console.log(`[Report] Found user by userId: ${mentorUser.full_name}`);
+    }
+  }
+
+  if (!mentorUser) {
+    console.error('[Report] Mentor user not found:', { mentorId, userId, error: mentorError });
     throw new Error('Mentor not found');
   }
 

@@ -99,12 +99,33 @@ export async function GET(
       institution_id: institutionId
     });
 
-    // Step 1: Find or create user by JKKN user ID
+    // Step 1: Find or create user by JKKN user ID (or email fallback)
     let { data: user } = await supabaseAdmin
       .from('users')
       .select('id, jkkn_user_id, department_id, institution_id')
       .eq('jkkn_user_id', mentorId)
       .single();
+
+    // If not found by jkkn_user_id, try email lookup (handles JKKN ID changes)
+    if (!user && staff.email) {
+      console.log('[Mentor Detail] User not found by jkkn_user_id, trying email lookup...');
+      const { data: userByEmail } = await supabaseAdmin
+        .from('users')
+        .select('id, jkkn_user_id, department_id, institution_id')
+        .eq('email', staff.email)
+        .single();
+
+      if (userByEmail) {
+        // Update the jkkn_user_id to the new one
+        console.log(`[Mentor Detail] Found user by email, updating jkkn_user_id: ${userByEmail.jkkn_user_id} → ${mentorId}`);
+        await supabaseAdmin
+          .from('users')
+          .update({ jkkn_user_id: mentorId })
+          .eq('id', userByEmail.id);
+
+        user = { ...userByEmail, jkkn_user_id: mentorId };
+      }
+    }
 
     if (!user) {
       console.log('[Mentor Detail] User not found, creating...');

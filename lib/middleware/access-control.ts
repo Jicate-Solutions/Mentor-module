@@ -333,7 +333,19 @@ export async function canManageMentor(
     return true;
   }
 
-  // Regular mentors cannot manage other mentors
+  // Check if the user is managing their own mentor record
+  const supabase = createAdminClient();
+  const { data: mentor } = await supabase
+    .from('mentors')
+    .select('id')
+    .eq('user_id', userAccess.userId)
+    .maybeSingle();
+
+  // Mentors can manage their own data (sessions, etc.)
+  if (mentor && mentor.id === targetMentorId) {
+    return true;
+  }
+
   return false;
 }
 

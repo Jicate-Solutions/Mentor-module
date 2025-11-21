@@ -20,20 +20,40 @@ export async function GET(
 
     console.log(`[Reports List API] Fetching reports for mentor ${mentorId}`);
 
+    const supabase = createAdminClient();
+
     // Authorization: Check if user can access this mentor's reports
-    if (
-      !user.is_super_admin &&
-      user.role !== 'institution_admin' &&
-      user.jkkn_user_id !== mentorId
-    ) {
+    let canAccess = user.is_super_admin || user.role === 'institution_admin';
+
+    if (!canAccess) {
+      // Direct JKKN ID match
+      if (user.jkkn_user_id === mentorId) {
+        canAccess = true;
+      } else {
+        // Check if this is the user's own mentor page (handles JKKN ID changes)
+        // The URL uses JKKN ID but the user's JKKN ID may have changed
+        // Look up the mentor record to see if it belongs to this user
+        const { data: mentorRecord } = await supabase
+          .from('mentors')
+          .select('user_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (mentorRecord) {
+          // User has a mentor record, they can access their own reports
+          canAccess = true;
+          console.log(`[Reports List API] User ${user.id} authorized via mentor record`);
+        }
+      }
+    }
+
+    if (!canAccess) {
       console.log(`[Reports List API] Access denied for user ${user.jkkn_user_id} to mentor ${mentorId}`);
       return NextResponse.json(
         { error: 'You do not have permission to access these reports' },
         { status: 403 }
       );
     }
-
-    const supabase = createAdminClient();
 
     // Fetch all reports for this mentor, ordered by most recent first
     const { data: reports, error } = await supabase

@@ -37,7 +37,33 @@ export async function GET(request: NextRequest) {
     const supabaseAdmin = createAdminClient();
 
     // Authorization check
-    const isAdminOrIncharge = userAccess.role === 'super_admin' || userAccess.role === 'institution_admin' || userAccess.isSuperAdmin || userAccess.isMentorIncharge;
+    const isSuperAdmin = userAccess.role === 'super_admin' || userAccess.isSuperAdmin;
+    const isInstitutionAdmin = userAccess.role === 'institution_admin';
+    const isMentorIncharge = userAccess.isMentorIncharge;
+    const isAdminOrIncharge = isSuperAdmin || isInstitutionAdmin || isMentorIncharge;
+
+    // Determine institution filter for mentor incharge / institution admin
+    let institutionFilter: string | null = null;
+    let mentorIdsInInstitution: string[] = [];
+
+    if (!mentorId) {
+      if (isSuperAdmin) {
+        // Super admin sees all - no filter
+      } else if (isInstitutionAdmin) {
+        institutionFilter = userAccess.institutionId;
+      } else if (isMentorIncharge) {
+        institutionFilter = userAccess.mentorInchargeInstitutionId;
+      }
+
+      // Get mentor IDs in the institution for filtering
+      if (institutionFilter) {
+        const { data: mentorsInInstitution } = await supabaseAdmin
+          .from('mentors')
+          .select('id')
+          .eq('institution_id', institutionFilter);
+        mentorIdsInInstitution = (mentorsInInstitution || []).map(m => m.id);
+      }
+    }
 
     // For non-admins, mentorId is required and must match their own
     if (!isAdminOrIncharge) {
@@ -63,13 +89,25 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // For admins without a specific mentorId, return system-wide stats
-    const isSystemWideStats = isAdminOrIncharge && !mentorId;
+    // Determine query mode
+    const isSystemWideStats = isSuperAdmin && !mentorId;
+    const isInstitutionWideStats = !mentorId && mentorIdsInInstitution.length > 0;
 
     // Calculate date ranges
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Helper function to apply mentor filter
+    const applyMentorFilter = (query: any) => {
+      if (mentorId) {
+        return query.eq('mentor_id', mentorId);
+      } else if (isInstitutionWideStats && mentorIdsInInstitution.length > 0) {
+        return query.in('mentor_id', mentorIdsInInstitution);
+      }
+      // isSystemWideStats - no filter
+      return query;
+    };
 
     // Parallel queries for better performance
     const [
@@ -85,19 +123,13 @@ export async function GET(request: NextRequest) {
       // Total students assigned
       (() => {
         let query = supabaseAdmin.from('mentor_students').select('student_id', { count: 'exact', head: true });
-        if (!isSystemWideStats && mentorId) {
-          query = query.eq('mentor_id', mentorId);
-        }
-        return query;
+        return applyMentorFilter(query);
       })(),
 
       // Total counseling sessions
       (() => {
         let query = supabaseAdmin.from('counseling_sessions').select('id', { count: 'exact', head: true });
-        if (!isSystemWideStats && mentorId) {
-          query = query.eq('mentor_id', mentorId);
-        }
-        return query;
+        return applyMentorFilter(query);
       })(),
 
       // Active IDPs
@@ -105,19 +137,13 @@ export async function GET(request: NextRequest) {
         let query = supabaseAdmin.from('individual_development_plans')
           .select('id, status', { count: 'exact', head: true })
           .in('status', ['draft', 'in_progress']);
-        if (!isSystemWideStats && mentorId) {
-          query = query.eq('mentor_id', mentorId);
-        }
-        return query;
+        return applyMentorFilter(query);
       })(),
 
       // Reports generated
       (() => {
         let query = supabaseAdmin.from('generated_reports').select('id', { count: 'exact', head: true });
-        if (!isSystemWideStats && mentorId) {
-          query = query.eq('mentor_id', mentorId);
-        }
-        return query;
+        return applyMentorFilter(query);
       })(),
 
       // Pending feedback (sessions without feedback)
@@ -130,10 +156,7 @@ export async function GET(request: NextRequest) {
             )
           `)
           .eq('status', 'completed');
-        if (!isSystemWideStats && mentorId) {
-          query = query.eq('mentor_id', mentorId);
-        }
-        return query;
+        return applyMentorFilter(query);
       })(),
 
       // Emails sent
@@ -141,10 +164,7 @@ export async function GET(request: NextRequest) {
         let query = supabaseAdmin.from('email_notifications')
           .select('id', { count: 'exact', head: true })
           .eq('status', 'sent');
-        if (!isSystemWideStats && mentorId) {
-          query = query.eq('mentor_id', mentorId);
-        }
-        return query;
+        return applyMentorFilter(query);
       })(),
 
       // Activities this week
@@ -152,10 +172,7 @@ export async function GET(request: NextRequest) {
         let query = supabaseAdmin.from('mentor_activity_log')
           .select('id', { count: 'exact', head: true })
           .gte('created_at', oneWeekAgo.toISOString());
-        if (!isSystemWideStats && mentorId) {
-          query = query.eq('mentor_id', mentorId);
-        }
-        return query;
+        return applyMentorFilter(query);
       })(),
 
       // Activities this month
@@ -163,10 +180,7 @@ export async function GET(request: NextRequest) {
         let query = supabaseAdmin.from('mentor_activity_log')
           .select('id', { count: 'exact', head: true })
           .gte('created_at', oneMonthAgo.toISOString());
-        if (!isSystemWideStats && mentorId) {
-          query = query.eq('mentor_id', mentorId);
-        }
-        return query;
+        return applyMentorFilter(query);
       })(),
     ]);
 
@@ -181,9 +195,7 @@ export async function GET(request: NextRequest) {
       .select('id', { count: 'exact', head: true })
       .eq('status', 'completed');
 
-    if (!isSystemWideStats && mentorId) {
-      completedIdpsQuery = completedIdpsQuery.eq('mentor_id', mentorId);
-    }
+    completedIdpsQuery = applyMentorFilter(completedIdpsQuery);
 
     const { count: completedIdpsCount } = await completedIdpsQuery;
 

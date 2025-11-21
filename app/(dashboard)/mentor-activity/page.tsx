@@ -118,12 +118,15 @@ export default function MentorActivityPage() {
 
       const params = new URLSearchParams();
 
-      // Set mentor ID
+      // Set mentor ID - only for non-admin users or when explicitly filtered
       if (filters.mentorId) {
+        // Admin filtering by specific mentor
         params.append('mentorId', filters.mentorId);
-      } else if (mentorId) {
+      } else if (!isAdmin && mentorId) {
+        // Non-admin users must filter by their own mentor ID
         params.append('mentorId', mentorId);
       }
+      // For admin/mentor-incharge without filter, don't send mentorId - API will handle institution filtering
 
       // Set activity types
       if (filters.activityTypes.length > 0) {
@@ -180,10 +183,8 @@ export default function MentorActivityPage() {
   }
 
   async function fetchStats() {
-    const targetMentorId = filters.mentorId || mentorId;
-    // For admins, we can fetch system-wide stats even without a mentorId
     // For non-admins, we need a mentorId
-    if (!isAdmin && !targetMentorId) {
+    if (!isAdmin && !mentorId) {
       setStatsLoading(false);
       return;
     }
@@ -191,9 +192,14 @@ export default function MentorActivityPage() {
     try {
       setStatsLoading(true);
 
-      const url = targetMentorId
-        ? `/api/mentor-activity/stats?mentorId=${targetMentorId}`
-        : `/api/mentor-activity/stats`;
+      // Build URL - only send mentorId for non-admins or when explicitly filtered
+      let url = '/api/mentor-activity/stats';
+      if (filters.mentorId) {
+        url = `/api/mentor-activity/stats?mentorId=${filters.mentorId}`;
+      } else if (!isAdmin && mentorId) {
+        url = `/api/mentor-activity/stats?mentorId=${mentorId}`;
+      }
+      // For admin/mentor-incharge without filter, don't send mentorId - API will handle institution filtering
 
       const response = await fetch(url, {
         headers: accessToken ? {

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Calendar, Loader2, FileText, Trash2, Clock, CheckCircle2, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 interface ReportsTabProps {
   mentorId: string;
@@ -21,6 +22,7 @@ interface GeneratedReport {
 }
 
 export default function ReportsTab({ mentorId }: ReportsTabProps) {
+  const { accessToken } = useAuth();
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -40,6 +42,9 @@ export default function ReportsTab({ mentorId }: ReportsTabProps) {
       setLoadingReports(true);
       const response = await fetch(`/api/reports/mentor/${mentorId}/list`, {
         credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
       });
 
       if (!response.ok) {
@@ -76,6 +81,7 @@ export default function ReportsTab({ mentorId }: ReportsTabProps) {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
           },
         }
       );
@@ -127,6 +133,9 @@ export default function ReportsTab({ mentorId }: ReportsTabProps) {
         `/api/reports/mentor/${mentorId}/counseling?${params}`,
         {
           credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
         }
       );
 
@@ -161,6 +170,9 @@ export default function ReportsTab({ mentorId }: ReportsTabProps) {
         {
           method: 'DELETE',
           credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
         }
       );
 

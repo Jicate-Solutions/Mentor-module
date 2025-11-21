@@ -29,11 +29,51 @@ export async function GET(
 
     // IMPORTANT: mentorId is the JKKN staff ID, we need to find the Supabase mentor.id
     // First, find the user by jkkn_user_id
-    const { data: user } = await supabaseAdmin
+    let { data: user } = await supabaseAdmin
       .from('users')
-      .select('id')
+      .select('id, email')
       .eq('jkkn_user_id', mentorId)
       .single();
+
+    // If not found, try to get email from JKKN API and lookup by email
+    if (!user) {
+      console.log(`[Students API GET] No user found by jkkn_user_id ${mentorId}, trying JKKN API lookup...`);
+
+      const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+      const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+      if (apiKey) {
+        try {
+          const staffResponse = await fetch(`${baseUrl}/api-management/staff/${mentorId}`, {
+            headers: { 'Authorization': `Bearer ${apiKey}` },
+          });
+
+          if (staffResponse.ok) {
+            const staffData = await staffResponse.json();
+            const email = staffData.data?.email;
+
+            if (email) {
+              const { data: userByEmail } = await supabaseAdmin
+                .from('users')
+                .select('id, email')
+                .eq('email', email)
+                .single();
+
+              if (userByEmail) {
+                console.log(`[Students API GET] Found user by email ${email}, updating jkkn_user_id`);
+                await supabaseAdmin
+                  .from('users')
+                  .update({ jkkn_user_id: mentorId })
+                  .eq('id', userByEmail.id);
+                user = userByEmail;
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[Students API GET] JKKN API lookup failed:', e);
+        }
+      }
+    }
 
     if (!user) {
       console.log(`[Students API GET] No user found for JKKN ID ${mentorId}`);
@@ -161,12 +201,50 @@ export async function POST(
     // IMPORTANT: mentorId here is the JKKN staff ID, not Supabase mentors.id
     console.log('[Students API POST] Looking up mentor by JKKN ID:', mentorId);
 
-    // Step 1: Find or create user with jkkn_user_id = mentorId
+    // Step 1: Find user with jkkn_user_id = mentorId (or by email as fallback)
     let { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, jkkn_user_id, full_name, email, department_id, institution_id')
       .eq('jkkn_user_id', mentorId)
       .single();
+
+    // If not found by jkkn_user_id, fetch from JKKN API and try email lookup
+    const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+    const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+
+    if (!user && apiKey) {
+      console.log('[Students API POST] User not found by jkkn_user_id, trying JKKN API + email lookup...');
+      try {
+        const staffResponse = await fetch(`${baseUrl}/api-management/staff/${mentorId}`, {
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+        });
+
+        if (staffResponse.ok) {
+          const staffData = await staffResponse.json();
+          const email = staffData.data?.email;
+
+          if (email) {
+            const { data: userByEmail } = await supabaseAdmin
+              .from('users')
+              .select('id, jkkn_user_id, full_name, email, department_id, institution_id')
+              .eq('email', email)
+              .single();
+
+            if (userByEmail) {
+              console.log(`[Students API POST] Found user by email ${email}, updating jkkn_user_id`);
+              await supabaseAdmin
+                .from('users')
+                .update({ jkkn_user_id: mentorId })
+                .eq('id', userByEmail.id);
+              user = { ...userByEmail, jkkn_user_id: mentorId };
+              userError = null;
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[Students API POST] JKKN API lookup failed:', e);
+      }
+    }
 
     console.log('[Students API POST] User lookup result:', {
       found: !!user,
@@ -187,8 +265,6 @@ export async function POST(
 
       try {
         // Fetch staff list from JKKN API (this endpoint works reliably)
-        const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
-        const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
 
         const staffResponse = await fetch(
           `${baseUrl}/api-management/staff?page=1&limit=1000`,

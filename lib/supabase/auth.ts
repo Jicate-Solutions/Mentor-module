@@ -239,19 +239,23 @@ export async function logoutUser(userId: string) {
 
 /**
  * Map MyJKKN roles to our internal database roles
+ * JKKN Roles: super_admin, administrator, digital_coordinator, principal, hod, faculty
+ * Blocked: staff, student (handled by isRoleAllowed)
  */
 export function mapJkknRoleToDbRole(jkknRole: string): string {
   const roleMapping: Record<string, string> = {
-    // MyJKKN role -> Our DB role
-    'administrator': 'super_admin',
-    'principal': 'institution_admin',
-    'hod': 'institution_admin',
-    'digital_coordinator': 'institution_admin',
-    'faculty': 'mentor',
+    // Full admin access
     'super_admin': 'super_admin',
+    'administrator': 'super_admin',
+    // Institution level access
+    'digital_coordinator': 'digital_coordinator',
+    'principal': 'principal',
+    // Mentor access (faculty and HOD)
+    'hod': 'hod',
+    'faculty': 'faculty',
   };
 
-  return roleMapping[jkknRole] || 'mentor'; // Default to mentor if unknown
+  return roleMapping[jkknRole] || jkknRole; // Keep original if not mapped
 }
 
 /**

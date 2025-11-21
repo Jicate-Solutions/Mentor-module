@@ -27,16 +27,25 @@ export function useUserAccess() {
   useEffect(() => {
     async function fetchAccessInfo() {
       if (user) {
-        // Map JKKN roles to internal roles
+        // JKKN Role Mapping to Mentor Module Access Levels
+        // super_admin, administrator, digital_coordinator → super_admin (full access)
+        // principal → institution_admin (institution-level access)
+        // hod → mentor (with department oversight)
+        // faculty → mentor (standard mentor access)
+        // staff, student → blocked from system at login
         const roleMap: Record<string, AccessLevel> = {
-          'administrator': 'super_admin',
-          'admin': 'super_admin',
           'super_admin': 'super_admin',
-          'institution_admin': 'institution_admin',
-          'mentor': 'mentor',
-          'student': 'student',
+          'administrator': 'super_admin',
+          'digital_coordinator': 'institution_admin',
+          'principal': 'institution_admin',
+          'hod': 'mentor',
+          'faculty': 'mentor',
         };
-        const role = (roleMap[user.role] || user.role || 'student') as AccessLevel;
+        const role = roleMap[user.role] as AccessLevel;
+
+        if (!role) {
+          console.error(`[useUserAccess] Unknown role: ${user.role}`);
+        }
 
         // For mentors, check if they have mentor in-charge assignment
         let isMentorIncharge = false;

@@ -47,22 +47,19 @@ export function useUserAccess() {
           console.error(`[useUserAccess] Unknown role: ${user.role}`);
         }
 
-        // For mentors, check if they have mentor in-charge assignment
+        // Fetch mentor in-charge status from API
         let isMentorIncharge = false;
         let mentorInchargeInstitutionId: string | null = null;
 
-        if (role === 'mentor') {
-          try {
-            // This would require an API endpoint to check mentor incharge status
-            // For now, we'll set it to false and rely on server-side checks
-            // In a full implementation, you'd call an API like:
-            // const response = await fetch('/api/user/access-info');
-            // const data = await response.json();
-            // isMentorIncharge = data.isMentorIncharge;
-            // mentorInchargeInstitutionId = data.mentorInchargeInstitutionId;
-          } catch (error) {
-            console.error('[useUserAccess] Error checking mentor incharge status:', error);
+        try {
+          const response = await fetch('/api/user/access-info');
+          if (response.ok) {
+            const data = await response.json();
+            isMentorIncharge = data.isMentorIncharge || false;
+            mentorInchargeInstitutionId = data.mentorInchargeInstitutionId || null;
           }
+        } catch (error) {
+          console.error('[useUserAccess] Error checking mentor incharge status:', error);
         }
 
         setAccessInfo({

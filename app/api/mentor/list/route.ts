@@ -306,14 +306,34 @@ export async function GET(request: NextRequest) {
     const { createAdminClient } = await import('@/lib/supabase/server');
     const supabaseAdmin = createAdminClient();
 
-    // Get all JKKN staff IDs
+    // Get all JKKN staff IDs and emails for lookups
     const jkknStaffIds = allMentors.map(staff => staff.id);
+    const jkknStaffEmails = allMentors
+      .map(staff => staff.email || staff.institution_email)
+      .filter(Boolean);
 
     // Batch query: Get all users with these JKKN IDs
-    const { data: users } = await supabaseAdmin
+    const { data: usersByJkkn } = await supabaseAdmin
       .from('users')
-      .select('id, jkkn_user_id')
+      .select('id, jkkn_user_id, email')
       .in('jkkn_user_id', jkknStaffIds);
+
+    // Also get users by email (handles JKKN ID changes)
+    const { data: usersByEmail } = await supabaseAdmin
+      .from('users')
+      .select('id, jkkn_user_id, email')
+      .in('email', jkknStaffEmails);
+
+    // Merge users from both lookups (deduplicate by id)
+    const usersMap = new Map<string, { id: string; jkkn_user_id: string; email: string }>();
+    usersByJkkn?.forEach(u => usersMap.set(u.id, u));
+    usersByEmail?.forEach(u => usersMap.set(u.id, u));
+    const users = Array.from(usersMap.values());
+
+    // Build email to user map for fallback lookups
+    const emailToUserMap = new Map(
+      users.map(u => [u.email?.toLowerCase(), u.id])
+    );
 
     // Get all mentor records for these users
     const userIds = users?.map(u => u.id) || [];
@@ -359,7 +379,15 @@ export async function GET(request: NextRequest) {
       const finalName = fullName || staff.email?.split('@')[0] || staff.id || 'Unknown';
 
       // Get student count through lookup chain: JKKN ID → User ID → Mentor ID → Count
-      const userId = jkknToUserMap.get(staff.id);
+      // First try JKKN ID, then fallback to email (handles JKKN ID changes)
+      let userId = jkknToUserMap.get(staff.id);
+      if (!userId) {
+        // Fallback: lookup by email
+        const staffEmail = (staff.email || staff.institution_email)?.toLowerCase();
+        if (staffEmail) {
+          userId = emailToUserMap.get(staffEmail);
+        }
+      }
       const mentorId = userId ? userToMentorMap.get(userId) : undefined;
       const totalStudents = mentorId ? (mentorStudentCountMap.get(mentorId) || 0) : 0;
 

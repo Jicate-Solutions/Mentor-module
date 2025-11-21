@@ -16,6 +16,13 @@ export async function GET() {
       );
     }
 
+    console.log('[Access Info API] Returning access info:', {
+      userId: userAccess.userId,
+      role: userAccess.role,
+      isMentorIncharge: userAccess.isMentorIncharge,
+      mentorInchargeInstitutionId: userAccess.mentorInchargeInstitutionId,
+    });
+
     return NextResponse.json({
       success: true,
       userId: userAccess.userId,

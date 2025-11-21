@@ -20,13 +20,13 @@ export interface UserAccessInfo {
 }
 
 export function useUserAccess() {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [accessInfo, setAccessInfo] = useState<UserAccessInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchAccessInfo() {
-      if (user) {
+      if (user && accessToken) {
         // JKKN Role Mapping to Mentor Module Access Levels
         // super_admin, administrator, digital_coordinator → super_admin (full access)
         // principal → institution_admin (institution-level access)
@@ -52,11 +52,19 @@ export function useUserAccess() {
         let mentorInchargeInstitutionId: string | null = null;
 
         try {
-          const response = await fetch('/api/user/access-info');
+          const response = await fetch('/api/user/access-info', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+            credentials: 'include',
+          });
           if (response.ok) {
             const data = await response.json();
             isMentorIncharge = data.isMentorIncharge || false;
             mentorInchargeInstitutionId = data.mentorInchargeInstitutionId || null;
+            console.log('[useUserAccess] Got access info:', { isMentorIncharge, mentorInchargeInstitutionId });
+          } else {
+            console.error('[useUserAccess] API returned:', response.status);
           }
         } catch (error) {
           console.error('[useUserAccess] Error checking mentor incharge status:', error);
@@ -76,7 +84,7 @@ export function useUserAccess() {
     }
 
     fetchAccessInfo();
-  }, [user]);
+  }, [user, accessToken]);
 
   return { accessInfo, loading };
 }

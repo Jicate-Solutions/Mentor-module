@@ -42,11 +42,19 @@ export async function getUserAccess(): Promise<UserAccess | null> {
 
     // Check if user has mentor in-charge assignment
     const supabase = createAdminClient();
-    const { data: inchargeAssignment } = await supabase
+    const { data: inchargeAssignment, error: inchargeError } = await supabase
       .from('mentor_incharge_assignments')
       .select('institution_id')
       .eq('user_id', user.id)
       .maybeSingle();
+
+    console.log('[Access Control] Mentor incharge check:', {
+      userId: user.id,
+      email: user.email,
+      inchargeAssignment,
+      inchargeError,
+      isMentorIncharge: !!inchargeAssignment,
+    });
 
     return {
       userId: user.id,

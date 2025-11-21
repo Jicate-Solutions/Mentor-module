@@ -27,7 +27,16 @@ export function useUserAccess() {
   useEffect(() => {
     async function fetchAccessInfo() {
       if (user) {
-        const role = (user.role || 'student') as AccessLevel;
+        // Map JKKN roles to internal roles
+        const roleMap: Record<string, AccessLevel> = {
+          'administrator': 'super_admin',
+          'admin': 'super_admin',
+          'super_admin': 'super_admin',
+          'institution_admin': 'institution_admin',
+          'mentor': 'mentor',
+          'student': 'student',
+        };
+        const role = (roleMap[user.role] || user.role || 'student') as AccessLevel;
 
         // For mentors, check if they have mentor in-charge assignment
         let isMentorIncharge = false;

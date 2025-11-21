@@ -1,21 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Activity } from 'lucide-react';
-import { getCurrentUser } from '@/lib/auth/get-current-user';
-import { getUserAccess } from '@/lib/middleware/access-control';
-import type { MentorActivity, ActivityStats, ActivityType } from '@/lib/types/activity';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { useUserAccess } from '@/hooks/useUserAccess';
+import type { MentorActivity, ActivityStats } from '@/lib/types/activity';
 import ActivityStatsGrid from './components/ActivityStatsGrid';
 import ActivityFilters, { type FilterState } from './components/ActivityFilters';
 import ActivityTimeline from './components/ActivityTimeline';
 
 export default function MentorActivityPage() {
+  const { user, loading: authLoading, accessToken } = useAuth();
+  const { accessInfo, loading: accessLoading } = useUserAccess();
+
   const [activities, setActivities] = useState<MentorActivity[]>([]);
   const [stats, setStats] = useState<ActivityStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [mentorId, setMentorId] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     timePeriod: 'week',
@@ -26,50 +27,89 @@ export default function MentorActivityPage() {
     offset: 0,
     hasMore: false,
   });
+  const [error, setError] = useState<string | null>(null);
 
-  // Initialize user and permissions
+  // Memoize isAdmin to prevent unnecessary re-renders
+  const isAdmin = useMemo(() => {
+    if (accessLoading || !accessInfo) return false;
+    return (
+      accessInfo.role === 'super_admin' ||
+      accessInfo.role === 'institution_admin' ||
+      accessInfo.isSuperAdmin ||
+      accessInfo.isMentorIncharge
+    );
+  }, [accessInfo, accessLoading]);
+
+  // Memoize filter key for dependency tracking
+  const filterKey = useMemo(() =>
+    JSON.stringify({
+      timePeriod: filters.timePeriod,
+      activityTypes: filters.activityTypes,
+      mentorId: filters.mentorId,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+    }),
+    [filters.timePeriod, filters.activityTypes, filters.mentorId, filters.startDate, filters.endDate]
+  );
+
+  // Get mentor ID for current user (only for non-admin mentors)
   useEffect(() => {
-    async function initializeUser() {
+    // Wait for all loading to complete
+    if (authLoading || accessLoading) return;
+    // Skip if no user or token
+    if (!user || !accessToken) return;
+
+    // Debug log
+    console.log('[MentorActivity] accessInfo:', accessInfo);
+
+    // Skip for admin users - they don't need a mentor ID
+    const isAdminUser = accessInfo && (
+      accessInfo.role === 'super_admin' ||
+      accessInfo.role === 'institution_admin' ||
+      accessInfo.isSuperAdmin === true ||
+      accessInfo.isMentorIncharge === true
+    );
+
+    console.log('[MentorActivity] isAdminUser:', isAdminUser, 'role:', accessInfo?.role);
+
+    if (isAdminUser) {
+      console.log('[MentorActivity] Skipping mentor fetch for admin user');
+      return;
+    }
+
+    async function fetchMentorId() {
       try {
-        const user = await getCurrentUser();
-        if (!user) {
-          window.location.href = '/login';
-          return;
+        const response = await fetch('/api/mentor/current', {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setMentorId(data.mentorId);
         }
-
-        setCurrentUser(user);
-
-        const access = await getUserAccess();
-        const isAdminUser =
-          access?.role === 'admin' ||
-          access?.isSuperAdmin ||
-          access?.isMentorIncharge;
-
-        setIsAdmin(isAdminUser);
-
-        // Get mentor ID for current user
-        if (!isAdminUser) {
-          const response = await fetch('/api/mentor/current');
-          if (response.ok) {
-            const data = await response.json();
-            setMentorId(data.mentorId);
-          }
-        }
+        // Don't log 404 - it's expected for admin/non-mentor users
       } catch (error) {
-        console.error('Error initializing user:', error);
+        console.error('Error fetching mentor ID:', error);
       }
     }
 
-    initializeUser();
-  }, []);
+    fetchMentorId();
+  }, [user, accessToken, authLoading, accessLoading, accessInfo]);
 
-  // Fetch activities
+  // Fetch activities - for admins, fetch immediately; for mentors, wait for mentorId
   useEffect(() => {
-    if (!mentorId && !isAdmin) return;
+    // Wait for loading to complete
+    if (authLoading || accessLoading) return;
+    if (!accessToken) return;
+    // For non-admins, wait until we have a mentorId
+    if (!isAdmin && !mentorId) return;
 
     fetchActivities();
     fetchStats();
-  }, [mentorId, isAdmin, filters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mentorId, isAdmin, filterKey, accessToken, authLoading, accessLoading]);
 
   async function fetchActivities(loadMore = false) {
     try {
@@ -102,11 +142,21 @@ export default function MentorActivityPage() {
       params.append('limit', pagination.limit.toString());
       params.append('offset', currentOffset.toString());
 
-      const response = await fetch(`/api/mentor-activity?${params.toString()}`);
+      const response = await fetch(`/api/mentor-activity?${params.toString()}`, {
+        headers: accessToken ? {
+          'Authorization': `Bearer ${accessToken}`,
+        } : {},
+        credentials: 'include',
+      });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          setError('Authentication failed. Please refresh the page or log in again.');
+          return;
+        }
         throw new Error('Failed to fetch activities');
       }
+      setError(null);
 
       const data = await response.json();
 
@@ -129,13 +179,27 @@ export default function MentorActivityPage() {
   }
 
   async function fetchStats() {
+    const targetMentorId = filters.mentorId || mentorId;
+    // For admins, we can fetch system-wide stats even without a mentorId
+    // For non-admins, we need a mentorId
+    if (!isAdmin && !targetMentorId) {
+      setStatsLoading(false);
+      return;
+    }
+
     try {
       setStatsLoading(true);
 
-      const targetMentorId = filters.mentorId || mentorId;
-      if (!targetMentorId) return;
+      const url = targetMentorId
+        ? `/api/mentor-activity/stats?mentorId=${targetMentorId}`
+        : `/api/mentor-activity/stats`;
 
-      const response = await fetch(`/api/mentor-activity/stats?mentorId=${targetMentorId}`);
+      const response = await fetch(url, {
+        headers: accessToken ? {
+          'Authorization': `Bearer ${accessToken}`,
+        } : {},
+        credentials: 'include',
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch stats');
@@ -159,7 +223,7 @@ export default function MentorActivityPage() {
     fetchActivities(true);
   }
 
-  if (!currentUser) {
+  if (authLoading || accessLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0b6d41]"></div>
@@ -188,6 +252,27 @@ export default function MentorActivityPage() {
             </div>
           </div>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-700">{error}</p>
+            {error.includes('Authentication') && (
+              <button
+                onClick={() => {
+                  localStorage.removeItem('access_token');
+                  localStorage.removeItem('refresh_token');
+                  localStorage.removeItem('user');
+                  localStorage.removeItem('token_expires_at');
+                  window.location.href = '/';
+                }}
+                className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Re-login
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Statistics Grid */}
         <ActivityStatsGrid stats={stats} loading={statsLoading} />

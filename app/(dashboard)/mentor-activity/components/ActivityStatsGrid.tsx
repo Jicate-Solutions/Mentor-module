@@ -18,7 +18,8 @@ interface StatCard {
 }
 
 export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridProps) {
-  if (loading || !stats) {
+  // Show loading skeleton only when actually loading
+  if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(8)].map((_, i) => (
@@ -34,10 +35,23 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
     );
   }
 
+  // If no stats available (not loading), show empty stats with zeros
+  const displayStats = stats || {
+    totalStudents: 0,
+    totalSessions: 0,
+    activeIdps: 0,
+    completedIdps: 0,
+    reportsGenerated: 0,
+    pendingFeedback: 0,
+    emailsSent: 0,
+    activitiesThisMonth: 0,
+    activitiesThisWeek: 0,
+  };
+
   const statCards: StatCard[] = [
     {
       label: 'Total Students',
-      value: stats.totalStudents,
+      value: displayStats.totalStudents,
       icon: Users,
       color: '#0b6d41',
       bgColor: '#d1fae5',
@@ -45,7 +59,7 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
     },
     {
       label: 'Total Sessions',
-      value: stats.totalSessions,
+      value: displayStats.totalSessions,
       icon: Calendar,
       color: '#2563eb',
       bgColor: '#dbeafe',
@@ -53,7 +67,7 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
     },
     {
       label: 'Active IDPs',
-      value: stats.activeIdps,
+      value: displayStats.activeIdps,
       icon: FileText,
       color: '#0891b2',
       bgColor: '#cffafe',
@@ -61,7 +75,7 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
     },
     {
       label: 'Completed IDPs',
-      value: stats.completedIdps,
+      value: displayStats.completedIdps,
       icon: FileText,
       color: '#059669',
       bgColor: '#d1fae5',
@@ -69,7 +83,7 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
     },
     {
       label: 'Reports Generated',
-      value: stats.reportsGenerated,
+      value: displayStats.reportsGenerated,
       icon: BarChart3,
       color: '#4f46e5',
       bgColor: '#e0e7ff',
@@ -77,7 +91,7 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
     },
     {
       label: 'Pending Feedback',
-      value: stats.pendingFeedback,
+      value: displayStats.pendingFeedback,
       icon: MessageSquare,
       color: '#ea580c',
       bgColor: '#ffedd5',
@@ -85,7 +99,7 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
     },
     {
       label: 'Emails Sent',
-      value: stats.emailsSent,
+      value: displayStats.emailsSent,
       icon: Mail,
       color: '#059669',
       bgColor: '#d1fae5',
@@ -93,7 +107,7 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
     },
     {
       label: 'Activities This Month',
-      value: stats.activitiesThisMonth,
+      value: displayStats.activitiesThisMonth,
       icon: TrendingUp,
       color: '#7c3aed',
       bgColor: '#ede9fe',

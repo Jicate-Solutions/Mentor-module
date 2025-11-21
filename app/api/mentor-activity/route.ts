@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     // Authorization: If not admin/mentor-incharge, can only view own activities
     let targetMentorId = mentorId;
-    const isAdminOrIncharge = userAccess.role === 'admin' || userAccess.isSuperAdmin || userAccess.isMentorIncharge;
+    const isAdminOrIncharge = userAccess.role === 'super_admin' || userAccess.role === 'institution_admin' || userAccess.isSuperAdmin || userAccess.isMentorIncharge;
 
     if (!isAdminOrIncharge) {
       // Regular users can only view their own mentor activities
@@ -73,13 +73,8 @@ export async function GET(request: NextRequest) {
       targetMentorId = mentor.id;
     }
 
-    // If mentor ID not specified and user is admin, return error (must filter by mentor)
-    if (!targetMentorId && isAdminOrIncharge) {
-      return NextResponse.json(
-        { error: 'mentorId parameter is required' },
-        { status: 400 }
-      );
-    }
+    // If mentor ID not specified and user is admin, show all activities
+    // (admins can view all mentor activities without filtering)
 
     // Build query
     let query = supabaseAdmin
@@ -154,10 +149,15 @@ export async function GET(request: NextRequest) {
     }));
 
     // Get total count for pagination
-    const { count: totalCount } = await supabaseAdmin
+    let countQuery = supabaseAdmin
       .from('mentor_activity_log')
-      .select('*', { count: 'exact', head: true })
-      .eq('mentor_id', targetMentorId || '');
+      .select('*', { count: 'exact', head: true });
+
+    if (targetMentorId) {
+      countQuery = countQuery.eq('mentor_id', targetMentorId);
+    }
+
+    const { count: totalCount } = await countQuery;
 
     return NextResponse.json({
       success: true,

@@ -34,19 +34,20 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const mentorId = searchParams.get('mentorId');
 
-    if (!mentorId) {
-      return NextResponse.json(
-        { error: 'mentorId parameter is required' },
-        { status: 400 }
-      );
-    }
-
     const supabaseAdmin = createAdminClient();
 
     // Authorization check
-    const isAdminOrIncharge = userAccess.role === 'admin' || userAccess.isSuperAdmin || userAccess.isMentorIncharge;
+    const isAdminOrIncharge = userAccess.role === 'super_admin' || userAccess.role === 'institution_admin' || userAccess.isSuperAdmin || userAccess.isMentorIncharge;
 
+    // For non-admins, mentorId is required and must match their own
     if (!isAdminOrIncharge) {
+      if (!mentorId) {
+        return NextResponse.json(
+          { error: 'mentorId parameter is required' },
+          { status: 400 }
+        );
+      }
+
       // Regular users can only view their own stats
       const { data: mentor } = await supabaseAdmin
         .from('mentors')
@@ -61,6 +62,9 @@ export async function GET(request: NextRequest) {
         );
       }
     }
+
+    // For admins without a specific mentorId, return system-wide stats
+    const isSystemWideStats = isAdminOrIncharge && !mentorId;
 
     // Calculate date ranges
     const now = new Date();
@@ -79,62 +83,91 @@ export async function GET(request: NextRequest) {
       activitiesMonthResult,
     ] = await Promise.all([
       // Total students assigned
-      supabaseAdmin
-        .from('mentor_students')
-        .select('student_id', { count: 'exact', head: true })
-        .eq('mentor_id', mentorId),
+      (() => {
+        let query = supabaseAdmin.from('mentor_students').select('student_id', { count: 'exact', head: true });
+        if (!isSystemWideStats && mentorId) {
+          query = query.eq('mentor_id', mentorId);
+        }
+        return query;
+      })(),
 
       // Total counseling sessions
-      supabaseAdmin
-        .from('counseling_sessions')
-        .select('id', { count: 'exact', head: true })
-        .eq('mentor_id', mentorId),
+      (() => {
+        let query = supabaseAdmin.from('counseling_sessions').select('id', { count: 'exact', head: true });
+        if (!isSystemWideStats && mentorId) {
+          query = query.eq('mentor_id', mentorId);
+        }
+        return query;
+      })(),
 
       // Active IDPs
-      supabaseAdmin
-        .from('individual_development_plans')
-        .select('id, status', { count: 'exact', head: true })
-        .eq('mentor_id', mentorId)
-        .in('status', ['draft', 'in_progress']),
+      (() => {
+        let query = supabaseAdmin.from('individual_development_plans')
+          .select('id, status', { count: 'exact', head: true })
+          .in('status', ['draft', 'in_progress']);
+        if (!isSystemWideStats && mentorId) {
+          query = query.eq('mentor_id', mentorId);
+        }
+        return query;
+      })(),
 
       // Reports generated
-      supabaseAdmin
-        .from('generated_reports')
-        .select('id', { count: 'exact', head: true })
-        .eq('mentor_id', mentorId),
+      (() => {
+        let query = supabaseAdmin.from('generated_reports').select('id', { count: 'exact', head: true });
+        if (!isSystemWideStats && mentorId) {
+          query = query.eq('mentor_id', mentorId);
+        }
+        return query;
+      })(),
 
       // Pending feedback (sessions without feedback)
-      supabaseAdmin
-        .from('counseling_sessions')
-        .select(`
-          id,
-          session_feedback!left (
-            id
-          )
-        `)
-        .eq('mentor_id', mentorId)
-        .eq('status', 'completed'),
+      (() => {
+        let query = supabaseAdmin.from('counseling_sessions')
+          .select(`
+            id,
+            session_feedback!left (
+              id
+            )
+          `)
+          .eq('status', 'completed');
+        if (!isSystemWideStats && mentorId) {
+          query = query.eq('mentor_id', mentorId);
+        }
+        return query;
+      })(),
 
       // Emails sent
-      supabaseAdmin
-        .from('email_notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('mentor_id', mentorId)
-        .eq('status', 'sent'),
+      (() => {
+        let query = supabaseAdmin.from('email_notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'sent');
+        if (!isSystemWideStats && mentorId) {
+          query = query.eq('mentor_id', mentorId);
+        }
+        return query;
+      })(),
 
       // Activities this week
-      supabaseAdmin
-        .from('mentor_activity_log')
-        .select('id', { count: 'exact', head: true })
-        .eq('mentor_id', mentorId)
-        .gte('created_at', oneWeekAgo.toISOString()),
+      (() => {
+        let query = supabaseAdmin.from('mentor_activity_log')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', oneWeekAgo.toISOString());
+        if (!isSystemWideStats && mentorId) {
+          query = query.eq('mentor_id', mentorId);
+        }
+        return query;
+      })(),
 
       // Activities this month
-      supabaseAdmin
-        .from('mentor_activity_log')
-        .select('id', { count: 'exact', head: true })
-        .eq('mentor_id', mentorId)
-        .gte('created_at', oneMonthAgo.toISOString()),
+      (() => {
+        let query = supabaseAdmin.from('mentor_activity_log')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', oneMonthAgo.toISOString());
+        if (!isSystemWideStats && mentorId) {
+          query = query.eq('mentor_id', mentorId);
+        }
+        return query;
+      })(),
     ]);
 
     // Count pending feedback (sessions without feedback)
@@ -143,11 +176,16 @@ export async function GET(request: NextRequest) {
     ).length;
 
     // Get completed IDPs count
-    const { count: completedIdpsCount } = await supabaseAdmin
+    let completedIdpsQuery = supabaseAdmin
       .from('individual_development_plans')
       .select('id', { count: 'exact', head: true })
-      .eq('mentor_id', mentorId)
       .eq('status', 'completed');
+
+    if (!isSystemWideStats && mentorId) {
+      completedIdpsQuery = completedIdpsQuery.eq('mentor_id', mentorId);
+    }
+
+    const { count: completedIdpsCount } = await completedIdpsQuery;
 
     const stats: ActivityStats = {
       totalStudents: studentsResult.count || 0,
@@ -160,6 +198,19 @@ export async function GET(request: NextRequest) {
       activitiesThisWeek: activitiesWeekResult.count || 0,
       activitiesThisMonth: activitiesMonthResult.count || 0,
     };
+
+    console.log('[Mentor Activity Stats API] Stats:', {
+      isSystemWideStats,
+      mentorId,
+      stats,
+      errors: {
+        students: studentsResult.error,
+        sessions: sessionsResult.error,
+        idps: idpsResult.error,
+        reports: reportsResult.error,
+        emails: emailsResult.error,
+      }
+    });
 
     return NextResponse.json({
       success: true,

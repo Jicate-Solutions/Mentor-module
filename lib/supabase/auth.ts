@@ -20,6 +20,22 @@ export async function upsertUser(jkknUser: JKKNUser & {
 
     console.log(`📋 Role Mapping: ${jkknUser.role} → ${dbRole}`);
 
+    // First check if user exists by email (handles JKKN ID changes)
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id, jkkn_user_id')
+      .eq('email', jkknUser.email)
+      .single();
+
+    // If user exists with different JKKN ID, update the JKKN ID first
+    if (existingUser && existingUser.jkkn_user_id !== jkknUser.id) {
+      console.log(`🔄 Updating JKKN ID for ${jkknUser.email}: ${existingUser.jkkn_user_id} → ${jkknUser.id}`);
+      await supabaseAdmin
+        .from('users')
+        .update({ jkkn_user_id: jkknUser.id })
+        .eq('id', existingUser.id);
+    }
+
     const { data, error } = await supabaseAdmin
       .from('users')
       .upsert(

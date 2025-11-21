@@ -45,7 +45,7 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
         variant="primary"
       />
       <StatCard
-        title="Active Students"
+        title="Active Learners"
         value={stats.activeStudents}
         subtitle="Currently enrolled"
         icon={<StudentsIllustration className="w-6 h-6" />}

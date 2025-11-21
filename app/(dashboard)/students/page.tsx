@@ -372,10 +372,10 @@ export default function StudentsPage() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-[22px] font-medium text-brand-green mb-2 tracking-tight">
-              JKKN Students
+              JKKN Learners
             </h1>
             <p className="text-neutral-600 text-[14px] leading-relaxed">
-              Browse and manage student records from MyJKKN database
+              Browse and manage learner records from MyJKKN database
             </p>
           </div>
           {isConfigured && (
@@ -406,7 +406,7 @@ export default function StudentsPage() {
             <div>
               <p className="text-[16px] font-medium text-yellow-800 mb-1">API Not Configured</p>
               <p className="text-[14px] text-yellow-700 leading-relaxed">
-                {statusMessage}. Please add NEXT_PUBLIC_MYJKKN_API_KEY to your .env.local file to view students data.
+                {statusMessage}. Please add NEXT_PUBLIC_MYJKKN_API_KEY to your .env.local file to view learners data.
               </p>
             </div>
           </div>
@@ -453,7 +453,7 @@ export default function StudentsPage() {
             <span className="font-semibold text-brand-green">
               {searchQuery ? filteredStudents.length : total}
             </span>
-            {searchQuery ? 'matching' : 'total'} students
+            {searchQuery ? 'matching' : 'total'} learners
             {!searchQuery && (
               <>
                 <span>•</span>
@@ -466,7 +466,7 @@ export default function StudentsPage() {
           {loading && (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-brand-green border-t-transparent mb-3"></div>
-              <p className="text-neutral-600 text-sm">Loading students...</p>
+              <p className="text-neutral-600 text-sm">Loading learners...</p>
             </div>
           )}
 
@@ -493,7 +493,7 @@ export default function StudentsPage() {
                   <thead className="bg-neutral-50/80 border-b border-neutral-200/70">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
-                        Student Name
+                        Learner Name
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
                         Roll Number
@@ -624,7 +624,7 @@ export default function StudentsPage() {
             <div className="text-center py-12">
               <div className="text-5xl mb-4">👨‍🎓</div>
               <h3 className="text-lg font-semibold text-neutral-800 mb-2">
-                {searchQuery ? 'No matching students' : 'No students found'}
+                {searchQuery ? 'No matching learners' : 'No learners found'}
               </h3>
               <p className="text-sm text-neutral-600">
                 {searchQuery

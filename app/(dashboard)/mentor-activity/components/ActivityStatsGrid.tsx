@@ -1,6 +1,6 @@
 'use client';
 
-import { Users, Calendar, FileText, BarChart3, MessageSquare, Mail, TrendingUp } from 'lucide-react';
+import { Users, Calendar, FileText, BarChart3, MessageSquare, Mail, TrendingUp, CheckCircle } from 'lucide-react';
 import type { ActivityStats } from '@/lib/types/activity';
 
 interface ActivityStatsGridProps {
@@ -12,8 +12,9 @@ interface StatCard {
   label: string;
   value: number;
   icon: React.ElementType;
-  color: string;
-  bgColor: string;
+  colorClass: string;
+  bgClass: string;
+  borderClass: string;
   description?: string;
 }
 
@@ -21,14 +22,17 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
   // Show loading skeleton only when actually loading
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(8)].map((_, i) => (
-          <div key={i} className="bg-white rounded-lg border border-gray-200 p-6 animate-pulse">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
-              <div className="w-16 h-8 bg-gray-200 rounded"></div>
+          <div key={i} className="bg-white rounded-xl border border-neutral-200 p-5 animate-pulse">
+            <div className="flex items-start justify-between">
+              <div className="w-12 h-12 bg-neutral-100 rounded-xl"></div>
+              <div className="w-12 h-10 bg-neutral-100 rounded-lg"></div>
             </div>
-            <div className="w-32 h-4 bg-gray-200 rounded"></div>
+            <div className="mt-4 space-y-2">
+              <div className="w-24 h-4 bg-neutral-100 rounded"></div>
+              <div className="w-32 h-3 bg-neutral-100 rounded"></div>
+            </div>
           </div>
         ))}
       </div>
@@ -50,105 +54,106 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
 
   const statCards: StatCard[] = [
     {
-      label: 'Total Students',
+      label: 'Total Learners',
       value: displayStats.totalStudents,
       icon: Users,
-      color: '#0b6d41',
-      bgColor: '#d1fae5',
-      description: 'Students assigned to mentor',
+      colorClass: 'text-[#0b6d41]',
+      bgClass: 'bg-[#0b6d41]/10',
+      borderClass: 'border-[#0b6d41]/20',
+      description: 'Learners assigned to mentor',
     },
     {
       label: 'Total Sessions',
       value: displayStats.totalSessions,
       icon: Calendar,
-      color: '#2563eb',
-      bgColor: '#dbeafe',
+      colorClass: 'text-blue-600',
+      bgClass: 'bg-blue-50',
+      borderClass: 'border-blue-100',
       description: 'Counseling sessions conducted',
     },
     {
       label: 'Active IDPs',
       value: displayStats.activeIdps,
       icon: FileText,
-      color: '#0891b2',
-      bgColor: '#cffafe',
+      colorClass: 'text-cyan-600',
+      bgClass: 'bg-cyan-50',
+      borderClass: 'border-cyan-100',
       description: 'In-progress development plans',
     },
     {
       label: 'Completed IDPs',
       value: displayStats.completedIdps,
-      icon: FileText,
-      color: '#059669',
-      bgColor: '#d1fae5',
+      icon: CheckCircle,
+      colorClass: 'text-emerald-600',
+      bgClass: 'bg-emerald-50',
+      borderClass: 'border-emerald-100',
       description: 'Successfully completed IDPs',
     },
     {
       label: 'Reports Generated',
       value: displayStats.reportsGenerated,
       icon: BarChart3,
-      color: '#4f46e5',
-      bgColor: '#e0e7ff',
+      colorClass: 'text-indigo-600',
+      bgClass: 'bg-indigo-50',
+      borderClass: 'border-indigo-100',
       description: 'Generated reports',
     },
     {
       label: 'Pending Feedback',
       value: displayStats.pendingFeedback,
       icon: MessageSquare,
-      color: '#ea580c',
-      bgColor: '#ffedd5',
+      colorClass: 'text-orange-600',
+      bgClass: 'bg-orange-50',
+      borderClass: 'border-orange-100',
       description: 'Sessions awaiting feedback',
     },
     {
       label: 'Emails Sent',
       value: displayStats.emailsSent,
       icon: Mail,
-      color: '#059669',
-      bgColor: '#d1fae5',
-      description: 'Notifications sent to students',
+      colorClass: 'text-teal-600',
+      bgClass: 'bg-teal-50',
+      borderClass: 'border-teal-100',
+      description: 'Notifications sent to learners',
     },
     {
       label: 'Activities This Month',
       value: displayStats.activitiesThisMonth,
       icon: TrendingUp,
-      color: '#7c3aed',
-      bgColor: '#ede9fe',
+      colorClass: 'text-violet-600',
+      bgClass: 'bg-violet-50',
+      borderClass: 'border-violet-100',
       description: 'All activities in past 30 days',
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {statCards.map((card, index) => {
         const Icon = card.icon;
         return (
           <div
             key={index}
-            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+            className={`bg-white rounded-xl border ${card.borderClass} p-5 hover:shadow-lg hover:shadow-neutral-200/50 transition-all duration-200 group`}
           >
-            <div className="flex items-center justify-between mb-4">
-              <div
-                className="p-3 rounded-lg"
-                style={{ backgroundColor: card.bgColor }}
-              >
-                <Icon
-                  className="w-6 h-6"
-                  style={{ color: card.color }}
-                />
+            <div className="flex items-start justify-between">
+              <div className={`p-3 rounded-xl ${card.bgClass} group-hover:scale-110 transition-transform duration-200`}>
+                <Icon className={`w-6 h-6 ${card.colorClass}`} />
               </div>
-              <div
-                className="text-3xl font-bold"
-                style={{ color: card.color }}
-              >
-                {card.value}
+              <div className={`text-3xl font-bold ${card.colorClass} tabular-nums`}>
+                {card.value.toLocaleString()}
               </div>
             </div>
-            <h3 className="text-sm font-medium text-gray-900 mb-1">
-              {card.label}
-            </h3>
-            {card.description && (
-              <p className="text-xs text-gray-500">
-                {card.description}
-              </p>
-            )}
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold text-neutral-900">
+                {card.label}
+              </h3>
+              {card.description && (
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  {card.description}
+                </p>
+              )}
+            </div>
           </div>
         );
       })}

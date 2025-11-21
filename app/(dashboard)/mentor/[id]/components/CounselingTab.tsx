@@ -136,7 +136,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
           const data = await studentsRes.json();
           setStudents(data.students || []);
         } else {
-          toast.error('Failed to load students', 'Could not fetch assigned students');
+          toast.error('Failed to load learners', 'Could not fetch assigned learners');
         }
       } catch (error) {
         toast.error('Error loading data', 'An unexpected error occurred while loading the page');
@@ -195,7 +195,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
   const handleCreateSession = async () => {
     // Validate required fields
     if (!accessToken || formData.selectedStudentIds.length === 0 || !formData.sessionName || !formData.date || !formData.time) {
-      toast.warning('Missing fields', 'Please select at least one student and fill in all required fields');
+      toast.warning('Missing fields', 'Please select at least one learner and fill in all required fields');
       return;
     }
 
@@ -574,9 +574,9 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
       {students.length === 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center mb-4 lg:mb-6">
           <div className="text-4xl mb-3">⚠️</div>
-          <p className="text-[15px] font-medium text-neutral-900 mb-2">No Students Assigned</p>
+          <p className="text-[15px] font-medium text-neutral-900 mb-2">No Learners Assigned</p>
           <p className="text-[14px] text-neutral-600 leading-relaxed">
-            Please assign students first before creating counseling sessions.
+            Please assign learners first before creating counseling sessions.
           </p>
         </div>
       )}
@@ -695,7 +695,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               {/* Students List Inside Session */}
               <div>
                 <h4 className="text-[12px] font-medium text-neutral-500 mb-3 uppercase tracking-wider">
-                  Students ({groupedSession.students.length})
+                  Learners ({groupedSession.students.length})
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-2.5">
                   {groupedSession.students.map(({ session }) => (
@@ -779,7 +779,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
-              Select Students <span className="text-red-600">*</span>
+              Select Learners <span className="text-red-600">*</span>
             </label>
 
             {/* Search Input */}
@@ -813,7 +813,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
-                  Select All Students ({students.length})
+                  Select All Learners ({students.length})
                 </span>
               </label>
             </div>
@@ -824,7 +824,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 <div className="text-center py-12 text-neutral-500">
                   <div className="text-4xl mb-3">🔍</div>
                   <p className="font-medium text-brand-green mb-1">
-                    {searchQuery ? 'No students found' : 'No students assigned'}
+                    {searchQuery ? 'No students found' : 'No learners assigned'}
                   </p>
                   <p className="text-sm text-neutral-600">
                     {searchQuery ? 'Try a different search term' : 'Please assign students first'}
@@ -874,7 +874,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="font-semibold text-brand-green">
-                  {formData.selectedStudentIds.length} student{formData.selectedStudentIds.length > 1 ? 's' : ''} selected
+                  {formData.selectedStudentIds.length} learner{formData.selectedStudentIds.length > 1 ? 's' : ''} selected
                 </span>
               </div>
             )}

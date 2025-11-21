@@ -53,7 +53,7 @@ export default function ExamResultsTab({ mentorId }: ExamResultsTabProps) {
                 <div>
                   <p className="font-medium text-neutral-900 text-[13px]">Comprehensive Results View</p>
                   <p className="text-[13px] text-neutral-600 leading-relaxed">
-                    View all exam results, marks, grades, and percentages for each student
+                    View all exam results, marks, grades, and percentages for each learner
                   </p>
                 </div>
               </li>
@@ -116,7 +116,7 @@ export default function ExamResultsTab({ mentorId }: ExamResultsTabProps) {
                 <div>
                   <p className="font-medium text-neutral-900 text-[13px]">Performance Improvement Plans</p>
                   <p className="text-[13px] text-neutral-600 leading-relaxed">
-                    Create and track improvement plans for underperforming students
+                    Create and track improvement plans for underperforming learners
                   </p>
                 </div>
               </li>

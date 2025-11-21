@@ -189,7 +189,7 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
             No IDP Plans Yet
           </h3>
           <p className="text-[14px] text-neutral-600 leading-relaxed mb-4">
-            Create individual development plans to track student growth and goals
+            Create individual development plans to track learner growth and goals
           </p>
         </div>
       ) : (
@@ -201,7 +201,7 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                     <h4 className="text-[15px] font-medium text-neutral-900">
-                      {plan.student?.name || 'Unknown Student'}
+                      {plan.student?.name || 'Unknown Learner'}
                     </h4>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(plan.status)}

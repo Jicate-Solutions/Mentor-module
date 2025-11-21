@@ -48,10 +48,10 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
         const data = await response.json();
         setAssignedStudents(data.students || []);
       } else {
-        toast.error('Failed to load students', 'Could not fetch assigned students');
+        toast.error('Failed to load learners', 'Could not fetch assigned learners');
       }
     } catch (error) {
-      toast.error('Error loading students', 'An unexpected error occurred');
+      toast.error('Error loading learners', 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -208,8 +208,8 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
       // Show results
       if (successCount > 0 && failCount === 0) {
         toast.success(
-          'Students assigned',
-          `Successfully assigned ${successCount} student${successCount > 1 ? 's' : ''}`
+          'Learners assigned',
+          `Successfully assigned ${successCount} learner${successCount > 1 ? 's' : ''}`
         );
       } else if (successCount > 0 && failCount > 0) {
         toast.warning(
@@ -221,7 +221,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
           'Assignment failed',
           failedStudents.length > 0
             ? `Could not assign: ${failedStudents.join(', ')}. They may already be assigned.`
-            : 'Could not assign any students'
+            : 'Could not assign any learners'
         );
       }
 
@@ -246,7 +246,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     if (!student) return;
 
     const confirmed = await confirm({
-      title: 'Remove Student',
+      title: 'Remove Learner',
       message: `Are you sure you want to remove ${student.name} from this mentor? This action cannot be undone.`,
       confirmText: 'Remove',
       variant: 'danger'
@@ -264,10 +264,10 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
 
       if (response.ok) {
         setAssignedStudents(assignedStudents.filter(s => s.id !== studentId));
-        toast.success('Student removed', `${student.name} has been removed from this mentor`);
+        toast.success('Learner removed', `${student.name} has been removed from this mentor`);
       } else {
         const errorData = await response.json();
-        toast.error('Failed to remove student', errorData.error || 'An error occurred');
+        toast.error('Failed to remove learner', errorData.error || 'An error occurred');
       }
     } catch (error) {
       toast.error('Removal error', 'An unexpected error occurred. Please try again');
@@ -293,7 +293,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 lg:mb-6">
         <h2 className="text-[17px] font-medium text-neutral-900">
-          Assigned Students ({assignedStudents.length})
+          Assigned Learners ({assignedStudents.length})
         </h2>
         <button
           onClick={() => setShowAddModal(true)}
@@ -302,7 +302,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-          <span>Add Student</span>
+          <span>Add Learner</span>
         </button>
       </div>
 
@@ -316,10 +316,10 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
               </svg>
             </div>
             <h3 className="text-[16px] font-medium text-neutral-900 mb-2">
-              No students assigned yet
+              No learners assigned yet
             </h3>
             <p className="text-[14px] text-neutral-600 leading-relaxed mb-4">
-              Click "Add Student" to assign students to this mentor
+              Click "Add Learner" to assign learners to this mentor
             </p>
           </div>
         </Card>
@@ -369,7 +369,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
                   onClick={() => handleRemoveStudent(student.id)}
                   className="w-full px-3 py-2 text-[13px] font-medium text-red-600 hover:text-white bg-white hover:bg-red-600 border border-red-300 hover:border-red-600 rounded-lg transition-all"
                 >
-                  Remove Student
+                  Remove Learner
                 </button>
             </div>
           ))}
@@ -385,7 +385,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
           setSearchResults([]);
           setSelectedStudents([]);
         }}
-        title="Add Students"
+        title="Add Learners"
         size="lg"
       >
         <div className="space-y-4">
@@ -471,7 +471,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
             <div className="text-center py-8 text-neutral-600">
               {searchQuery.length < 2
                 ? 'Please enter at least 2 characters to search'
-                : 'No students found. Try a different search term.'
+                : 'No learners found. Try a different search term.'
               }
             </div>
           ) : null}
@@ -496,7 +496,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
             >
               {assigning
                 ? 'Assigning...'
-                : `Assign Student${selectedStudents.length !== 1 ? 's' : ''} ${
+                : `Assign Learner${selectedStudents.length !== 1 ? 's' : ''} ${
                     selectedStudents.length > 0 ? `(${selectedStudents.length})` : ''
                   }`
               }

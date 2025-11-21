@@ -239,19 +239,19 @@ export default function MentorActivityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbee] p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[#fbfbee]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Page Header */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-[#d1fae5] rounded-lg">
-              <Activity className="w-6 h-6 text-[#0b6d41]" />
+        <div className="bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="p-3.5 bg-gradient-to-br from-[#0b6d41] to-[#0b6d41]/80 rounded-xl shadow-lg shadow-[#0b6d41]/20">
+              <Activity className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-neutral-900">
                 Mentor Activity
               </h1>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-neutral-500 mt-0.5">
                 {isAdmin
                   ? 'View and track all mentor activities across the system'
                   : 'Track your mentoring activities and performance'}
@@ -262,22 +262,27 @@ export default function MentorActivityPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-700">{error}</p>
-            {error.includes('Authentication') && (
-              <button
-                onClick={() => {
-                  localStorage.removeItem('access_token');
-                  localStorage.removeItem('refresh_token');
-                  localStorage.removeItem('user');
-                  localStorage.removeItem('token_expires_at');
-                  window.location.href = '/';
-                }}
-                className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Re-login
-              </button>
-            )}
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+            <div className="p-1 bg-red-100 rounded-lg">
+              <Activity className="w-4 h-4 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-red-700 font-medium">{error}</p>
+              {error.includes('Authentication') && (
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('token_expires_at');
+                    window.location.href = '/';
+                  }}
+                  className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                >
+                  Re-login
+                </button>
+              )}
+            </div>
           </div>
         )}
 

@@ -100,7 +100,7 @@ export default function IDPForm({
                 </h2>
               </div>
               <p className="text-sm text-neutral-600">
-                Define a SMART goal and detailed action plan for student development. Follow the handbook template for structured mentoring.
+                Define a SMART goal and detailed action plan for learner development. Follow the handbook template for structured mentoring.
               </p>
             </div>
             <button
@@ -136,7 +136,7 @@ export default function IDPForm({
                 disabled={!!existingPlan}
                 className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent disabled:bg-neutral-100 disabled:cursor-not-allowed"
               >
-                <option value="">Select student</option>
+                <option value="">Select learner</option>
                 {students.map((student) => (
                   <option key={student.id} value={student.id}>
                     {student.name} ({student.roll_number || student.rollNumber || student.id})

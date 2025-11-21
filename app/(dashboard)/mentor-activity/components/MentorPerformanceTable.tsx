@@ -241,7 +241,7 @@ export default function MentorPerformanceTable() {
   }
 
   function exportToCSV() {
-    const headers = ['Mentor Name', 'Email', 'Sessions', 'Students', 'Last Session', 'Status'];
+    const headers = ['Mentor Name', 'Email', 'Sessions', 'Learners', 'Last Session', 'Status'];
     const rows = getSortedMentors().map((m) => [
       m.mentorName,
       m.email,
@@ -286,26 +286,32 @@ export default function MentorPerformanceTable() {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200">
+    <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-neutral-100 bg-gradient-to-r from-[#0b6d41]/5 to-transparent">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-[#0b6d41]/10 rounded-xl">
               <Users className="w-5 h-5 text-[#0b6d41]" />
-              Mentor Performance
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Track mentor activity and identify inactive mentors
-            </p>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-neutral-900">
+                Mentor Performance
+              </h2>
+              <p className="text-sm text-neutral-500">
+                Track mentor activity and identify inactive mentors
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
             {/* Filter Toggle */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm transition-colors ${
-                showFilters ? 'bg-[#0b6d41] text-white border-[#0b6d41]' : 'border-gray-300 hover:bg-gray-50'
+              className={`inline-flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm font-medium transition-all duration-200 ${
+                showFilters 
+                  ? 'bg-[#0b6d41] text-white border-[#0b6d41] shadow-lg shadow-[#0b6d41]/20' 
+                  : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300'
               }`}
             >
               <Filter className="w-4 h-4" />
@@ -316,7 +322,7 @@ export default function MentorPerformanceTable() {
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0b6d41] focus:border-transparent"
+              className="px-4 py-2.5 border border-neutral-200 rounded-xl text-sm font-medium text-neutral-700 bg-white focus:ring-2 focus:ring-[#0b6d41]/20 focus:border-[#0b6d41] transition-all cursor-pointer hover:border-neutral-300"
             >
               {periodOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -329,7 +335,7 @@ export default function MentorPerformanceTable() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0b6d41] focus:border-transparent"
+              className="px-4 py-2.5 border border-neutral-200 rounded-xl text-sm font-medium text-neutral-700 bg-white focus:ring-2 focus:ring-[#0b6d41]/20 focus:border-[#0b6d41] transition-all cursor-pointer hover:border-neutral-300"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -340,7 +346,7 @@ export default function MentorPerformanceTable() {
             {/* Export */}
             <button
               onClick={exportToCSV}
-              className="inline-flex items-center gap-2 px-3 py-2 bg-[#0b6d41] text-white rounded-lg text-sm hover:bg-[#095433] transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0b6d41] text-white rounded-xl text-sm font-medium hover:bg-[#095433] transition-all duration-200 shadow-lg shadow-[#0b6d41]/20"
             >
               <Download className="w-4 h-4" />
               Export
@@ -415,22 +421,22 @@ export default function MentorPerformanceTable() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-6 border-b border-gray-200">
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500">Total Mentors</p>
-              <p className="text-xl font-semibold text-gray-900">{summary.totalMentors}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-6 border-b border-neutral-100 bg-neutral-50/50">
+            <div className="bg-white rounded-xl p-4 border border-neutral-100 shadow-sm">
+              <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Total Mentors</p>
+              <p className="text-2xl font-bold text-neutral-900 mt-1">{summary.totalMentors}</p>
             </div>
-            <div className="bg-green-50 rounded-lg p-3">
-              <p className="text-xs text-green-600">Active</p>
-              <p className="text-xl font-semibold text-green-700">{summary.activeMentors}</p>
+            <div className="bg-white rounded-xl p-4 border border-emerald-100 shadow-sm">
+              <p className="text-xs font-medium text-emerald-600 uppercase tracking-wide">Active</p>
+              <p className="text-2xl font-bold text-emerald-700 mt-1">{summary.activeMentors}</p>
             </div>
-            <div className="bg-yellow-50 rounded-lg p-3">
-              <p className="text-xs text-yellow-600">Low Activity</p>
-              <p className="text-xl font-semibold text-yellow-700">{summary.lowActivityMentors}</p>
+            <div className="bg-white rounded-xl p-4 border border-amber-100 shadow-sm">
+              <p className="text-xs font-medium text-amber-600 uppercase tracking-wide">Low Activity</p>
+              <p className="text-2xl font-bold text-amber-700 mt-1">{summary.lowActivityMentors}</p>
             </div>
-            <div className="bg-red-50 rounded-lg p-3">
-              <p className="text-xs text-red-600">No Sessions</p>
-              <p className="text-xl font-semibold text-red-700">{summary.inactiveMentors}</p>
+            <div className="bg-white rounded-xl p-4 border border-red-100 shadow-sm">
+              <p className="text-xs font-medium text-red-600 uppercase tracking-wide">No Sessions</p>
+              <p className="text-2xl font-bold text-red-700 mt-1">{summary.inactiveMentors}</p>
             </div>
           </div>
         )}

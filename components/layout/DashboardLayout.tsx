@@ -69,7 +69,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (pathname?.startsWith('/programs')) return 'Programs';
     if (pathname?.startsWith('/degrees')) return 'Degrees';
     if (pathname?.startsWith('/courses')) return 'Courses';
-    if (pathname?.startsWith('/students')) return 'Students';
+    if (pathname?.startsWith('/students')) return 'Learners';
     if (pathname?.startsWith('/reports')) return 'Reports';
     if (pathname?.startsWith('/settings')) return 'Settings';
     return 'JKKN Mentor';

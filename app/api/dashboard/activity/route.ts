@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
       activities.push({
         id: `assignment-${assignment.id}`,
         type: 'assignment',
-        title: 'New Student Assignment',
+        title: 'New Learner Assignment',
         description: `${studentName} was assigned to ${mentorName}`,
         timestamp: assignment.assigned_at,
         user: {
@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
       activities.push({
         id: `student-${student.id}`,
         type: 'student',
-        title: 'New Student Added',
+        title: 'New Learner Added',
         description: `${student.name} joined ${student.departments?.name || 'the system'}`,
         timestamp: student.created_at,
         metadata: {

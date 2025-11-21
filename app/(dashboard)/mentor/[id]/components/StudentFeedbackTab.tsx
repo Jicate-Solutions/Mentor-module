@@ -230,7 +230,7 @@ export default function StudentFeedbackTab({ mentorId }: StudentFeedbackTabProps
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h4 className="text-[15px] font-medium text-neutral-900">
-                      {item.is_anonymous ? 'Anonymous Student' : item.student?.name || 'Unknown Student'}
+                      {item.is_anonymous ? 'Anonymous Learner' : item.student?.name || 'Unknown Learner'}
                     </h4>
                     {item.submitted_at ? (
                       <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[11px] font-medium rounded">
@@ -325,7 +325,7 @@ export default function StudentFeedbackTab({ mentorId }: StudentFeedbackTabProps
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex items-center gap-2 text-[13px] text-neutral-600">
                       <Clock className="w-3.5 h-3.5" />
-                      <span>Waiting for student response</span>
+                      <span>Waiting for learner response</span>
                     </div>
                     {item.token_expires_at && (
                       <span className="text-[12px] text-neutral-500">
@@ -346,10 +346,10 @@ export default function StudentFeedbackTab({ mentorId }: StudentFeedbackTabProps
           <div className="flex items-start gap-3">
             <ExternalLink className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-[13px] font-medium text-blue-900 mb-1">About Student Feedback</p>
+              <p className="text-[13px] font-medium text-blue-900 mb-1">About Learner Feedback</p>
               <p className="text-[13px] text-blue-700 leading-relaxed">
-                Feedback requests are automatically sent to students via email when counseling sessions are created.
-                Students have 7 days to submit their feedback through a secure link. All responses are confidential
+                Feedback requests are automatically sent to learners via email when counseling sessions are created.
+                Learners have 7 days to submit their feedback through a secure link. All responses are confidential
                 and help improve the mentoring experience.
               </p>
             </div>

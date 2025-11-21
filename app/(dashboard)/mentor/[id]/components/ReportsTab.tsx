@@ -430,11 +430,11 @@ export default function ReportsTab({ mentorId }: ReportsTabProps) {
           </li>
           <li className="flex items-start gap-2">
             <div className="flex-shrink-0 w-1 h-1 rounded-full bg-brand-green mt-1.5"></div>
-            <span>Student information (name, registration number, course, semester)</span>
+            <span>Learner information (name, registration number, course, semester)</span>
           </li>
           <li className="flex items-start gap-2">
             <div className="flex-shrink-0 w-1 h-1 rounded-full bg-brand-green mt-1.5"></div>
-            <span>Student queries and concerns</span>
+            <span>Learner queries and concerns</span>
           </li>
           <li className="flex items-start gap-2">
             <div className="flex-shrink-0 w-1 h-1 rounded-full bg-brand-green mt-1.5"></div>

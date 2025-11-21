@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
     // Get pagination params from query
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const limit = parseInt(searchParams.get('limit') || '500', 10); // Increased default limit
+    const institutionIdParam = searchParams.get('institutionId');
 
     // Call JKKN API
     const url = `${baseUrl}/api-management/organizations/departments?page=${page}&limit=${limit}`;
@@ -97,8 +98,8 @@ export async function GET(request: NextRequest) {
 
     console.log('Transformed department data:', JSON.stringify(transformedData.data[0], null, 2));
 
-    // Apply access control filtering (institution-level only)
-    const institutionFilter = getInstitutionFilter(userAccess);
+    // Apply filtering: use institutionId param if provided, otherwise use access control
+    let institutionFilter = institutionIdParam || getInstitutionFilter(userAccess);
 
     // Filter by institution
     if (institutionFilter !== null) {
@@ -113,7 +114,7 @@ export async function GET(request: NextRequest) {
         total: transformedData.data.length,
       };
 
-      console.log(`[Access Control] Filtered departments for ${userAccess.role}: ${transformedData.data.length} results`);
+      console.log(`[Departments] Filtered for institution ${institutionFilter}: ${transformedData.data.length} results`);
     }
 
     return NextResponse.json({

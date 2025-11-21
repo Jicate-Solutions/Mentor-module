@@ -8,6 +8,7 @@ import type { MentorActivity, ActivityStats } from '@/lib/types/activity';
 import ActivityStatsGrid from './components/ActivityStatsGrid';
 import ActivityFilters, { type FilterState } from './components/ActivityFilters';
 import ActivityTimeline from './components/ActivityTimeline';
+import MentorPerformanceTable from './components/MentorPerformanceTable';
 
 export default function MentorActivityPage() {
   const { user, loading: authLoading, accessToken } = useAuth();
@@ -276,6 +277,9 @@ export default function MentorActivityPage() {
 
         {/* Statistics Grid */}
         <ActivityStatsGrid stats={stats} loading={statsLoading} />
+
+        {/* Mentor Performance Table - Only for Admin/Mentor In-Charge */}
+        {isAdmin && <MentorPerformanceTable />}
 
         {/* Filters */}
         <ActivityFilters

@@ -3,6 +3,8 @@ import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { ToastProvider } from "@/components/providers/ToastProvider";
+import { BugReporterWrapper } from "@/components/providers/BugReporterWrapper";
+import { Toaster } from 'react-hot-toast';
 
 // Professional font for entire application
 const poppins = Poppins({
@@ -37,10 +39,13 @@ export default function RootLayout({
         style={{ fontFamily: "var(--font-poppins)" }}
       >
         <AuthProvider>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
+          <BugReporterWrapper>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </BugReporterWrapper>
         </AuthProvider>
+        <Toaster position="top-right" />
       </body>
     </html>
   );

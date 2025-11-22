@@ -72,7 +72,11 @@
       "Bash(del /f \".next\\dev\\lock\" 2)",
       "Bash(exit 0)",
       "Bash(del \"hooks\\dashboard\\useDepartmentSessions.ts\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Skill(skill-creator)",
+      "Bash(python:*)",
+      "Bash(chcp 65001)",
+      "Skill(bug-boundary-integration)"
     ],
     "deny": [],
     "ask": []

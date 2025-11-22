@@ -76,7 +76,16 @@
       "Skill(skill-creator)",
       "Bash(python:*)",
       "Bash(chcp 65001)",
-      "Skill(bug-boundary-integration)"
+      "Skill(bug-boundary-integration)",
+      "Skill(mobile-fab-advanced)",
+      "Bash(npm test:*)",
+      "Bash(npm run sync:users:*)",
+      "Bash(npm run test:api:*)",
+      "Skill(mobile-fab-navigation)",
+      "Bash(npm run sync:all:*)",
+      "Bash(npm run debug:institutions:*)",
+      "Bash(npm run verify:access:*)",
+      "Bash(npm run verify:filtering:*)"
     ],
     "deny": [],
     "ask": []

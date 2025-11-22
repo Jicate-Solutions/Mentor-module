@@ -53,41 +53,64 @@ export async function GET(request: NextRequest) {
     console.log('[Student Search] Searching for students with query:', query);
     console.log('[Student Search] isAdmin:', isAdmin, 'userInstitutionId:', userInstitutionId);
 
-    // Fetch ALL students from our internal API (which handles pagination automatically)
-    // This route fetches all pages from JKKN API (1000 per page) and combines them
-    // Add timestamp to bust any caching
-    const timestamp = Date.now();
-    const url = `/api/jkkn/students?page=1&limit=10000&_t=${timestamp}`;
-    console.log('[Student Search] Fetching ALL students from internal API (cache-busted):', url);
+    // Fetch ALL students directly from JKKN API (bypassing internal API to avoid auth context issues)
+    console.log('[Student Search] Fetching ALL students from JKKN API');
 
-    const response = await fetch(new URL(url, request.url).toString(), {
-      method: 'GET',
-      headers: {
-        'Cookie': request.headers.get('Cookie') || '', // Forward cookies for auth
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-      },
-      // Disable cache for search
-      cache: 'no-store',
-    });
+    let allStudents: any[] = [];
+    let currentPage = 1;
+    const maxLimit = 1000; // JKKN API max per page
+    let hasMore = true;
+    const maxPages = 15; // Safety limit (15 pages × 1000 = 15,000 max students)
 
-    console.log('[Student Search] Response status:', response.status, response.statusText);
+    while (hasMore && currentPage <= maxPages) {
+      const url = `${baseUrl}/api-management/students?page=${currentPage}&limit=${maxLimit}`;
 
-    if (!response.ok) {
-      console.error('[Student Search] API Error:', response.status, response.statusText);
-      return NextResponse.json(
-        {
-          error: 'Failed to fetch students from API',
-          details: `${response.status} ${response.statusText}`
+      console.log(`[Student Search] Fetching page ${currentPage}...`);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
         },
-        { status: response.status }
-      );
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        console.error('[Student Search] JKKN API Error:', response.status, response.statusText);
+        return NextResponse.json(
+          {
+            error: 'Failed to fetch students from JKKN API',
+            details: `${response.status} ${response.statusText}`
+          },
+          { status: response.status }
+        );
+      }
+
+      const pageData = await response.json();
+      const pageStudents = pageData.data || [];
+
+      console.log(`[Student Search] Page ${currentPage}: received ${pageStudents.length} students`);
+
+      allStudents = [...allStudents, ...pageStudents];
+
+      // Check if there are more pages
+      hasMore = pageStudents.length === maxLimit;
+
+      // Also check metadata if available
+      if (pageData.metadata) {
+        const totalPages = pageData.metadata.totalPages || pageData.metadata.total_pages;
+        if (totalPages && currentPage >= totalPages) {
+          hasMore = false;
+        }
+      }
+
+      currentPage++;
     }
 
-    const data = await response.json();
-    const students = data.data || [];
+    const students = allStudents;
 
-    console.log('[Student Search] Fetched', students.length, 'students from internal API (with pagination)');
+    console.log('[Student Search] Fetched', students.length, 'total students from JKKN API (across', currentPage - 1, 'pages)');
     console.log('[Student Search] User access:', { role: userAccess.role, institution_id: userInstitutionId, isAdmin });
 
     // Enhanced debug logging - Log first student's complete structure

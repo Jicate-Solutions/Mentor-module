@@ -5,6 +5,8 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import SearchInput from '@/components/ui/SearchInput';
+import PageContainer from '@/components/ui/PageContainer';
+import PageHeader from '@/components/ui/PageHeader';
 import {
   fetchStaff,
   checkApiStatus,
@@ -179,30 +181,19 @@ export default function StaffPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
+    <PageContainer>
       {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-6">
-        <div className="flex items-start justify-between relative z-10">
-          <div>
-            <h1 className="text-[22px] font-medium text-neutral-900 mb-2 tracking-tight">
-              JKKN Staff Directory
-            </h1>
-            <p className="text-neutral-600 text-[14px] leading-relaxed">
-              Browse and manage staff members from MyJKKN database
-            </p>
-          </div>
-          {isConfigured && (
-            <Badge variant="success" size="lg">
-              ✓ API Connected
-            </Badge>
-          )}
-        </div>
-        <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-brand-yellow/20 rounded-full blur-3xl" />
-      </div>
+      <PageHeader
+        title="JKKN Staff Directory"
+        description="Browse and manage staff members from MyJKKN database"
+        variant="gradient"
+        icon={<span>👨‍🏫</span>}
+        badge={isConfigured ? { text: "✓ API Connected", variant: "success" } : undefined}
+      />
 
       {/* Initial API Check Loading */}
       {isCheckingApi && (
-        <div className="bg-white rounded-xl border border-neutral-200/50 p-12 shadow-sm">
+        <div className="bg-white rounded-2xl border border-neutral-200/50 p-12 shadow-xl">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-brand-green border-t-transparent mb-3"></div>
             <p className="text-neutral-600 text-sm">Checking API configuration...</p>
@@ -212,7 +203,7 @@ export default function StaffPage() {
 
       {/* API Not Configured Warning */}
       {!isCheckingApi && !isConfigured && (
-        <div className="bg-yellow-50/80 rounded-xl border border-yellow-200/60 p-5 shadow-sm">
+        <div className="bg-yellow-50/80 rounded-2xl border border-yellow-200/60 p-5 shadow-lg">
           <div className="flex items-start gap-3">
             <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -229,7 +220,7 @@ export default function StaffPage() {
 
       {/* Main Content */}
       {isConfigured && (
-        <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm space-y-6">
+        <div className="bg-white rounded-2xl border border-neutral-200/50 p-6 shadow-xl space-y-6">
           {/* Search and Actions Bar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex-1 w-full sm:max-w-md">
@@ -311,7 +302,7 @@ export default function StaffPage() {
 
           {/* Error State */}
           {error && (
-            <div className="bg-red-50/80 border border-red-200/60 rounded-xl p-4">
+            <div className="bg-red-50/80 border border-red-200/60 rounded-2xl p-4 shadow-lg">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -335,19 +326,19 @@ export default function StaffPage() {
                     return (
                       <div
                         key={member.id}
-                        className="bg-white rounded-xl border border-neutral-200/50 p-5 shadow-sm hover:shadow-md transition-all"
+                        className="group bg-white rounded-2xl border border-neutral-200/50 p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                       >
                         <div className="flex items-start gap-4">
                           {/* Avatar */}
                           <div className="flex-shrink-0">
-                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center text-lg font-bold shadow-sm">
+                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand-green to-brand-green/80 text-white flex items-center justify-center text-lg font-bold shadow-md transition-transform duration-300 group-hover:scale-110">
                               {member.first_name.charAt(0)}{member.last_name.charAt(0)}
                             </div>
                           </div>
 
                           {/* Staff Info */}
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-base font-bold text-neutral-800 mb-1 truncate">
+                            <h3 className="text-base font-bold text-neutral-800 mb-1 truncate group-hover:text-brand-green transition-colors">
                               {getFullName(member)}
                             </h3>
 
@@ -422,7 +413,7 @@ export default function StaffPage() {
 
               {/* Table View */}
               {viewMode === 'table' && (
-                <div className="overflow-x-auto rounded-lg border border-neutral-200/50">
+                <div className="overflow-x-auto rounded-2xl border border-neutral-200/50 shadow-sm">
                   <table className="w-full">
                     <thead className="bg-neutral-50/80 border-b border-neutral-200/70">
                       <tr>
@@ -452,15 +443,15 @@ export default function StaffPage() {
                         return (
                           <tr
                             key={member.id}
-                            className="hover:bg-neutral-50/60 transition-colors"
+                            className="hover:bg-gradient-to-r hover:from-brand-cream/30 hover:to-transparent transition-all duration-300 group"
                           >
                             <td className="px-4 py-3.5">
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-sm">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-green to-brand-green/80 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-md transition-transform duration-300 group-hover:scale-110">
                                   {member.first_name.charAt(0)}{member.last_name.charAt(0)}
                                 </div>
                                 <div>
-                                  <p className="font-medium text-neutral-800 text-sm">
+                                  <p className="font-medium text-neutral-800 text-sm group-hover:text-brand-green transition-colors">
                                     {getFullName(member)}
                                   </p>
                                 </div>
@@ -608,6 +599,6 @@ export default function StaffPage() {
           )}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -455,19 +455,33 @@ export async function POST(
     }
 
     // Check if student is already assigned to this mentor
+    console.log('[Students API] Checking for existing assignment:', {
+      mentor_id: mentor!.id,
+      student_id: student.id
+    });
+
     const { data: existing, error: checkError } = await supabaseAdmin
       .from('mentor_students')
       .select('id')
       .eq('mentor_id', mentor!.id)
       .eq('student_id', student.id)
-      .single();
+      .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors when no record found
+
+    console.log('[Students API] Existing assignment check result:', {
+      exists: !!existing,
+      existingId: existing?.id,
+      error: checkError?.message
+    });
 
     if (existing) {
+      console.log('[Students API] ❌ Student already assigned - rejecting duplicate assignment');
       return NextResponse.json(
         { error: 'Student already assigned to this mentor' },
         { status: 400 }
       );
     }
+
+    console.log('[Students API] ✅ No existing assignment found - proceeding with assignment');
 
     // First, upsert student data into students table with required fields
     console.log('[Students API] Upserting student with values:', {

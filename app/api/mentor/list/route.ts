@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
       'assistant professor',
       'lecturer',
       'senior lecturer',
+      'reader', // Added for dental college faculty
       'hod',
       'head of department',
       'dean',

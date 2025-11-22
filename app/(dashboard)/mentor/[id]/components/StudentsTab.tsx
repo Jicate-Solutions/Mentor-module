@@ -91,11 +91,24 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
           success: data.success
         });
 
-        // Show all students (don't filter out assigned ones)
-        setSearchResults(data.students || []);
+        // Filter out already assigned students to prevent duplicate assignment errors
+        const assignedStudentIds = new Set(assignedStudents.map(s => s.id));
+        const unassignedStudents = (data.students || []).filter(
+          (student: Student) => !assignedStudentIds.has(student.id)
+        );
+
+        console.log('[StudentsTab] Filtered results:', {
+          total: data.students?.length || 0,
+          alreadyAssigned: (data.students?.length || 0) - unassignedStudents.length,
+          available: unassignedStudents.length
+        });
+
+        setSearchResults(unassignedStudents);
 
         if (data.students?.length === 0) {
           console.warn('[StudentsTab] No students found for query:', query);
+        } else if (unassignedStudents.length === 0 && data.students?.length > 0) {
+          console.log('[StudentsTab] All matching students are already assigned');
         }
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));

@@ -6,7 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "npx tsx scripts/test-mentor-module.ts",
+    "test:db": "npx tsx scripts/test-mentor-module.ts --db-only",
+    "test:api": "npx tsx scripts/test-api-integration.ts",
+    "sync:users": "npx tsx scripts/sync-user-institutions.ts",
+    "fix:users": "npx tsx scripts/fix-null-users.ts",
+    "check:users": "npx tsx scripts/check-missing-users.ts",
+    "debug:institutions": "npx tsx scripts/debug-institution-filtering.ts",
+    "debug:mentor": "npx tsx scripts/debug-specific-mentor.ts",
+    "debug:access": "npx tsx scripts/check-user-access.ts",
+    "verify:access": "npx tsx scripts/verify-access-control.ts",
+    "verify:filtering": "npx tsx scripts/verify-institution-filtering.ts",
+    "sync:all": "npx tsx scripts/sync-all-jkkn-data.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.37",
@@ -37,6 +49,7 @@
     "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.0.0",
+    "shadcn": "^3.5.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

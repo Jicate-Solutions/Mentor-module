@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from './Sidebar';
+import MobileBottomNav from './MobileBottomNav';
 import Breadcrumbs from '@/components/ui/Breadcrumbs';
 import { TooltipIconButton } from '@/components/ui/Tooltip';
 import AccessLevelBadge from '@/components/ui/AccessLevelBadge';
@@ -88,7 +89,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className={`flex-1 flex flex-col min-w-0 overflow-x-hidden transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-56'}`}>
         {/* Top Header Bar */}
         <header
-          className={`bg-white border-b border-neutral-100 fixed top-0 left-0 right-0 z-30 transition-all duration-300 ${
+          className={`hidden lg:block bg-white border-b border-neutral-100 fixed top-0 left-0 right-0 z-30 transition-all duration-300 ${
             sidebarCollapsed ? 'lg:left-16' : 'lg:left-56'
           }`}
         >
@@ -418,18 +419,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         {/* Breadcrumbs */}
         {pathname !== '/dashboard' && (
-          <div className="bg-white border-b border-neutral-100 px-4 py-2.5 lg:px-6 pt-16">
+          <div className="bg-white border-b border-neutral-100 px-4 py-2.5 lg:px-6 lg:pt-16">
             <Breadcrumbs autoGenerate className="text-sm" />
           </div>
         )}
 
         {/* Main Content */}
-        <main className={`flex-1 overflow-auto ${pathname === '/dashboard' ? 'pt-16' : ''}`}>
+        <main className={`flex-1 overflow-auto ${pathname === '/dashboard' ? 'lg:pt-16' : ''} pb-20 lg:pb-0`}>
           {children}
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-neutral-100 py-3 px-4 lg:px-6">
+        <footer className="bg-white border-t border-neutral-100 py-3 px-4 lg:px-6 pb-20 lg:pb-3">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-neutral-500">
             <p>© 2025 JKKN Institutions. All rights reserved.</p>
             <p className="flex items-center gap-2">
@@ -439,6 +440,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </footer>
       </div>
+
+      {/* Mobile Bottom Navigation with FAB */}
+      <MobileBottomNav />
     </div>
   );
 }

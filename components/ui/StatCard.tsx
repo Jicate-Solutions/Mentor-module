@@ -23,35 +23,38 @@ export default function StatCard({
   className = '',
 }: StatCardProps) {
   const variantStyles = {
-    default: 'bg-white border-neutral-200',
-    primary: 'bg-gradient-to-br from-brand-green/5 to-primary-100/30 border-brand-green/20',
-    accent: 'bg-gradient-to-br from-brand-yellow/10 to-accent-100/30 border-brand-yellow/20',
+    default: 'bg-white border-neutral-200 hover:border-brand-green/30',
+    primary: 'bg-gradient-to-br from-brand-green/5 to-brand-green/10 border-brand-green/30 hover:border-brand-green/50',
+    accent: 'bg-gradient-to-br from-brand-yellow/10 to-brand-yellow/15 border-brand-yellow/30 hover:border-brand-yellow/50',
   };
 
   const iconBgStyles = {
-    default: 'bg-neutral-100 text-neutral-600',
-    primary: 'bg-brand-green/10 text-brand-green',
-    accent: 'bg-brand-yellow/20 text-brand-green',
+    default: 'bg-neutral-100 text-neutral-600 group-hover:bg-neutral-200',
+    primary: 'bg-brand-green/10 text-brand-green group-hover:bg-brand-green/20',
+    accent: 'bg-brand-yellow/20 text-brand-green group-hover:bg-brand-yellow/30',
   };
 
   return (
     <div
       className={`
-        relative overflow-hidden rounded-xl border p-5
-        transition-all duration-200 hover:shadow-sm hover:border-brand-green/20
+        group relative overflow-hidden rounded-2xl border p-6
+        transition-all duration-300 hover:shadow-xl hover:-translate-y-1
         ${variantStyles[variant]}
         ${className}
       `}
     >
-      <div className="flex items-start justify-between">
+      {/* Animated background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-brand-green/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+      <div className="flex items-start justify-between relative z-10">
         <div className="flex-1">
-          <p className="text-[13px] font-medium text-neutral-600 mb-2 tracking-wide uppercase">{title}</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-[28px] font-medium text-neutral-900 tracking-tight">{value}</h3>
+          <p className="text-[12px] font-semibold text-neutral-600 mb-3 tracking-wider uppercase">{title}</p>
+          <div className="flex items-baseline gap-2 mb-1">
+            <h3 className="text-[32px] font-bold text-neutral-900 tracking-tight transition-all duration-300 group-hover:scale-105">{value}</h3>
             {trend && (
               <span
-                className={`text-[12px] font-medium flex items-center gap-0.5 ${
-                  trend.isPositive ? 'text-success-600' : 'text-error-600'
+                className={`text-[12px] font-semibold flex items-center gap-0.5 px-2 py-0.5 rounded-full ${
+                  trend.isPositive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
                 }`}
               >
                 <svg
@@ -81,14 +84,15 @@ export default function StatCard({
             )}
           </div>
           {subtitle && (
-            <p className="text-[13px] text-neutral-500 mt-2 leading-relaxed">{subtitle}</p>
+            <p className="text-[13px] text-neutral-500 leading-relaxed font-medium">{subtitle}</p>
           )}
         </div>
 
         {icon && (
           <div
             className={`
-              w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
+              w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0
+              transition-all duration-300 group-hover:scale-110 group-hover:rotate-6
               ${iconBgStyles[variant]}
             `}
           >
@@ -97,10 +101,18 @@ export default function StatCard({
         )}
       </div>
 
-      {/* Decorative element */}
+      {/* Enhanced Decorative elements */}
       <div
         className={`
-          absolute -bottom-2 -right-2 w-28 h-28 rounded-full blur-3xl opacity-10
+          absolute -bottom-3 -right-3 w-32 h-32 rounded-full blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-500
+          ${variant === 'primary' ? 'bg-brand-green' : ''}
+          ${variant === 'accent' ? 'bg-brand-yellow' : ''}
+          ${variant === 'default' ? 'bg-neutral-400' : ''}
+        `}
+      />
+      <div
+        className={`
+          absolute -top-3 -left-3 w-24 h-24 rounded-full blur-2xl opacity-0 group-hover:opacity-10 transition-opacity duration-500
           ${variant === 'primary' ? 'bg-brand-green' : ''}
           ${variant === 'accent' ? 'bg-brand-yellow' : ''}
         `}

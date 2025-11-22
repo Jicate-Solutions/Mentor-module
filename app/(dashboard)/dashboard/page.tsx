@@ -191,15 +191,19 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
-      {/* Welcome Hero */}
-      <WelcomeHero />
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-brand-cream/20 to-neutral-50 p-4 lg:p-8 space-y-8">
+      {/* Welcome Hero - Full Width with Modern Gradient */}
+      <div className="animate-fadeIn">
+        <WelcomeHero />
+      </div>
 
-      {/* Stats Grid */}
-      <StatsGrid stats={stats} loading={loading} />
+      {/* Stats Grid - Enhanced Cards */}
+      <div className="animate-fadeIn" style={{ animationDelay: '100ms' }}>
+        <StatsGrid stats={stats} loading={loading} />
+      </div>
 
-      {/* Department Progress & Upcoming Sessions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Department Progress & Upcoming Sessions - Better Proportions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn" style={{ animationDelay: '200ms' }}>
         <div className="lg:col-span-2">
           <ProgressCard departments={departmentProgress} loading={loading} />
         </div>
@@ -208,8 +212,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Activity Feed & Notifications */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Activity Feed & Notifications - Modern Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn" style={{ animationDelay: '300ms' }}>
         <div className="lg:col-span-2">
           <ActivityFeed activities={activities} loading={loading} />
         </div>
@@ -222,11 +226,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Top Mentors & Department Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Top Mentors & Department Chart - Equal Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fadeIn" style={{ animationDelay: '400ms' }}>
         <TopMentorsCard mentors={topMentors} loading={loading} />
         <DepartmentChart data={departmentData} loading={loading} />
       </div>
+
+      {/* Bottom Spacer for Mobile Nav */}
+      <div className="h-4 lg:hidden" />
     </div>
   );
 }

@@ -53,49 +53,68 @@ export const ProgressCard = ({ departments, loading }: ProgressCardProps) => {
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-6">
           {departments.map((dept, index) => {
             const percentage = calculatePercentage(dept.completed, dept.total);
             return (
-              <div key={index} className="group">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
+              <div key={index} className="group relative">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
                     <div
-                      className="w-3 h-3 rounded-full"
+                      className="w-4 h-4 rounded-full shadow-sm ring-2 ring-white transition-transform group-hover:scale-125"
                       style={{ backgroundColor: dept.color }}
                     />
-                    <span className="text-sm font-medium text-neutral-700">
+                    <span className="text-[14px] font-semibold text-neutral-800 group-hover:text-brand-green transition-colors">
                       {dept.name}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[24px] font-medium text-neutral-900 tracking-tight">
+                    <span className="text-[20px] font-bold text-neutral-900 tracking-tight">
                       {percentage}%
                     </span>
                     {percentage === 100 && (
-                      <CheckCircleIcon className="w-5 h-5 text-success" />
+                      <CheckCircleIcon className="w-6 h-6 text-green-500 animate-pulse" />
                     )}
                   </div>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="relative h-3 bg-neutral-100 rounded-full overflow-hidden">
+                {/* Enhanced Progress Bar with Gradient */}
+                <div className="relative h-4 bg-neutral-100 rounded-full overflow-hidden shadow-inner">
+                  {/* Background Pattern */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+                  {/* Progress Fill */}
                   <div
-                    className="absolute top-0 left-0 h-full rounded-full transition-all duration-700 ease-out group-hover:opacity-90"
+                    className="absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out shadow-sm"
                     style={{
                       width: `${percentage}%`,
-                      backgroundColor: dept.color,
+                      background: `linear-gradient(90deg, ${dept.color} 0%, ${dept.color}dd 100%)`,
                     }}
-                  />
+                  >
+                    {/* Shine Effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                  </div>
+
+                  {/* Glowing Indicator at Progress End */}
+                  {percentage > 0 && (
+                    <div
+                      className="absolute top-0 h-full w-1 transition-all duration-1000 ease-out"
+                      style={{
+                        left: `${percentage}%`,
+                        backgroundColor: dept.color,
+                        boxShadow: `0 0 10px ${dept.color}`,
+                      }}
+                    />
+                  )}
                 </div>
 
                 {/* Details */}
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-neutral-500">
-                    {dept.completed} of {dept.total} sessions completed
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-[12px] text-neutral-600 font-medium">
+                    {dept.completed} of {dept.total} sessions
                   </span>
                   {dept.completed < dept.total && (
-                    <span className="text-xs text-neutral-400">
+                    <span className="text-[11px] text-neutral-500 px-2 py-0.5 rounded-full bg-neutral-100">
                       {dept.total - dept.completed} remaining
                     </span>
                   )}
@@ -106,17 +125,27 @@ export const ProgressCard = ({ departments, loading }: ProgressCardProps) => {
         </div>
       )}
 
-      {/* Summary */}
+      {/* Enhanced Summary */}
       {!loading && departments.length > 0 && (
-        <div className="mt-6 pt-6 border-t border-neutral-200">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-neutral-600">Overall Progress</span>
-            <span className="font-bold text-primary-600">
-              {Math.round(
-                departments.reduce((acc, dept) => acc + calculatePercentage(dept.completed, dept.total), 0) /
-                  departments.length
-              )}%
-            </span>
+        <div className="mt-8 pt-6 border-t-2 border-neutral-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-green/20 to-brand-green/10 flex items-center justify-center">
+                <svg className="w-5 h-5 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <span className="text-[14px] font-semibold text-neutral-700">Overall Progress</span>
+            </div>
+            <div className="text-right">
+              <p className="text-[28px] font-bold text-brand-green tracking-tight">
+                {Math.round(
+                  departments.reduce((acc, dept) => acc + calculatePercentage(dept.completed, dept.total), 0) /
+                    departments.length
+                )}%
+              </p>
+              <p className="text-[11px] text-neutral-500 font-medium">across all departments</p>
+            </div>
           </div>
         </div>
       )}

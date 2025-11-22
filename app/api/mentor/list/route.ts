@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserAccess } from '@/lib/middleware/access-control';
 
 // Local interface for staff member (to avoid client-side imports)
 interface StaffMember {
@@ -32,11 +33,10 @@ interface StaffMember {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get authorization token from header
-    const authHeader = request.headers.get('Authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    // Get user access level for filtering
+    const userAccess = await getUserAccess();
 
-    if (!token) {
+    if (!userAccess) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -370,6 +370,17 @@ export async function GET(request: NextRequest) {
       totalStudentAssignments: studentCounts?.length || 0
     });
 
+    // Helper to extract institution ID from staff data
+    const getInstitutionId = (institution: any): string => {
+      if (typeof institution === 'object' && institution !== null) {
+        return institution.id || institution.institution_id || '';
+      }
+      if (typeof institution === 'string') {
+        return institution;
+      }
+      return '';
+    };
+
     // Transform staff data to mentor format with real student counts
     let mentors = allMentors.map((staff: StaffMember) => {
       // Safely construct name with fallbacks
@@ -397,12 +408,27 @@ export async function GET(request: NextRequest) {
         email: staff.email || staff.institution_email,
         department: getDepartmentName(staff.department),
         institution: getInstitutionName(staff.institution),
+        institution_id: getInstitutionId(staff.institution), // Add for filtering
         designation: staff.designation,
         phone: staff.phone || '',
         avatar: null,
         totalStudents,
       };
     });
+
+    console.log(`[BEFORE Access Control] Total mentors: ${mentors.length}`);
+    console.log(`[User Access] Role: ${userAccess.role}, InstitutionID: ${userAccess.institutionId}, IsSuperAdmin: ${userAccess.isSuperAdmin}`);
+
+    // Apply institution-based access control filtering
+    if (!userAccess.isSuperAdmin && userAccess.institutionId) {
+      const beforeFilter = mentors.length;
+      mentors = mentors.filter((mentor: any) =>
+        mentor.institution_id === userAccess.institutionId
+      );
+      console.log(`[AFTER Access Control] Filtered mentors: ${mentors.length} (from ${beforeFilter})`);
+    } else {
+      console.log(`[Access Control] Super Admin or no institution filter - showing all ${mentors.length} mentors`);
+    }
 
     // Filter by search query if provided
     if (searchQuery.trim()) {
@@ -430,6 +456,7 @@ export async function GET(request: NextRequest) {
       total: mentors.length,
       searched: searchQuery.trim() !== '',
       searchQuery: searchQuery,
+      accessLevel: userAccess.role,
     });
   } catch (error) {
     return NextResponse.json(

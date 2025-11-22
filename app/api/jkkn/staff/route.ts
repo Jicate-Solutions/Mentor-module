@@ -1,4 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserAccess } from '@/lib/middleware/access-control';
+import { applyAccessFilters, updateMetadata, wereFiltersApplied } from '@/lib/utils/api-filters';
+
+/**
+ * Helper function to extract institution and department IDs from staff data
+ */
+function extractInstitutionDepartmentIds(staff: any) {
+  // Extract institution_id
+  let institution_id = '';
+  if (typeof staff.institution === 'object' && staff.institution !== null) {
+    institution_id = staff.institution.id || staff.institution.institution_id || '';
+  } else if (typeof staff.institution === 'string') {
+    institution_id = staff.institution;
+  } else if (staff.institution_id) {
+    institution_id = staff.institution_id;
+  }
+
+  // Extract department_id
+  let department_id = '';
+  if (typeof staff.department === 'object' && staff.department !== null) {
+    department_id = staff.department.id || staff.department.department_id || '';
+  } else if (typeof staff.department === 'string') {
+    department_id = staff.department;
+  } else if (staff.department_id) {
+    department_id = staff.department_id;
+  }
+
+  return { institution_id, department_id };
+}
 
 /**
  * Transform MyJKKN API staff response to match our interface
@@ -50,6 +79,16 @@ function transformStaffData(apiStaff: any) {
  */
 export async function GET(request: NextRequest) {
   try {
+    // Get user access level for filtering
+    const userAccess = await getUserAccess();
+
+    if (!userAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     // Get API key from environment (server-side only)
     const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
     const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
@@ -189,7 +228,28 @@ export async function GET(request: NextRequest) {
     console.log('=== END DEBUG ===');
 
     // Transform the data to match our interface
-    const transformedStaff = data.data ? data.data.map(transformStaffData) : [];
+    let transformedStaff = data.data ? data.data.map(transformStaffData) : [];
+
+    // Add institution_id and department_id to each staff member for filtering
+    const staffWithIds = transformedStaff.map((staff: any) => ({
+      ...staff,
+      ...extractInstitutionDepartmentIds(staff)
+    }));
+
+    console.log(`[BEFORE Access Control] Total staff: ${staffWithIds.length}`);
+    console.log(`[User Access] Role: ${userAccess.role}, InstitutionID: ${userAccess.institutionId}, IsSuperAdmin: ${userAccess.isSuperAdmin}`);
+
+    // Apply access control filtering
+    const filteredData = applyAccessFilters(staffWithIds, userAccess);
+
+    console.log(`[AFTER Access Control] Filtered staff: ${filteredData.length} (from ${staffWithIds.length})`);
+
+    // Debug: Show unique institutions in filtered data
+    const uniqueInsts = new Set(filteredData.map((s: any) => s.institution_id));
+    console.log(`[Filtered Data] Unique institutions (${uniqueInsts.size}):`, Array.from(uniqueInsts));
+
+    // Update transformedStaff to use filtered data
+    transformedStaff = filteredData;
 
     // Transform metadata to ensure consistent field names
     // Check multiple possible locations for metadata
@@ -221,19 +281,33 @@ export async function GET(request: NextRequest) {
                        data.total_pages ||
                        Math.ceil(totalCount / limit);
 
-    const metadata = {
-      page: currentPage,
-      totalPages: totalPages,
-      total: totalCount,
-    };
+    // Update metadata with filtered count
+    const filtersApplied = wereFiltersApplied(userAccess);
+    const metadata = filtersApplied
+      ? updateMetadata(
+          {
+            page: currentPage,
+            totalPages: totalPages,
+            total: totalCount,
+          },
+          transformedStaff.length,
+          filtersApplied
+        )
+      : {
+          page: currentPage,
+          totalPages: totalPages,
+          total: totalCount,
+        };
 
     console.log('Transformed staff data (first item):', JSON.stringify(transformedStaff[0], null, 2));
     console.log('Final Metadata:', JSON.stringify(metadata, null, 2));
+    console.log(`[Access Control] Filtered staff for ${userAccess.role}: ${transformedStaff.length} results`);
 
     return NextResponse.json({
       success: true,
       data: transformedStaff,
       metadata: metadata,
+      accessLevel: userAccess.role,
     });
 
   } catch (error: any) {

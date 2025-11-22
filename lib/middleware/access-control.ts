@@ -14,7 +14,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { InchargeScope } from '@/lib/types/mentor-incharge';
 
-export type AccessLevel = 'super_admin' | 'institution_admin' | 'mentor' | 'student';
+export type AccessLevel = 'super_admin' | 'institution_admin' | 'mentor' | 'student' | 'faculty' | 'hod';
 
 export interface UserAccess {
   userId: string;
@@ -93,7 +93,7 @@ export function canAccessInstitution(
     return true;
   }
 
-  // Regular mentor/student can only access their own institution
+  // Faculty, HOD, regular mentor, and student can access their own institution
   if (userAccess.institutionId === targetInstitutionId) {
     return true;
   }
@@ -153,7 +153,7 @@ export function getInstitutionFilter(userAccess: UserAccess): string | null {
     return userAccess.institutionId;
   }
 
-  // Mentors and other roles are filtered by their institution
+  // Faculty, HOD, Mentors and other roles are filtered by their institution
   console.log(`[Access Control] Non-admin user (${userAccess.role}) - Filtering by institution: ${userAccess.institutionId}`);
   return userAccess.institutionId;
 }
@@ -194,6 +194,8 @@ export async function requireMinimumLevel(
   const levelHierarchy: Record<AccessLevel, number> = {
     super_admin: 1,
     institution_admin: 2,
+    hod: 3, // Head of Department - elevated permissions
+    faculty: 3, // Faculty - same level as mentor
     mentor: 3,
     student: 4,
   };
@@ -216,7 +218,9 @@ export async function requireMinimumLevel(
 export function getAccessLevelLabel(role: AccessLevel): string {
   const labels: Record<AccessLevel, string> = {
     super_admin: 'Super Admin',
-    institution_admin: 'Institution Admin',
+    institution_admin: 'Institution Admin (Director)',
+    hod: 'Head of Department',
+    faculty: 'Faculty',
     mentor: 'Mentor',
     student: 'Student',
   };
@@ -233,6 +237,8 @@ export function getAccessLevelVariant(
   const variants: Record<AccessLevel, 'default' | 'success' | 'warning' | 'error'> = {
     super_admin: 'error',
     institution_admin: 'success',
+    hod: 'warning',
+    faculty: 'default',
     mentor: 'default',
     student: 'default',
   };

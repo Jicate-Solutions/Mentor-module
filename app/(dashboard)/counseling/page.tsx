@@ -72,10 +72,18 @@ export default function CounselingSessionsPage() {
           });
           if (response.ok) {
             const data = await response.json();
-            return (data.data || []).map((inst: any) => ({
-              value: inst.institution_name || inst.name,
-              label: inst.institution_name || inst.name,
-            }));
+            // Deduplicate institutions by name
+            const uniqueInstitutions = new Map();
+            (data.data || []).forEach((inst: any) => {
+              const institutionName = inst.institution_name || inst.name;
+              if (institutionName && !uniqueInstitutions.has(institutionName)) {
+                uniqueInstitutions.set(institutionName, {
+                  value: institutionName,
+                  label: institutionName,
+                });
+              }
+            });
+            return Array.from(uniqueInstitutions.values());
           }
         } catch (error) {
           console.error('Error loading institutions:', error);
@@ -98,10 +106,18 @@ export default function CounselingSessionsPage() {
           });
           if (response.ok) {
             const data = await response.json();
-            return (data.data || []).map((dept: any) => ({
-              value: dept.department_name || dept.name,
-              label: dept.department_name || dept.name,
-            }));
+            // Deduplicate departments by name
+            const uniqueDepartments = new Map();
+            (data.data || []).forEach((dept: any) => {
+              const departmentName = dept.department_name || dept.name;
+              if (departmentName && !uniqueDepartments.has(departmentName)) {
+                uniqueDepartments.set(departmentName, {
+                  value: departmentName,
+                  label: departmentName,
+                });
+              }
+            });
+            return Array.from(uniqueDepartments.values());
           }
         } catch (error) {
           console.error('Error loading departments:', error);
@@ -124,10 +140,18 @@ export default function CounselingSessionsPage() {
           });
           if (response.ok) {
             const data = await response.json();
-            return (data.data || []).map((prog: any) => ({
-              value: prog.program_name || prog.name,
-              label: prog.program_name || prog.name,
-            }));
+            // Deduplicate programs by name (multiple institutions may have same program name)
+            const uniquePrograms = new Map();
+            (data.data || []).forEach((prog: any) => {
+              const programName = prog.program_name || prog.name;
+              if (programName && !uniquePrograms.has(programName)) {
+                uniquePrograms.set(programName, {
+                  value: programName,
+                  label: programName,
+                });
+              }
+            });
+            return Array.from(uniquePrograms.values());
           }
         } catch (error) {
           console.error('Error loading programs:', error);

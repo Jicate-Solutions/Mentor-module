@@ -139,9 +139,10 @@ export function canAccessDepartment(
  * Get institution filter for queries based on user access
  * Returns null for super admin and administrator (no filter needed - see all institutions)
  * Returns institution_id for mentors and other roles
+ * IMPORTANT: Mentor in-charge users are filtered by their mentorInchargeInstitutionId, NOT their personal institutionId
  */
 export function getInstitutionFilter(userAccess: UserAccess): string | null {
-  // Super admin and institution admin see everything (all institutions for super admin, their institution for institution admin)
+  // Super admin sees all institutions
   if (userAccess.isSuperAdmin || userAccess.role === 'super_admin') {
     console.log('[Access Control] Super Admin - No institution filter applied');
     return null;
@@ -153,8 +154,14 @@ export function getInstitutionFilter(userAccess: UserAccess): string | null {
     return userAccess.institutionId;
   }
 
-  // Faculty, HOD, Mentors and other roles are filtered by their institution
-  console.log(`[Access Control] Non-admin user (${userAccess.role}) - Filtering by institution: ${userAccess.institutionId}`);
+  // Mentor in-charge users see their assigned institution (takes priority over their personal institution)
+  if (userAccess.isMentorIncharge && userAccess.mentorInchargeInstitutionId) {
+    console.log(`[Access Control] Mentor In-Charge - Filtering by assigned institution: ${userAccess.mentorInchargeInstitutionId}`);
+    return userAccess.mentorInchargeInstitutionId;
+  }
+
+  // Faculty, HOD, regular Mentors and other roles are filtered by their personal institution
+  console.log(`[Access Control] Non-admin user (${userAccess.role}) - Filtering by personal institution: ${userAccess.institutionId}`);
   return userAccess.institutionId;
 }
 

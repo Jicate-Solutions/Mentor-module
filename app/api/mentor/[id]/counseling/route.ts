@@ -655,7 +655,7 @@ export async function POST(
     // Send emails if we have a valid email address (not empty and not a placeholder)
     const hasValidEmail = studentEmail &&
                          studentEmail.trim() !== '' &&
-                         !studentEmail.includes('@student.jkkn.ac.in');
+                         studentEmail.includes('@');
 
     if (hasValidEmail) {
       console.log('[Counseling API] ✅ Valid email found, sending notifications:', studentEmail);

@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import type { AccessLevel } from '@/types/access-control';
 
 export interface UserAccessInfo {
@@ -52,17 +53,19 @@ export function useUserAccess() {
         let mentorInchargeInstitutionId: string | null = null;
 
         try {
-          const response = await fetch('/api/user/access-info', {
+          // Use fetchWithAuthRetry to automatically retry on 401 after refreshing token
+          const response = await fetchWithAuthRetry('/api/user/access-info', {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
             },
             credentials: 'include',
           });
+
           if (response.ok) {
             const data = await response.json();
             isMentorIncharge = data.isMentorIncharge || false;
             mentorInchargeInstitutionId = data.mentorInchargeInstitutionId || null;
-            console.log('[useUserAccess] Got access info:', { isMentorIncharge, mentorInchargeInstitutionId });
+            console.log('[useUserAccess] ✓ Got access info:', { isMentorIncharge, mentorInchargeInstitutionId });
           } else {
             console.error('[useUserAccess] API returned:', response.status);
           }

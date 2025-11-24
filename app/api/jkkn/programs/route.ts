@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserAccess, getInstitutionFilter } from '@/lib/middleware/access-control';
 
 /**
  * Transform MyJKKN API program response to match our interface
@@ -43,6 +44,7 @@ function transformProgramData(apiProgram: any) {
     code: code,
     department_id: apiProgram.department_id || apiProgram.departmentId || apiProgram.department?.id || '',
     degree_id: apiProgram.degree_id || apiProgram.degreeId || apiProgram.degree?.id || '',
+    institution_id: apiProgram.institution_id || apiProgram.institutionId || apiProgram.institution?.id || '', // Add institution_id for filtering
     is_active: apiProgram.is_active ?? apiProgram.isActive ?? apiProgram.active ?? true,
     created_at: apiProgram.created_at || apiProgram.createdAt || new Date().toISOString(),
     updated_at: apiProgram.updated_at || apiProgram.updatedAt || new Date().toISOString(),
@@ -59,6 +61,16 @@ function transformProgramData(apiProgram: any) {
  */
 export async function GET(request: NextRequest) {
   try {
+    // Get user access level
+    const userAccess = await getUserAccess();
+
+    if (!userAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     // Get API key from environment (server-side only)
     const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
     const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
@@ -76,7 +88,9 @@ export async function GET(request: NextRequest) {
     // Get pagination params from query
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const limit = parseInt(searchParams.get('limit') || '500', 10); // Increased default limit
+    const institutionIdParam = searchParams.get('institutionId');
+    const departmentIdParam = searchParams.get('departmentId');
 
     // Call JKKN API
     const url = `${baseUrl}/api-management/organizations/programs?page=${page}&limit=${limit}`;
@@ -179,10 +193,39 @@ export async function GET(request: NextRequest) {
     console.log('Transformed program data (first item):', JSON.stringify(transformedPrograms[0], null, 2));
     console.log('Final Metadata:', JSON.stringify(metadata, null, 2));
 
+    // Apply filtering: use query params if provided, otherwise use access control
+    let filteredPrograms = transformedPrograms;
+
+    // Institution-based filtering
+    let institutionFilter = institutionIdParam || getInstitutionFilter(userAccess);
+
+    if (institutionFilter !== null) {
+      filteredPrograms = filteredPrograms.filter(
+        (program: any) => program.institution_id === institutionFilter
+      );
+      console.log(`[Programs] Filtered for institution ${institutionFilter}: ${filteredPrograms.length} results`);
+    }
+
+    // Department-based filtering (if departmentId param provided)
+    if (departmentIdParam) {
+      filteredPrograms = filteredPrograms.filter(
+        (program: any) => program.department_id === departmentIdParam
+      );
+      console.log(`[Programs] Filtered for department ${departmentIdParam}: ${filteredPrograms.length} results`);
+    }
+
+    // Update metadata after filtering
+    const finalMetadata = {
+      page: 1,
+      totalPages: 1,
+      total: filteredPrograms.length,
+    };
+
     return NextResponse.json({
       success: true,
-      data: transformedPrograms,
-      metadata: metadata,
+      data: filteredPrograms,
+      metadata: finalMetadata,
+      accessLevel: userAccess.role,
     });
 
   } catch (error: any) {

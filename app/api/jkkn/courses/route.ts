@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserAccess, getInstitutionFilter } from '@/lib/middleware/access-control';
 
 /**
  * Transform MyJKKN API course response to match our interface
@@ -78,6 +79,18 @@ function transformCourseData(apiCourse: any, index?: number) {
       || apiCourse.modified_at
       || new Date().toISOString();
 
+    // Extract institution_id for filtering
+    const institution_id = apiCourse.institution_id
+      || apiCourse.institutionId
+      || apiCourse.institution?.id
+      || '';
+
+    // Extract department_id for filtering
+    const department_id = apiCourse.department_id
+      || apiCourse.departmentId
+      || apiCourse.department?.id
+      || '';
+
     return {
       id,
       title,
@@ -85,6 +98,8 @@ function transformCourseData(apiCourse: any, index?: number) {
       description,
       credit_hours,
       program_id,
+      institution_id, // Add for filtering
+      department_id, // Add for filtering
       is_active,
       created_at,
       updated_at,
@@ -107,6 +122,16 @@ function transformCourseData(apiCourse: any, index?: number) {
  */
 export async function GET(request: NextRequest) {
   try {
+    // Get user access level
+    const userAccess = await getUserAccess();
+
+    if (!userAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     // Get API key from environment (server-side only)
     const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
     const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
@@ -129,7 +154,10 @@ export async function GET(request: NextRequest) {
     // Get pagination params from query
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const limit = parseInt(searchParams.get('limit') || '500', 10); // Increased default limit
+    const institutionIdParam = searchParams.get('institutionId');
+    const departmentIdParam = searchParams.get('departmentId');
+    const programIdParam = searchParams.get('programId');
 
     // Try multiple endpoint patterns for courses
     // Pattern 1: Under organizations (like institutions, departments, programs, degrees)
@@ -266,9 +294,49 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Apply filtering: use query params if provided, otherwise use access control
+    let filteredCourses = transformedData.data;
+
+    // Institution-based filtering
+    let institutionFilter = institutionIdParam || getInstitutionFilter(userAccess);
+
+    if (institutionFilter !== null) {
+      filteredCourses = filteredCourses.filter(
+        (course: any) => course.institution_id === institutionFilter
+      );
+      console.log(`[Courses] Filtered for institution ${institutionFilter}: ${filteredCourses.length} results`);
+    }
+
+    // Department-based filtering
+    if (departmentIdParam) {
+      filteredCourses = filteredCourses.filter(
+        (course: any) => course.department_id === departmentIdParam
+      );
+      console.log(`[Courses] Filtered for department ${departmentIdParam}: ${filteredCourses.length} results`);
+    }
+
+    // Program-based filtering
+    if (programIdParam) {
+      filteredCourses = filteredCourses.filter(
+        (course: any) => course.program_id === programIdParam
+      );
+      console.log(`[Courses] Filtered for program ${programIdParam}: ${filteredCourses.length} results`);
+    }
+
+    // Update transformed data with filtered results
+    transformedData.data = filteredCourses;
+
+    // Update metadata after filtering
+    if (transformedData.metadata) {
+      transformedData.metadata.total = filteredCourses.length;
+      transformedData.metadata.page = 1;
+      transformedData.metadata.totalPages = 1;
+    }
+
     console.log('[Courses API] Request successful');
     return NextResponse.json({
       success: true,
+      accessLevel: userAccess.role,
       ...transformedData,
     });
 

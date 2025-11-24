@@ -38,30 +38,30 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
       {/* Mentor Card - Primary with Enhanced Style */}
-      <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-green to-emerald-700 p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
-        <div className="absolute inset-0 bg-grid-pattern opacity-5" />
-        <div className="absolute -top-8 -right-8 w-24 h-24 bg-brand-yellow/20 rounded-full blur-2xl group-hover:blur-xl transition-all" />
+      <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-100/50 via-primary-50/40 to-primary-100/50 border border-primary-200/60 p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
+        <div className="absolute inset-0 bg-grid-pattern opacity-[0.03]" />
+        <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary-300/30 rounded-full blur-2xl group-hover:blur-xl transition-all" />
 
         <div className="relative z-10">
           <div className="flex items-start justify-between mb-3">
-            <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-md">
               <MentoringIllustration className="w-6 h-6 text-white" />
             </div>
-            <div className="px-2 py-0.5 rounded-full bg-brand-yellow/30 backdrop-blur-sm border border-brand-yellow/50">
+            <div className="px-2 py-0.5 rounded-full bg-primary-500 border border-primary-400/40">
               <span className="text-[9px] text-white font-bold uppercase tracking-wider">Active</span>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <h3 className="text-[11px] font-bold text-white/80 uppercase tracking-wide">Total Mentors</h3>
-            <p className="text-[32px] font-extrabold text-white leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
+            <h3 className="text-[11px] font-bold text-primary-600 uppercase tracking-wide">Total Mentors</h3>
+            <p className="text-[32px] font-extrabold text-primary-800 leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
               {stats.totalMentors}
             </p>
-            <p className="text-[12px] text-white/70 font-medium">Active faculty members</p>
+            <p className="text-[12px] text-primary-700/70 font-medium">Active faculty members</p>
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand-yellow via-white to-brand-yellow" />
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary-400 to-transparent opacity-50" />
       </div>
 
       {/* Learners Card - Accent with Bold Design */}

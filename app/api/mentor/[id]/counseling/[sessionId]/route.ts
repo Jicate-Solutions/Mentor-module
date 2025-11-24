@@ -176,8 +176,8 @@ export async function PUT(
     if ((dateChanged || timeChanged) && updatedSession.student?.email) {
       const studentEmail = updatedSession.student.email;
 
-      // Skip generated emails
-      if (!studentEmail.includes('@student.jkkn.ac.in')) {
+      // Send to all valid emails
+      if (studentEmail && studentEmail.includes('@')) {
         // Get mentor name for email
         const { data: mentorUserData } = await supabaseAdmin
           .from('users')
@@ -306,7 +306,7 @@ export async function DELETE(
     }
 
     // Send cancellation notification email before deleting (asynchronously, non-blocking)
-    if (existingSession.student?.email && !existingSession.student.email.includes('@student.jkkn.ac.in')) {
+    if (existingSession.student?.email && existingSession.student.email.includes('@')) {
       // Get mentor name for email
       const { data: mentorUserData } = await supabaseAdmin
         .from('users')

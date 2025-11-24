@@ -26,14 +26,17 @@ export interface ValidationResponse {
 
 /**
  * Token validation cache
- * Caches validation results for 2 minutes to reduce auth server load
+ * Caches validation results for 15 minutes to reduce auth server load
+ * Failed validations are cached for 10 seconds to prevent retry storms
  */
 const validationCache = new Map<string, { result: ValidationResponse; expiresAt: number }>();
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes (increased from 2)
+const FAILED_CACHE_DURATION = 10 * 1000; // 10 seconds for failed validations
 
 /**
  * Validates an access token with the MyJKKN Auth Server
- * Results are cached for 2 minutes to prevent excessive validation calls
+ * Results are cached for 15 minutes to prevent excessive validation calls
+ * Failed validations are cached for 10 seconds to prevent retry storms
  */
 export async function validateToken(accessToken: string): Promise<ValidationResponse> {
   // Check cache first
@@ -48,7 +51,7 @@ export async function validateToken(accessToken: string): Promise<ValidationResp
 
     // Add timeout to prevent hanging on network issues
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout (increased from 5)
 
     const response = await fetch(`${authConfig.authServerUrl}/api/auth/validate`, {
       method: 'POST',
@@ -66,16 +69,28 @@ export async function validateToken(accessToken: string): Promise<ValidationResp
 
     if (!response.ok) {
       const result = { valid: false, error: 'Token validation failed' };
-      // Don't cache failures
+      // Cache failures for 10 seconds to prevent retry storms
+      validationCache.set(accessToken, {
+        result,
+        expiresAt: Date.now() + FAILED_CACHE_DURATION,
+      });
+      console.log('[Token Validation] ❌ Token validation failed, cached for 10s');
       return result;
     }
 
     const data = await response.json();
 
-    // Check if user data is present
-    if (!data.user) {
+    // Check if user data is present or if validation failed
+    if (!data.user || data.valid === false) {
       console.error('[Token Validation] No user data in response:', data);
-      return { valid: false, error: 'No user data in token response' };
+      const result = { valid: false, error: data.error || 'No user data in token response' };
+      // Cache failures for 10 seconds
+      validationCache.set(accessToken, {
+        result,
+        expiresAt: Date.now() + FAILED_CACHE_DURATION,
+      });
+      console.log('[Token Validation] ❌ Invalid token response, cached for 10s');
+      return result;
     }
 
     const result = { valid: true, user: data.user };
@@ -86,7 +101,7 @@ export async function validateToken(accessToken: string): Promise<ValidationResp
       expiresAt: Date.now() + CACHE_DURATION,
     });
 
-    console.log('[Token Validation] ✓ Token validated and cached, user:', data.user?.id);
+    console.log('[Token Validation] ✓ Token validated and cached for 15 minutes, user:', data.user?.id);
     return result;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {

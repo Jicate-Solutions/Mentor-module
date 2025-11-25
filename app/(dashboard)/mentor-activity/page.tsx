@@ -9,6 +9,7 @@ import ActivityStatsGrid from './components/ActivityStatsGrid';
 import ActivityFilters, { type FilterState } from './components/ActivityFilters';
 import ActivityTimeline from './components/ActivityTimeline';
 import MentorPerformanceTable from './components/MentorPerformanceTable';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function MentorActivityPage() {
   const { user, loading: authLoading, accessToken } = useAuth();
@@ -239,26 +240,17 @@ export default function MentorActivityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbee]">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Page Header */}
-        <div className="bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3.5 bg-gradient-to-br from-[#0b6d41] to-[#0b6d41]/80 rounded-xl shadow-lg shadow-[#0b6d41]/20">
-              <Activity className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-neutral-900">
-                Mentor Activity
-              </h1>
-              <p className="text-sm text-neutral-500 mt-0.5">
-                {isAdmin
-                  ? 'View and track all mentor activities across the system'
-                  : 'Track your mentoring activities and performance'}
-              </p>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          variant="gradient"
+          title="Mentor Activity"
+          description={isAdmin
+            ? 'View and track all mentor activities across the system'
+            : 'Track your mentoring activities and performance'}
+          icon={<Activity className="w-6 h-6" />}
+        />
 
         {/* Error Message */}
         {error && (

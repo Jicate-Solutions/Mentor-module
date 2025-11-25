@@ -314,7 +314,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         className={`
           fixed top-0 left-0 z-50 h-full
           ${isCollapsed ? 'lg:w-16' : 'w-56'}
-          bg-white border-r border-neutral-200
+          bg-gradient-to-b from-primary-50/95 via-white/90 to-primary-50/95
+          backdrop-blur-xl
+          border-r border-primary-100/60
+          shadow-2xl shadow-primary-900/5
           transform transition-all duration-300 ease-in-out
           lg:translate-x-0 lg:fixed
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -323,12 +326,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         aria-label="Main navigation"
       >
         {/* Header */}
-        <div className={`border-b border-neutral-200 ${isCollapsed ? 'lg:p-2' : 'p-4'} transition-all duration-300`}>
+        <div className={`border-b border-primary-100/50 ${isCollapsed ? 'lg:p-2' : 'p-4'} transition-all duration-300 bg-white/40 backdrop-blur-sm`}>
           <div className={`flex items-center ${isCollapsed ? 'lg:justify-center' : 'justify-between'} gap-2`}>
             {/* Logo and Title */}
             <div className={`flex items-center gap-2 ${isCollapsed ? 'lg:hidden' : ''}`}>
               {/* Logo Icon */}
-              <div className="w-9 h-9 rounded-lg bg-brand-green flex items-center justify-center flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0 shadow-lg border border-primary-400/30">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
@@ -337,10 +340,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
 
               {/* Title and Subtitle */}
               <div className="flex-1 min-w-0">
-                <h1 className="text-[14px] font-medium text-neutral-800 leading-tight">
+                <h1 className="text-[14px] font-bold text-primary-800 leading-tight">
                   Mentor & Mentee
                 </h1>
-                <p className="text-[11px] text-neutral-500 leading-relaxed">
+                <p className="text-[11px] text-primary-600 leading-relaxed font-medium">
                   Mentoring Platform
                 </p>
               </div>
@@ -386,15 +389,15 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                     <button
                       onClick={() => handleNavigation(item.href, item.comingSoon)}
                       className={`
-                        w-full flex items-center gap-2.5 rounded-lg
+                        w-full flex items-center gap-2.5 rounded-xl
                         font-medium transition-all text-[14px]
-                        ${isCollapsed ? 'lg:justify-center lg:px-2 lg:py-2.5' : 'px-2.5 py-2'}
+                        ${isCollapsed ? 'lg:justify-center lg:px-2 lg:py-2.5' : 'px-3 py-2.5'}
                         ${active
-                          ? 'bg-gradient-to-br from-brand-green/5 to-primary-100/30 border border-brand-green/10 text-brand-green shadow-sm'
-                          : 'text-neutral-600 hover:bg-neutral-50'
+                          ? 'bg-gradient-to-br from-primary-100/60 via-primary-50/40 to-primary-100/60 border border-primary-200/60 text-brand-green shadow-md'
+                          : 'bg-white/40 backdrop-blur-sm border border-white/60 text-neutral-600 hover:bg-white/60 hover:border-primary-200/40'
                         }
                         ${item.comingSoon ? 'opacity-60' : ''}
-                        focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-1
+                        focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-1
                       `}
                       aria-current={active ? 'page' : undefined}
                       title={isCollapsed ? item.label : undefined}
@@ -431,10 +434,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                       onClick={() => toggleSection(sectionId)}
                       className={`
                         w-full flex items-center gap-2.5 px-3 py-2.5 text-[14px] font-medium
-                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/20 rounded-lg
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-300 rounded-xl
                         ${isExpanded
-                          ? 'text-neutral-700 bg-neutral-50/80'
-                          : 'text-neutral-600 hover:bg-neutral-50/50 hover:text-neutral-800'
+                          ? 'text-primary-700 bg-primary-50/50 backdrop-blur-sm border border-primary-100/50'
+                          : 'text-neutral-600 bg-white/30 backdrop-blur-sm border border-white/50 hover:bg-white/50'
                         }
                       `}
                       aria-expanded={isExpanded}
@@ -475,15 +478,15 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                           key={item.href}
                           onClick={() => handleNavigation(item.href, item.comingSoon)}
                           className={`
-                            w-full flex items-center gap-3 rounded-lg
+                            w-full flex items-center gap-3 rounded-xl
                             font-normal text-[14px] transition-all
                             ${isCollapsed ? 'lg:justify-center lg:px-3 lg:py-2.5' : 'px-3 py-2 pl-11'}
                             ${active
-                              ? 'bg-gradient-to-br from-brand-green/5 to-primary-100/30 border border-brand-green/10 text-brand-green shadow-sm'
-                              : 'text-neutral-600 hover:bg-neutral-50'
+                              ? 'bg-gradient-to-br from-primary-100/60 via-primary-50/40 to-primary-100/60 border border-primary-200/60 text-brand-green shadow-md'
+                              : 'bg-white/40 backdrop-blur-sm border border-white/60 text-neutral-600 hover:bg-white/60 hover:border-primary-200/40'
                             }
                             ${item.comingSoon ? 'opacity-60' : ''}
-                            focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-1
+                            focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-1
                           `}
                           aria-current={active ? 'page' : undefined}
                           title={isCollapsed ? item.label : undefined}
@@ -515,16 +518,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
 
         {/* Footer - User Profile */}
         {user && (
-          <div className={`border-t border-neutral-200 ${isCollapsed ? 'lg:p-2' : 'p-2.5'} transition-all duration-300`}>
+          <div className={`border-t border-primary-100/50 bg-white/40 backdrop-blur-sm ${isCollapsed ? 'lg:p-2' : 'p-2.5'} transition-all duration-300`}>
             <div className={`flex items-center gap-2 ${isCollapsed ? 'lg:justify-center' : ''}`}>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-green to-primary-600 text-white flex items-center justify-center text-xs font-semibold flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-xs font-semibold flex-shrink-0 shadow-md border border-primary-400/30">
                 {user.full_name.charAt(0).toUpperCase()}
               </div>
               <div className={`flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                <p className="font-medium text-neutral-800 truncate text-[13px]">
+                <p className="font-medium text-primary-800 truncate text-[13px]">
                   {user.full_name}
                 </p>
-                <p className="text-[11px] text-neutral-500 truncate">
+                <p className="text-[11px] text-primary-600 truncate">
                   {user.email}
                 </p>
               </div>

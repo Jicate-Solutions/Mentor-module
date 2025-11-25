@@ -128,32 +128,41 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
       {statCards.map((card, index) => {
         const Icon = card.icon;
         return (
           <div
             key={index}
-            className={`bg-white rounded-xl border ${card.borderClass} p-5 hover:shadow-lg hover:shadow-neutral-200/50 transition-all duration-200 group`}
+            className="group relative overflow-hidden rounded-2xl bg-white/80 backdrop-blur-sm border border-primary-100/50 p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]"
           >
-            <div className="flex items-start justify-between">
-              <div className={`p-3 rounded-xl ${card.bgClass} group-hover:scale-110 transition-transform duration-200`}>
-                <Icon className={`w-6 h-6 ${card.colorClass}`} />
+            {/* Subtle Background Pattern */}
+            <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
+            <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary-300/20 rounded-full blur-2xl group-hover:blur-xl transition-all" />
+
+            <div className="relative z-10">
+              <div className="flex items-start justify-between mb-3">
+                <div className={`w-11 h-11 rounded-xl ${card.bgClass} flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-md`}>
+                  <Icon className={`w-6 h-6 ${card.colorClass}`} />
+                </div>
+                <div className={`text-[32px] font-extrabold ${card.colorClass} leading-none tracking-tight group-hover:scale-105 transition-transform inline-block tabular-nums`}>
+                  {card.value.toLocaleString()}
+                </div>
               </div>
-              <div className={`text-3xl font-bold ${card.colorClass} tabular-nums`}>
-                {card.value.toLocaleString()}
+
+              <div className="space-y-1">
+                <h3 className="text-[11px] font-bold text-neutral-600 uppercase tracking-wide">
+                  {card.label}
+                </h3>
+                {card.description && (
+                  <p className="text-[12px] text-neutral-500 font-medium">
+                    {card.description}
+                  </p>
+                )}
               </div>
             </div>
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-neutral-900">
-                {card.label}
-              </h3>
-              {card.description && (
-                <p className="text-xs text-neutral-500 mt-0.5">
-                  {card.description}
-                </p>
-              )}
-            </div>
+
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary-400/30 to-transparent opacity-50" />
           </div>
         );
       })}

@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 flex">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50/30 via-white to-accent-50/20 flex">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -89,7 +89,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className={`flex-1 flex flex-col min-w-0 overflow-x-hidden transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-56'}`}>
         {/* Top Header Bar */}
         <header
-          className={`hidden lg:block bg-white border-b border-neutral-100 fixed top-0 left-0 right-0 z-30 transition-all duration-300 ${
+          className={`hidden lg:block glass-header fixed top-0 left-0 right-0 z-30 transition-all duration-300 ${
             sidebarCollapsed ? 'lg:left-16' : 'lg:left-56'
           }`}
         >
@@ -163,9 +163,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       onClick={() => setNotificationOpen(false)}
                     />
                     {/* Dropdown Panel */}
-                    <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-xl border border-neutral-200 z-50 max-h-96 overflow-hidden">
+                    <div className="absolute right-0 top-full mt-2 w-80 glass-dropdown rounded-lg z-50 max-h-96 overflow-hidden">
                       {/* Header */}
-                      <div className="px-4 py-3 border-b border-neutral-200 bg-brand-cream flex items-center justify-between">
+                      <div className="px-4 py-3 border-b border-white/20 glass-subtle flex items-center justify-between">
                         <h3 className="font-semibold text-brand-green">
                           Notifications {unreadCount > 0 && `(${unreadCount})`}
                         </h3>
@@ -252,18 +252,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
               {/* Search Modal */}
               {searchOpen && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-20 px-4"
+                <div className="fixed inset-0 glass-overlay z-50 flex items-start justify-center pt-20 px-4"
                   onClick={() => {
                     setSearchOpen(false);
                     setSearchQuery('');
                   }}
                 >
                   {/* Search Panel */}
-                  <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden"
+                  <div className="glass-modal rounded-lg w-full max-w-2xl overflow-hidden"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Search Input */}
-                    <div className="p-4 border-b border-neutral-200">
+                    <div className="p-4 border-b border-white/20">
                       <div className="flex items-center gap-3">
                         <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -392,7 +392,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     </div>
                     {/* Search Footer */}
-                    <div className="px-4 py-3 bg-neutral-50 border-t border-neutral-200">
+                    <div className="px-4 py-3 glass-subtle border-t border-white/20">
                       <p className="text-xs text-neutral-500 text-center">
                         Press <kbd className="px-2 py-0.5 bg-white border border-neutral-300 rounded text-xs">ESC</kbd> to close
                       </p>

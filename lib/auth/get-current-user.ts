@@ -55,6 +55,14 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     // Get user from our database
     const supabaseAdmin = createAdminClient();
 
+    // Log the token data we're working with
+    console.log('[Auth] Token user data:', {
+      jkkn_user_id: validation.user.id,
+      email: validation.user.email,
+      full_name: validation.user.full_name,
+      role: validation.user.role,
+    });
+
     // First try to find by jkkn_user_id
     let { data: user, error } = await supabaseAdmin
       .from('users')
@@ -64,7 +72,11 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
     // If not found by jkkn_user_id, try by email (handles JKKN ID changes)
     if (error || !user) {
-      console.log('[Auth] User not found by jkkn_user_id, trying email lookup...');
+      console.log('[Auth] User not found by jkkn_user_id, trying email lookup...', {
+        searchingFor: validation.user.email,
+        originalError: error?.message || error?.code,
+      });
+
       const { data: userByEmail, error: emailError } = await supabaseAdmin
         .from('users')
         .select('*')
@@ -86,12 +98,21 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
         user = { ...userByEmail, jkkn_user_id: validation.user.id };
         error = null;
       } else {
+        console.error('[Auth] Email lookup also failed:', {
+          searchedEmail: validation.user.email,
+          error: emailError?.message || emailError?.code || emailError,
+        });
         error = emailError;
       }
     }
 
     if (error || !user) {
-      console.error('[Auth] User not found in database:', error);
+      console.error('[Auth] ❌ User not found in database. Token is valid but user does not exist in local users table.', {
+        jkkn_user_id: validation.user.id,
+        email: validation.user.email,
+        error: error?.message || error?.code || 'User not found',
+        suggestion: 'User may need to be synced from MyJKKN or log out and log back in',
+      });
       return null;
     }
 

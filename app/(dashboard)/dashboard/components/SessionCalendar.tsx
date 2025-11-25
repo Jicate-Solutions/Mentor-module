@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Card from '@/components/ui/Card';
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
 import { ClockIcon, UserIcon } from '@heroicons/react/24/outline';
 
@@ -37,28 +36,33 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
   };
 
   return (
-    <Card variant="elevated" className="h-full">
-      <div className="mb-6">
-        <h3 className="text-[17px] font-medium text-neutral-900" suppressHydrationWarning>
-          {format(today, 'MMMM yyyy')}
-        </h3>
-        <p className="text-[13px] text-neutral-600 mt-1 leading-relaxed">Upcoming counseling sessions</p>
-      </div>
+    <div className="relative overflow-hidden rounded-2xl bg-white/80 backdrop-blur-sm border border-primary-100/50 p-6 shadow-lg h-full">
+      {/* Subtle Background Pattern */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
+      <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary-300/20 rounded-full blur-2xl" />
 
-      {loading ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-7 gap-2">
-            {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-              <div key={i} className="h-12 bg-neutral-200 rounded animate-pulse" />
-            ))}
-          </div>
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-neutral-200 rounded animate-pulse" />
-            ))}
-          </div>
+      <div className="relative z-10">
+        <div className="mb-6">
+          <h3 className="text-[17px] font-bold text-primary-800" suppressHydrationWarning>
+            {format(today, 'MMMM yyyy')}
+          </h3>
+          <p className="text-[13px] text-primary-700/80 mt-1 leading-relaxed font-medium">Upcoming counseling sessions</p>
         </div>
-      ) : (
+
+        {loading ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-7 gap-2">
+              {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                <div key={i} className="h-12 bg-primary-100 rounded animate-pulse" />
+              ))}
+            </div>
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 bg-primary-100 rounded animate-pulse" />
+              ))}
+            </div>
+          </div>
+        ) : (
         <>
           {/* Week Calendar */}
           <div className="mb-6">
@@ -66,7 +70,7 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
                 <div
                   key={day}
-                  className="text-xs font-medium text-neutral-500 text-center"
+                  className="text-xs font-bold text-primary-700 text-center uppercase tracking-wide"
                 >
                   {day}
                 </div>
@@ -81,24 +85,24 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
                   <div
                     key={index}
                     className={`
-                      relative aspect-square rounded-lg p-2 text-center transition-all cursor-pointer
+                      relative aspect-square rounded-lg p-2 text-center transition-all cursor-pointer shadow-sm
                       ${
                         isToday
-                          ? 'bg-primary-600 text-white shadow-md'
+                          ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg border border-primary-400/40'
                           : sessionsCount > 0
-                          ? 'bg-accent-100 text-accent-900 hover:bg-accent-200'
-                          : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'
+                          ? 'bg-primary-100/60 text-primary-800 hover:bg-primary-200/60 border border-primary-200/50'
+                          : 'bg-white/50 text-primary-700 hover:bg-white/80 border border-primary-100/30'
                       }
                     `}
                     suppressHydrationWarning
                   >
-                    <div className="text-sm font-semibold" suppressHydrationWarning>
+                    <div className="text-sm font-bold" suppressHydrationWarning>
                       {format(date, 'd')}
                     </div>
                     {sessionsCount > 0 && (
                       <div
                         className={`
-                          absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full
+                          absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full shadow-sm
                           ${isToday ? 'bg-white' : 'bg-primary-600'}
                         `}
                       />
@@ -114,13 +118,13 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
             {upcomingSessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 px-4">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-brand-green/10 rounded-full blur-xl" />
-                  <div className="relative bg-gradient-to-br from-brand-green/10 to-brand-yellow/10 rounded-full p-4">
-                    <ClockIcon className="w-10 h-10 text-brand-green/60" />
+                  <div className="absolute inset-0 bg-primary-300/20 rounded-full blur-xl" />
+                  <div className="relative bg-gradient-to-br from-primary-100/60 to-primary-200/40 rounded-full p-4">
+                    <ClockIcon className="w-10 h-10 text-primary-600" />
                   </div>
                 </div>
-                <h4 className="text-sm font-semibold text-neutral-900 mt-4 mb-1">No sessions scheduled</h4>
-                <p className="text-xs text-neutral-500 text-center max-w-xs">
+                <h4 className="text-sm font-bold text-primary-800 mt-4 mb-1">No sessions scheduled</h4>
+                <p className="text-xs text-primary-700/70 text-center max-w-xs font-medium">
                   Your upcoming counseling sessions will appear here
                 </p>
               </div>
@@ -128,21 +132,21 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
               upcomingSessions.slice(0, 5).map((session) => (
                 <div
                   key={session.id}
-                  className="p-4 rounded-lg border border-neutral-200 hover:border-primary-300 hover:shadow-md transition-all cursor-pointer group"
+                  className="p-4 rounded-lg bg-white/60 backdrop-blur-sm border border-primary-100/50 hover:border-primary-300/60 hover:bg-white/80 hover:shadow-md transition-all cursor-pointer group"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-sm font-semibold text-neutral-900 group-hover:text-primary-600 transition-colors">
+                    <h4 className="text-sm font-bold text-primary-800 group-hover:text-primary-600 transition-colors">
                       {session.session_name}
                     </h4>
                     <span
                       className={`
-                        text-xs px-2 py-1 rounded-full font-medium
+                        text-xs px-2 py-1 rounded-full font-bold
                         ${
                           session.status === 'scheduled'
-                            ? 'bg-blue-100 text-blue-700'
+                            ? 'bg-primary-100/60 text-primary-700 border border-primary-200/50'
                             : session.status === 'completed'
-                            ? 'bg-success/10 text-success'
-                            : 'bg-error/10 text-error'
+                            ? 'bg-primary-100/60 text-primary-700 border border-primary-200/50'
+                            : 'bg-red-100/60 text-red-700 border border-red-200/50'
                         }
                       `}
                     >
@@ -150,7 +154,7 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs text-neutral-600">
+                  <div className="flex items-center gap-4 text-xs text-primary-700/80 font-medium">
                     <div className="flex items-center gap-1">
                       <ClockIcon className="w-4 h-4" />
                       <span suppressHydrationWarning>
@@ -170,14 +174,18 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
           </div>
 
           {upcomingSessions.length > 5 && (
-            <div className="mt-4 pt-4 border-t border-neutral-200 text-center">
-              <button className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors">
+            <div className="mt-4 pt-4 border-t border-primary-100 text-center">
+              <button className="text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors hover:underline">
                 View all {upcomingSessions.length} sessions →
               </button>
             </div>
           )}
         </>
-      )}
-    </Card>
+        )}
+      </div>
+
+      {/* Bottom Accent Line */}
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary-400/30 to-transparent opacity-50" />
+    </div>
   );
 };

@@ -85,7 +85,19 @@
       "Bash(npm run sync:all:*)",
       "Bash(npm run debug:institutions:*)",
       "Bash(npm run verify:access:*)",
-      "Bash(npm run verify:filtering:*)"
+      "Bash(npm run verify:filtering:*)",
+      "Bash(git log:*)",
+      "Skill(ultra-ui-ux-designer)",
+      "Bash(del:*)",
+      "Bash(temp_welcomehero_backup.txt)",
+      "Bash(temp_statsgrid_backup.txt)",
+      "Bash(temp_original_welcomehero.txt)",
+      "Bash(temp_original_statsgrid.txt)",
+      "Bash(temp_original_dashboard.txt)",
+      "Bash(temp_49958a4_dashboard.txt)",
+      "Bash(temp_49958a4_welcomehero.txt)",
+      "Bash(temp_49958a4_statsgrid.txt)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []

@@ -10,6 +10,7 @@ import SearchInput from '@/components/ui/SearchInput';
 import Modal, { ModalFooter } from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import BulkImportModal from './BulkImportModal';
 import type { Student } from '@/lib/types/mentor';
 
 interface StudentsTabProps {
@@ -24,6 +25,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
   const [assignedStudents, setAssignedStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
 
   // Add Student Modal State
   const [searchQuery, setSearchQuery] = useState('');
@@ -308,15 +310,29 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
         <h2 className="text-[17px] font-medium text-neutral-900">
           Assigned Learners ({assignedStudents.length})
         </h2>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="w-full sm:w-auto px-4 py-2.5 bg-brand-green hover:bg-brand-green/90 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2 text-[14px]"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          <span>Add Learner</span>
-        </button>
+        <div className="flex gap-2">
+          {/* Bulk Import Button */}
+          <button
+            onClick={() => setShowBulkImportModal(true)}
+            className="flex-1 sm:flex-none px-4 py-2.5 bg-white hover:bg-neutral-50 text-brand-green font-medium rounded-lg transition-all flex items-center justify-center gap-2 text-[14px] border border-brand-green"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            <span>Bulk Import</span>
+          </button>
+
+          {/* Add Learner Button */}
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex-1 sm:flex-none px-4 py-2.5 bg-brand-green hover:bg-brand-green/90 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2 text-[14px]"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add Learner</span>
+          </button>
+        </div>
       </div>
 
       {/* Students List */}
@@ -520,6 +536,14 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
 
       {/* Confirmation Dialog */}
       <ConfirmationDialog />
+
+      {/* Bulk Import Modal */}
+      <BulkImportModal
+        isOpen={showBulkImportModal}
+        onClose={() => setShowBulkImportModal(false)}
+        mentorId={mentorId}
+        onSuccess={fetchStudents}
+      />
     </div>
   );
 }

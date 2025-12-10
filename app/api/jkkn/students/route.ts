@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserAccess } from '@/lib/middleware/access-control';
-import { applyAccessFilters, updateMetadata, wereFiltersApplied } from '@/lib/utils/api-filters';
+import { getUserAccess, shouldFilterByAssignedStudents, getMentorAssignedStudentIds } from '@/lib/middleware/access-control';
+import { applyAllAccessFilters, updateMetadata, wereFiltersApplied } from '@/lib/utils/api-filters';
 
 /**
  * Helper function to extract institution and department IDs from student data
@@ -244,8 +244,16 @@ export async function GET(request: NextRequest) {
     console.log(`[BEFORE Access Control] Total students: ${studentsWithIds.length}`);
     console.log(`[User Access] Role: ${userAccess.role}, InstitutionID: ${userAccess.institutionId}, IsSuperAdmin: ${userAccess.isSuperAdmin}`);
 
-    // Apply access control filtering
-    const filteredData = applyAccessFilters(studentsWithIds, userAccess);
+    // Check if mentor should only see assigned students
+    let assignedStudentIds: string[] | null = null;
+    if (shouldFilterByAssignedStudents(userAccess)) {
+      console.log(`[Access Control] Mentor role detected - fetching assigned students for filtering`);
+      assignedStudentIds = await getMentorAssignedStudentIds(userAccess.userId);
+      console.log(`[Access Control] Mentor has ${assignedStudentIds?.length || 0} assigned students`);
+    }
+
+    // Apply access control filtering (institution + assigned students filter for mentors)
+    const filteredData = applyAllAccessFilters(studentsWithIds, userAccess, assignedStudentIds);
 
     console.log(`[AFTER Access Control] Filtered students: ${filteredData.length} (from ${studentsWithIds.length})`);
 

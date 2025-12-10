@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useToast } from '@/components/providers/ToastProvider';
 import useConfirm from '@/lib/hooks/useConfirm';
@@ -11,6 +11,8 @@ import Modal, { ModalFooter } from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import BulkImportModal from './BulkImportModal';
+import AddLearnerFilters from './AddLearnerFilters';
+import { useAddLearnerFilters } from '@/hooks/useAddLearnerFilters';
 import type { Student } from '@/lib/types/mentor';
 
 interface StudentsTabProps {
@@ -33,6 +35,16 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
   const [searching, setSearching] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
   const [assigning, setAssigning] = useState(false);
+
+  // Advanced Filters
+  const {
+    filters: advancedFilters,
+    setFilter: setAdvancedFilter,
+    clearAllFilters,
+    filterOptions,
+    loading: filterLoading,
+    activeFiltersCount,
+  } = useAddLearnerFilters();
 
   // Fetch assigned students (extracted for reuse)
   const fetchStudents = useCallback(async () => {
@@ -160,6 +172,85 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
       clearTimeout(debounceTimer);
     };
   }, [searchQuery, handleSearch]);
+
+  // Apply advanced filters to search results
+  const filteredSearchResults = useMemo(() => {
+    let results = [...searchResults];
+
+    // Apply institution filter
+    if (advancedFilters.institution_id) {
+      results = results.filter((student: any) => {
+        const instId = student.institution_id || student.institution?.id;
+        return instId === advancedFilters.institution_id;
+      });
+    }
+
+    // Apply degree filter
+    if (advancedFilters.degree_id) {
+      results = results.filter((student: any) => {
+        const degId = student.degree_id || student.degree?.id;
+        return degId === advancedFilters.degree_id;
+      });
+    }
+
+    // Apply department filter
+    if (advancedFilters.department_id) {
+      results = results.filter((student: any) => {
+        const deptId = student.department_id || student.department?.id;
+        // Also check by department name if ID not available
+        if (deptId) {
+          return deptId === advancedFilters.department_id;
+        }
+        // Fallback: check if department name matches
+        const selectedDept = filterOptions.departments.find(
+          (d) => d.value === advancedFilters.department_id
+        );
+        return selectedDept && student.department === selectedDept.label;
+      });
+    }
+
+    // Apply program filter
+    if (advancedFilters.program_id) {
+      results = results.filter((student: any) => {
+        const progId = student.program_id || student.program?.id;
+        return progId === advancedFilters.program_id;
+      });
+    }
+
+    // Apply semester filter
+    if (advancedFilters.semester) {
+      results = results.filter((student: any) => {
+        const semester = String(student.semester || student.current_semester || '');
+        return semester === advancedFilters.semester;
+      });
+    }
+
+    // Apply section filter
+    if (advancedFilters.section) {
+      results = results.filter((student: any) => {
+        const section = String(student.section || '').toUpperCase();
+        return section === advancedFilters.section.toUpperCase();
+      });
+    }
+
+    // Apply academic year filter
+    if (advancedFilters.academic_year) {
+      results = results.filter((student: any) => {
+        const year = student.academic_year || student.year || student.batch_year || '';
+        return String(year) === advancedFilters.academic_year;
+      });
+    }
+
+    // Apply status filter
+    if (advancedFilters.status && advancedFilters.status !== 'all') {
+      results = results.filter((student: any) => {
+        const isActive = student.is_active !== false && student.status !== 'inactive';
+        return advancedFilters.status === 'active' ? isActive : !isActive;
+      });
+    }
+
+    return results;
+  }, [searchResults, advancedFilters, filterOptions.departments]);
 
   // Toggle student selection
   const toggleStudentSelection = (student: Student) => {
@@ -413,11 +504,22 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
           setSearchQuery('');
           setSearchResults([]);
           setSelectedStudents([]);
+          clearAllFilters();
         }}
         title="Add Learners"
         size="lg"
       >
         <div className="space-y-4">
+          {/* Advanced Filters */}
+          <AddLearnerFilters
+            filters={advancedFilters}
+            onFilterChange={setAdvancedFilter}
+            onClearAll={clearAllFilters}
+            filterOptions={filterOptions}
+            loading={filterLoading}
+            activeFiltersCount={activeFiltersCount}
+          />
+
           {/* Search Input */}
           <SearchInput
             placeholder="Search by name, roll number, or email (min 2 chars)..."
@@ -426,10 +528,22 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
             loading={searching}
           />
 
+          {/* Filter Status */}
+          {searchResults.length > 0 && activeFiltersCount > 0 && (
+            <div className="text-xs text-neutral-500">
+              Showing {filteredSearchResults.length} of {searchResults.length} results
+              {filteredSearchResults.length === 0 && (
+                <span className="text-amber-600 ml-2">
+                  - No matches for current filters. Try adjusting filters.
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Search Results */}
-          {searchResults.length > 0 ? (
+          {filteredSearchResults.length > 0 ? (
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {searchResults.map((student) => {
+              {filteredSearchResults.map((student) => {
                 const isSelected = selectedStudents.some(s => s.id === student.id);
 
                 return (
@@ -500,7 +614,9 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
             <div className="text-center py-8 text-neutral-600">
               {searchQuery.length < 2
                 ? 'Please enter at least 2 characters to search'
-                : 'No learners found. Try a different search term.'
+                : searchResults.length > 0 && filteredSearchResults.length === 0
+                  ? 'No learners match the selected filters. Try adjusting your filters.'
+                  : 'No learners found. Try a different search term.'
               }
             </div>
           ) : null}
@@ -514,6 +630,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
                 setSearchQuery('');
                 setSearchResults([]);
                 setSelectedStudents([]);
+                clearAllFilters();
               }}
             >
               Cancel

@@ -107,6 +107,14 @@ export async function GET(request: NextRequest) {
         (inst: any) => inst.id === institutionFilter
       );
 
+      // If no match found after filtering, return user's institution from the full list
+      // This handles cases where the user's institution_id doesn't match the JKKN API format
+      if (transformedData.data.length === 0 && data.data && data.data.length > 0) {
+        console.log(`[Access Control] No exact match for institution ${institutionFilter}, returning all institutions for selection`);
+        // Return all institutions so user can select the correct one
+        transformedData.data = data.data.map(transformInstitutionData);
+      }
+
       // Update metadata
       transformedData.metadata = {
         page: 1,

@@ -53,10 +53,10 @@ export default function LoginPage() {
           <div className="animate-fadeIn mb-8">
             <div className="inline-flex items-center gap-3">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 border border-primary-400/30 flex items-center justify-center shadow-xl">
-                <span className="text-2xl font-black text-white tracking-tighter">JKKN</span>
+                <span className="text-2xl font-semibold text-white tracking-tighter">JKKN</span>
               </div>
               <div>
-                <h2 className="text-xl font-extrabold text-primary-800">JKKN Mentor</h2>
+                <h2 className="text-xl font-semibold text-primary-800">JKKN Mentor</h2>
                 <p className="text-xs text-primary-700 font-medium">JKKN Institutions</p>
               </div>
             </div>
@@ -151,10 +151,10 @@ export default function LoginPage() {
           <div className="lg:hidden flex justify-center mb-6">
             <div className="inline-flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-xl border border-primary-400/30">
-                <span className="text-lg font-black text-white tracking-tighter">JKKN</span>
+                <span className="text-lg font-semibold text-white tracking-tighter">JKKN</span>
               </div>
               <div>
-                <h2 className="text-lg font-extrabold text-primary-800">JKKN Mentor</h2>
+                <h2 className="text-lg font-semibold text-primary-800">JKKN Mentor</h2>
                 <p className="text-xs text-primary-700 font-medium">JKKN Institutions</p>
               </div>
             </div>
@@ -174,7 +174,7 @@ export default function LoginPage() {
 
               {/* Title Section */}
               <div className="space-y-2 mb-6">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-primary-800 tracking-tight">
+                <h1 className="text-2xl sm:text-3xl font-semibold text-primary-800 tracking-tight">
                   Sign In
                 </h1>
                 <p className="text-primary-700/80 text-sm leading-relaxed">
@@ -185,7 +185,7 @@ export default function LoginPage() {
               {/* Login Button */}
               <button
                 onClick={login}
-                className="group relative w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 px-6 py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl active:scale-[0.98] transition-all duration-300 overflow-hidden"
+                className="group relative w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 px-6 py-3.5 rounded-xl font-medium text-white flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl active:scale-[0.98] transition-all duration-300 overflow-hidden"
                 aria-label="Sign in with MyJKKN account"
               >
                 {/* Shine effect */}
@@ -230,7 +230,7 @@ export default function LoginPage() {
                   <div className="w-full border-t border-primary-100" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white/80 px-3 text-primary-600 font-bold">Benefits</span>
+                  <span className="bg-white/80 px-3 text-primary-600 font-medium">Benefits</span>
                 </div>
               </div>
 

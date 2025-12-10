@@ -90,7 +90,7 @@ export function BugReporterWrapper({
       <BugReporterProvider
         apiKey={apiKey || ''}
         apiUrl={apiUrl || ''}
-        enabled={!!apiKey && apiKey !== 'app_your_api_key_here'}
+        enabled={!!apiKey && apiKey !== 'app_your_api_key_here' && !!user}
         debug={process.env.NODE_ENV === 'development'}
         userContext={user ? {
           userId: user.id,

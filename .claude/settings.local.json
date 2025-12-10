@@ -97,7 +97,14 @@
       "Bash(temp_49958a4_dashboard.txt)",
       "Bash(temp_49958a4_welcomehero.txt)",
       "Bash(temp_49958a4_statsgrid.txt)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "mcp__chrome-devtools__list_pages",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__fill",
+      "mcp__chrome-devtools__take_screenshot",
+      "mcp__chrome-devtools__click",
+      "mcp__chrome-devtools__list_console_messages"
     ],
     "deny": [],
     "ask": []

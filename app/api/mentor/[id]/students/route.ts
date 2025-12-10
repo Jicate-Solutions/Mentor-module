@@ -497,7 +497,7 @@ export async function POST(
         id: student.id,
         name: student.name,
         email: student.email || `${student.id}@student.jkkn.ac.in`,
-        roll_number: student.rollNumber || student.id,
+        roll_number: (student.rollNumber && student.rollNumber !== 'N/A') ? student.rollNumber : student.id,
         department_id: departmentId,
         institution_id: institutionId,
         year: student.year || null,

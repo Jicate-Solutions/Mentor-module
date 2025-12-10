@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserAccess } from '@/lib/middleware/access-control';
+import { getUserAccess, shouldFilterByAssignedStudents, getMentorAssignedStudentIds } from '@/lib/middleware/access-control';
 
 /**
  * GET /api/students/search?q=query
@@ -7,7 +7,8 @@ import { getUserAccess } from '@/lib/middleware/access-control';
  *
  * Institution-based filtering:
  * - Admin: Can see ALL students from ALL institutions
- * - Mentor: Can only see students from their institution
+ * - Mentor In-Charge: Can see all students in their assigned institution
+ * - Regular Mentor: Can only see students assigned to them (for self-filtering)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +25,18 @@ export async function GET(request: NextRequest) {
     const isAdmin = userAccess.role === 'super_admin' ||
                     userAccess.role === 'institution_admin' ||
                     userAccess.isSuperAdmin;
+    const isMentorIncharge = userAccess.isMentorIncharge;
     const userInstitutionId = userAccess.institutionId;
+    const mentorInchargeInstitutionId = userAccess.mentorInchargeInstitutionId;
+
+    // Check if mentor should only see assigned students
+    let assignedStudentIds: string[] | null = null;
+    const shouldFilterByAssigned = shouldFilterByAssignedStudents(userAccess);
+    if (shouldFilterByAssigned) {
+      console.log(`[Student Search] Mentor role detected - fetching assigned students for filtering`);
+      assignedStudentIds = await getMentorAssignedStudentIds(userAccess.userId);
+      console.log(`[Student Search] Mentor has ${assignedStudentIds?.length || 0} assigned students`);
+    }
 
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q')?.toLowerCase() || '';
@@ -207,8 +219,24 @@ export async function GET(request: NextRequest) {
       }
 
       // Institution-based filtering
-      // Admin can see all students, mentors can only see students from their institution
-      const matchesInstitution = isAdmin || !userInstitutionId || studentInstitutionId === userInstitutionId;
+      // Admin can see all students, mentor in-charge sees their assigned institution, regular mentors see their institution
+      let matchesInstitution = false;
+      if (isAdmin) {
+        matchesInstitution = true; // Admins see all
+      } else if (isMentorIncharge && mentorInchargeInstitutionId) {
+        matchesInstitution = studentInstitutionId === mentorInchargeInstitutionId;
+      } else if (userInstitutionId) {
+        matchesInstitution = studentInstitutionId === userInstitutionId;
+      } else {
+        matchesInstitution = true; // No filter if no institution set
+      }
+
+      // For regular mentors, also check if student is in their assigned list
+      let matchesAssignment = true;
+      if (shouldFilterByAssigned && assignedStudentIds !== null) {
+        const studentId = student.id || student.student_id;
+        matchesAssignment = assignedStudentIds.includes(studentId);
+      }
 
       // Enhanced search query matching with individual match tracking
       // Check both constructed full name AND single name field
@@ -219,7 +247,7 @@ export async function GET(request: NextRequest) {
 
       const matchesSearch = nameMatch || rollMatch || emailMatch || deptMatch;
 
-      const matches = matchesInstitution && matchesSearch;
+      const matches = matchesInstitution && matchesAssignment && matchesSearch;
 
       // Enhanced debug logging - show WHY students match or don't match
       if (filterDebugCount < 10) {
@@ -236,6 +264,7 @@ export async function GET(request: NextRequest) {
             dept: deptMatch,
             search: matchesSearch,
             institution: matchesInstitution,
+            assignment: matchesAssignment,
             final: matches
           }
         });
@@ -281,7 +310,7 @@ export async function GET(request: NextRequest) {
       return {
         id: student.id || student.student_id,
         name: `${student.first_name || ''} ${student.last_name || ''}`.trim() || student.email || 'Unknown',
-        rollNumber: student.roll_number || student.rollNumber || student.roll_no || 'N/A',
+        rollNumber: student.roll_number || student.rollNumber || student.roll_no || student.id,
         email: student.email || '',
         department: departmentName,
         year: student.year || student.current_year || student.academic_year || '',

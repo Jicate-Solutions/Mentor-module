@@ -408,3 +408,77 @@ export async function canAssignStudents(
 
   return false;
 }
+
+/**
+ * Check if user should only see their assigned students
+ * Returns true for regular mentors (not super admin, not institution admin, not mentor in-charge)
+ */
+export function shouldFilterByAssignedStudents(userAccess: UserAccess): boolean {
+  // Super admin sees all students
+  if (userAccess.isSuperAdmin || userAccess.role === 'super_admin') {
+    return false;
+  }
+
+  // Institution admin sees all students in their institution
+  if (userAccess.role === 'institution_admin') {
+    return false;
+  }
+
+  // Mentor in-charge sees all students in their assigned institution
+  if (userAccess.isMentorIncharge) {
+    return false;
+  }
+
+  // HOD and Faculty see all students in their institution (for now)
+  if (userAccess.role === 'hod' || userAccess.role === 'faculty') {
+    return false;
+  }
+
+  // Regular mentors should only see their assigned students
+  if (userAccess.role === 'mentor') {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Get the list of student IDs assigned to a mentor
+ * Returns null if user is not a mentor or has no assignments
+ */
+export async function getMentorAssignedStudentIds(userId: string): Promise<string[] | null> {
+  try {
+    const supabase = createAdminClient();
+
+    // First get the mentor record for this user
+    const { data: mentor } = await supabase
+      .from('mentors')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!mentor) {
+      console.log(`[Access Control] No mentor record found for user ${userId}`);
+      return null;
+    }
+
+    // Get all student IDs assigned to this mentor
+    const { data: assignments, error } = await supabase
+      .from('mentor_students')
+      .select('student_id')
+      .eq('mentor_id', mentor.id);
+
+    if (error) {
+      console.error('[Access Control] Error fetching mentor student assignments:', error);
+      return null;
+    }
+
+    const studentIds = (assignments || []).map((a: { student_id: string }) => a.student_id);
+    console.log(`[Access Control] Mentor ${mentor.id} has ${studentIds.length} assigned students`);
+
+    return studentIds;
+  } catch (error) {
+    console.error('[Access Control] Error getting mentor assigned students:', error);
+    return null;
+  }
+}

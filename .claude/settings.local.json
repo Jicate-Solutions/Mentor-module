@@ -106,7 +106,10 @@
       "mcp__chrome-devtools__click",
       "mcp__chrome-devtools__list_console_messages",
       "WebFetch(domain:vercel.com)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(claude update:*)",
+      "mcp__fetch__imageFetch",
+      "Bash(if not exist \"C:\\\\Users\\\\Admin\\\\.claude\\\\plans\" mkdir \"C:\\\\Users\\\\Admin\\\\.claude\\\\plans\")"
     ],
     "deny": [],
     "ask": []

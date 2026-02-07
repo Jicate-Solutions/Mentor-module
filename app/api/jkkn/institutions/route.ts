@@ -79,6 +79,14 @@ export async function GET(request: NextRequest) {
     const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
     const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
 
+    // Debug: Log API key info (masked)
+    console.log('[Institutions API] API Key check:', {
+      hasApiKey: !!apiKey,
+      keyLength: apiKey?.length || 0,
+      keyPrefix: apiKey?.substring(0, 6) || 'NONE',
+      baseUrl: baseUrl,
+    });
+
     if (!apiKey) {
       return NextResponse.json(
         {
@@ -96,6 +104,10 @@ export async function GET(request: NextRequest) {
 
     // Call JKKN API
     const url = `${baseUrl}/api-management/organizations/institutions?page=${page}&limit=${limit}`;
+
+    // Debug: Show request details
+    console.log(`[Institutions API] Calling: ${url}`);
+    console.log(`[Institutions API] Auth header (masked): Bearer ${apiKey?.substring(0, 10)}...${apiKey?.slice(-4)}`);
 
     const response = await fetch(url, {
       method: 'GET',

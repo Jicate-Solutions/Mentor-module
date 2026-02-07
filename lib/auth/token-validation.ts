@@ -32,6 +32,8 @@ export interface ValidationResponse {
 const validationCache = new Map<string, { result: ValidationResponse; expiresAt: number }>();
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes (increased from 2)
 const FAILED_CACHE_DURATION = 10 * 1000; // 10 seconds for failed validations
+const TIMEOUT_CACHE_DURATION = 30 * 1000; // 30 seconds for timeout/network errors
+const GRACE_PERIOD = 60 * 1000; // 1 minute grace period for expired cache during timeout
 
 /**
  * Validates an access token with the MyJKKN Auth Server
@@ -104,12 +106,35 @@ export async function validateToken(accessToken: string): Promise<ValidationResp
     console.log('[Token Validation] ✓ Token validated and cached for 15 minutes, user:', data.user?.id);
     return result;
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+    const isTimeout = error instanceof Error && error.name === 'AbortError';
+    const errorMessage = isTimeout ? 'Auth server timeout' : 'Validation request failed';
+
+    if (isTimeout) {
       console.error('[Token Validation] Request timed out - auth server may be unreachable');
-      return { valid: false, error: 'Auth server timeout' };
+    } else {
+      console.error('[Token Validation] Validation request failed:', error);
     }
-    console.error('[Token Validation] Validation request failed:', error);
-    return { valid: false, error: 'Validation request failed' };
+
+    // Fallback to expired-but-recent cache on timeout (grace period)
+    // This allows recently authenticated users to continue working during auth server outages
+    if (cached && cached.result.valid && Date.now() < cached.expiresAt + GRACE_PERIOD) {
+      console.log('[Token Validation] ⚠️ Timeout - using expired cache (within grace period)');
+      // Extend the cache slightly to avoid hammering auth server
+      validationCache.set(accessToken, {
+        result: cached.result,
+        expiresAt: Date.now() + TIMEOUT_CACHE_DURATION,
+      });
+      return cached.result;
+    }
+
+    // Cache timeout/network errors to prevent retry storms
+    const failResult: ValidationResponse = { valid: false, error: errorMessage };
+    validationCache.set(accessToken, {
+      result: failResult,
+      expiresAt: Date.now() + TIMEOUT_CACHE_DURATION,
+    });
+    console.log('[Token Validation] ❌', errorMessage, '- cached for 30s');
+    return failResult;
   }
 }
 

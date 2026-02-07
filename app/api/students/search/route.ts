@@ -3,6 +3,65 @@ import { getUserAccess, shouldFilterByAssignedStudents, getMentorAssignedStudent
 import { createAdminClient } from '@/lib/supabase/server';
 
 /**
+ * Fetch all departments and create an in-memory lookup map
+ * Used to resolve department IDs to department names in fallback scenario
+ */
+async function fetchDepartmentLookup(): Promise<Map<string, string>> {
+  try {
+    console.log('[Student Search] Fetching departments for lookup map...');
+
+    // Get API credentials
+    const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+    const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+    if (!apiKey) {
+      console.warn('[Student Search] No API key available for department lookup');
+      return new Map();
+    }
+
+    // Fetch departments from JKKN API
+    const url = `${baseUrl}/api-management/organizations/departments?page=1&limit=500`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      next: { revalidate: 60 }, // Cache for 60 seconds
+    });
+
+    if (!response.ok) {
+      console.warn(`[Student Search] Failed to fetch departments: ${response.status}`);
+      return new Map();
+    }
+
+    const data = await response.json();
+    const departments = data.data || [];
+
+    // Build lookup map: department_id -> department_name
+    const departmentMap = new Map<string, string>();
+
+    departments.forEach((dept: any) => {
+      const id = dept.id || dept.department_id;
+      const name = dept.name || dept.department_name || dept.departmentName || 'Unknown Department';
+
+      if (id) {
+        departmentMap.set(id, name);
+      }
+    });
+
+    console.log(`[Student Search] Built department lookup map with ${departmentMap.size} entries`);
+
+    return departmentMap;
+
+  } catch (error) {
+    console.error('[Student Search] Error fetching department lookup:', error);
+    return new Map(); // Return empty map on error - graceful degradation
+  }
+}
+
+/**
  * Fetch students from local Supabase database as fallback
  * Used when JKKN API students endpoint is unavailable (404)
  */
@@ -13,7 +72,8 @@ async function fetchStudentsFromSupabase(
   isMentorIncharge: boolean,
   mentorInchargeInstitutionId: string | null,
   assignedStudentIds: string[] | null,
-  shouldFilterByAssigned: boolean
+  shouldFilterByAssigned: boolean,
+  departmentsMap: Map<string, string>
 ) {
   console.log('[Student Search] Falling back to local Supabase database...');
 
@@ -58,7 +118,7 @@ async function fetchStudentsFromSupabase(
     name: student.name || 'Unknown',
     rollNumber: student.roll_number || student.id,
     email: student.email || '',
-    department: 'Unknown Department', // We'd need a join to get department name
+    department: departmentsMap.get(student.department_id) || 'Unknown Department',
     year: student.year || '',
   }));
 }
@@ -132,12 +192,13 @@ export async function GET(request: NextRequest) {
 
     let allStudents: any[] = [];
     let currentPage = 1;
-    const maxLimit = 1000; // JKKN API max per page
+    const maxLimit = 200; // JKKN Learners API max per page
     let hasMore = true;
-    const maxPages = 15; // Safety limit (15 pages × 1000 = 15,000 max students)
+    const maxPages = 75; // Safety limit (75 pages × 200 = 15,000 max students)
 
     while (hasMore && currentPage <= maxPages) {
-      const url = `${baseUrl}/api-management/students?page=${currentPage}&limit=${maxLimit}`;
+      // Use the correct Learners API endpoint: /api-management/learners/profiles
+      const url = `${baseUrl}/api-management/learners/profiles?page=${currentPage}&limit=${maxLimit}&lifecycle_status=active,alumni,exited`;
 
       console.log(`[Student Search] Fetching page ${currentPage}...`);
 
@@ -176,9 +237,10 @@ export async function GET(request: NextRequest) {
       // Check if there are more pages
       hasMore = pageStudents.length === maxLimit;
 
-      // Also check metadata if available
-      if (pageData.metadata) {
-        const totalPages = pageData.metadata.totalPages || pageData.metadata.total_pages;
+      // Also check pagination/metadata if available (Learners API uses 'pagination')
+      const paginationInfo = pageData.pagination || pageData.metadata;
+      if (paginationInfo) {
+        const totalPages = paginationInfo.totalPages || paginationInfo.total_pages;
         if (totalPages && currentPage >= totalPages) {
           hasMore = false;
         }
@@ -191,6 +253,10 @@ export async function GET(request: NextRequest) {
     if (allStudents.length === 0) {
       console.log('[Student Search] No students from JKKN API, using Supabase fallback');
       try {
+        // Fetch department lookup map for resolving department IDs to names
+        const departmentsMap = await fetchDepartmentLookup();
+        console.log(`[Student Search] Loaded ${departmentsMap.size} departments for lookup`);
+
         const localStudents = await fetchStudentsFromSupabase(
           query,
           userAccess,
@@ -198,7 +264,8 @@ export async function GET(request: NextRequest) {
           isMentorIncharge,
           mentorInchargeInstitutionId,
           assignedStudentIds,
-          shouldFilterByAssigned
+          shouldFilterByAssigned,
+          departmentsMap
         );
 
         return NextResponse.json({

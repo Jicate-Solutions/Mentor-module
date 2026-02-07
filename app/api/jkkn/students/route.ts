@@ -176,19 +176,19 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const requestedLimit = parseInt(searchParams.get('limit') || '10', 10);
 
-    // IMPORTANT: JKKN API has a max limit of 1000 students per page
+    // IMPORTANT: JKKN Learners API has a max limit of 200 students per page
     // To fetch all students (10,000+), we need to loop through multiple pages
 
     console.log(`[Students API] Requested limit: ${requestedLimit}`);
 
     let allStudents: any[] = [];
     let currentPage = 1;
-    const maxLimit = 1000; // JKKN API max per page
+    const maxLimit = 200; // JKKN Learners API max per page
     let hasMore = true;
-    const maxPages = 15; // Safety limit (15 pages × 1000 = 15,000 max students)
+    const maxPages = 75; // Safety limit (75 pages × 200 = 15,000 max students)
 
-    // If requested limit is large (e.g., 10000), fetch all pages
-    const shouldFetchAll = requestedLimit >= 1000;
+    // If requested limit is large (e.g., 1000+), fetch all pages
+    const shouldFetchAll = requestedLimit >= 200;
 
     let data: any;
 
@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
       console.log('[Students API] Fetching ALL students across multiple pages...');
 
       while (hasMore && currentPage <= maxPages) {
-        const url = `${baseUrl}/api-management/students?page=${currentPage}&limit=${maxLimit}`;
+        const url = `${baseUrl}/api-management/learners/profiles?lifecycle_status=active,alumni,exited&page=${currentPage}&limit=${maxLimit}`;
 
         console.log(`[Students API] Fetching page ${currentPage}...`);
 
@@ -244,9 +244,10 @@ export async function GET(request: NextRequest) {
         // If we got less than maxLimit, we've reached the end
         hasMore = students.length === maxLimit;
 
-        // Also check metadata if available
-        if (pageData.metadata) {
-          const totalPages = pageData.metadata.totalPages || pageData.metadata.total_pages;
+        // Also check pagination/metadata if available (Learners API uses 'pagination')
+        const paginationInfo = pageData.pagination || pageData.metadata;
+        if (paginationInfo) {
+          const totalPages = paginationInfo.totalPages || paginationInfo.total_pages;
           if (totalPages && currentPage >= totalPages) {
             hasMore = false;
           }
@@ -268,7 +269,7 @@ export async function GET(request: NextRequest) {
       };
     } else {
       // For small limits, fetch single page
-      const url = `${baseUrl}/api-management/students?page=1&limit=${requestedLimit}`;
+      const url = `${baseUrl}/api-management/learners/profiles?lifecycle_status=active,alumni,exited&page=1&limit=${requestedLimit}`;
 
       const response = await fetch(url, {
         method: 'GET',

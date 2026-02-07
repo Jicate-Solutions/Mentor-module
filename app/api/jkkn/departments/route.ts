@@ -1,5 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserAccess, getInstitutionFilter } from '@/lib/middleware/access-control';
+import { createAdminClient } from '@/lib/supabase/server';
+
+/**
+ * Fetch departments from local Supabase database as fallback
+ * Extracts unique department IDs from students table since no dedicated departments table exists
+ */
+async function fetchDepartmentsFromSupabase(
+  userAccess: any,
+  institutionIdParam: string | null
+) {
+  console.log('[Departments API] Falling back to local Supabase database...');
+
+  const supabase = createAdminClient();
+  const institutionFilter = institutionIdParam || getInstitutionFilter(userAccess);
+
+  // Query students to get unique department IDs
+  let query = supabase
+    .from('students')
+    .select('department_id, institution_id')
+    .not('department_id', 'is', null);
+
+  // Apply institution filter
+  if (institutionFilter) {
+    query = query.eq('institution_id', institutionFilter);
+  }
+
+  const { data: students, error } = await query;
+
+  if (error) {
+    console.error('[Departments API] Supabase error:', error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+
+  // Extract unique department IDs and group by institution
+  const deptMap = new Map<string, { dept_id: string, inst_id: string }>();
+
+  students?.forEach(s => {
+    if (s.department_id && !deptMap.has(s.department_id)) {
+      deptMap.set(s.department_id, {
+        dept_id: s.department_id,
+        inst_id: s.institution_id
+      });
+    }
+  });
+
+  console.log(`[Departments API] Found ${deptMap.size} unique departments in local database`);
+
+  return Array.from(deptMap.values()).map(({ dept_id, inst_id }) => ({
+    id: dept_id,
+    name: dept_id, // Use ID as name since we don't have full details
+    code: dept_id.substring(0, 10), // First 10 chars as code
+    institution_id: inst_id,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }));
+}
 
 /**
  * Transform MyJKKN API department response to match our interface
@@ -70,6 +127,32 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
+      // If JKKN API returns 404, fall back to local Supabase data
+      if (response.status === 404) {
+        console.log('[Departments API] JKKN API returned 404, falling back to local database');
+        try {
+          const localDepartments = await fetchDepartmentsFromSupabase(
+            userAccess,
+            institutionIdParam
+          );
+
+          return NextResponse.json({
+            success: true,
+            data: localDepartments,
+            metadata: {
+              page: 1,
+              totalPages: 1,
+              total: localDepartments.length,
+            },
+            source: 'local_database',
+            accessLevel: userAccess.role,
+          });
+        } catch (fallbackError) {
+          console.error('[Departments API] Supabase fallback failed:', fallbackError);
+          // Continue to return original error below
+        }
+      }
+
       const errorData = await response.json().catch(() => ({}));
 
       return NextResponse.json(

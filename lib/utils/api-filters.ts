@@ -27,10 +27,18 @@ export function applyAccessFilters<T extends Record<string, any>>(
 
   // Filter by institution
   if (institutionFilter !== null) {
+    const beforeCount = filteredData.length;
     filteredData = filteredData.filter(
       (record) => record[institutionField] === institutionFilter
     );
-    console.log(`[Access Filter] Institution filter applied: ${filteredData.length} records`);
+    const removedCount = beforeCount - filteredData.length;
+    console.log(`[Access Filter] Institution filter applied: ${filteredData.length} records kept, ${removedCount} removed`);
+
+    // DEBUG: If everything was removed, log what institution IDs were in the data
+    if (filteredData.length === 0 && beforeCount > 0) {
+      console.warn(`[Access Filter WARNING] ALL records removed by institution filter!`);
+      console.warn(`[Access Filter WARNING] Filter value: "${institutionFilter}"`);
+    }
   }
 
   // Filter by department (for department admins)

@@ -1,5 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserAccess, shouldFilterByAssignedStudents, getMentorAssignedStudentIds } from '@/lib/middleware/access-control';
+import { getUserAccess, shouldFilterByAssignedStudents, getMentorAssignedStudentIds, getInstitutionFilter } from '@/lib/middleware/access-control';
+import { createAdminClient } from '@/lib/supabase/server';
+
+/**
+ * Fetch students from local Supabase database as fallback
+ * Used when JKKN API students endpoint is unavailable (404)
+ */
+async function fetchStudentsFromSupabase(
+  query: string,
+  userAccess: any,
+  isAdmin: boolean,
+  isMentorIncharge: boolean,
+  mentorInchargeInstitutionId: string | null,
+  assignedStudentIds: string[] | null,
+  shouldFilterByAssigned: boolean
+) {
+  console.log('[Student Search] Falling back to local Supabase database...');
+
+  const supabase = createAdminClient();
+  const institutionFilter = getInstitutionFilter(userAccess);
+
+  // Build base query with search
+  let dbQuery = supabase
+    .from('students')
+    .select('id, name, roll_number, email, department_id, institution_id, year, section, is_active')
+    .eq('is_active', true)
+    .or(`name.ilike.%${query}%,roll_number.ilike.%${query}%,email.ilike.%${query}%`)
+    .order('name', { ascending: true })
+    .limit(100);
+
+  // Apply institution filter for non-admin users
+  if (!isAdmin) {
+    if (isMentorIncharge && mentorInchargeInstitutionId) {
+      dbQuery = dbQuery.eq('institution_id', mentorInchargeInstitutionId);
+    } else if (institutionFilter) {
+      dbQuery = dbQuery.eq('institution_id', institutionFilter);
+    }
+  }
+
+  // For regular mentors, filter by assigned students
+  if (shouldFilterByAssigned && assignedStudentIds && assignedStudentIds.length > 0) {
+    dbQuery = dbQuery.in('id', assignedStudentIds);
+  }
+
+  const { data: students, error } = await dbQuery;
+
+  if (error) {
+    console.error('[Student Search] Supabase error:', error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+
+  console.log(`[Student Search] Fetched ${students?.length || 0} students from local database`);
+
+  // Transform to expected format
+  return (students || []).map((student: any) => ({
+    id: student.id,
+    name: student.name || 'Unknown',
+    rollNumber: student.roll_number || student.id,
+    email: student.email || '',
+    department: 'Unknown Department', // We'd need a join to get department name
+    year: student.year || '',
+  }));
+}
 
 /**
  * GET /api/students/search?q=query
@@ -89,6 +151,11 @@ export async function GET(request: NextRequest) {
       });
 
       if (!response.ok) {
+        // If JKKN API returns 404, fall back to local Supabase data
+        if (response.status === 404) {
+          console.log('[Student Search] JKKN API returned 404, falling back to local database');
+          break; // Exit the pagination loop, we'll use local data below
+        }
         console.error('[Student Search] JKKN API Error:', response.status, response.statusText);
         return NextResponse.json(
           {
@@ -118,6 +185,35 @@ export async function GET(request: NextRequest) {
       }
 
       currentPage++;
+    }
+
+    // If JKKN API returned 404 or no students, fallback to local Supabase
+    if (allStudents.length === 0) {
+      console.log('[Student Search] No students from JKKN API, using Supabase fallback');
+      try {
+        const localStudents = await fetchStudentsFromSupabase(
+          query,
+          userAccess,
+          isAdmin,
+          isMentorIncharge,
+          mentorInchargeInstitutionId,
+          assignedStudentIds,
+          shouldFilterByAssigned
+        );
+
+        return NextResponse.json({
+          success: true,
+          students: localStudents,
+          source: 'local_database'
+        });
+      } catch (fallbackError) {
+        console.error('[Student Search] Supabase fallback failed:', fallbackError);
+        return NextResponse.json({
+          success: true,
+          students: [],
+          error: 'Both JKKN API and local database failed'
+        });
+      }
     }
 
     const students = allStudents;

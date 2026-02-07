@@ -278,9 +278,18 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
             newSessions.push(data.session);
             successCount++;
           } else {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('[CounselingTab] Session creation failed:', {
+              status: response.status,
+              statusText: response.statusText,
+              error: errorData,
+              studentId: student.id,
+              studentName: student.name
+            });
             failCount++;
           }
         } catch (error) {
+          console.error('[CounselingTab] Session creation exception:', error);
           failCount++;
         }
       }

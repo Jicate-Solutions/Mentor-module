@@ -347,6 +347,13 @@ export async function POST(
       );
     }
 
+    console.log('[Counseling API POST] Current user making request:', {
+      userId: currentUser.id,
+      email: currentUser.email,
+      role: currentUser.role,
+      jkknUserId: currentUser.jkkn_user_id
+    });
+
     const userAccess = await getUserAccess();
     if (!userAccess) {
       return NextResponse.json(

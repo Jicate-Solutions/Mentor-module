@@ -1,6 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserAccess, shouldFilterByAssignedStudents, getMentorAssignedStudentIds } from '@/lib/middleware/access-control';
+import { getUserAccess, shouldFilterByAssignedStudents, getMentorAssignedStudentIds, getInstitutionFilter } from '@/lib/middleware/access-control';
 import { applyAllAccessFilters, updateMetadata, wereFiltersApplied } from '@/lib/utils/api-filters';
+import { createAdminClient } from '@/lib/supabase/server';
+
+/**
+ * Fetch students from local Supabase database as fallback
+ * Used when JKKN API students endpoint is unavailable (404)
+ */
+async function fetchStudentsFromSupabase(userAccess: any, limit: number) {
+  console.log('[Students API] Falling back to local Supabase database...');
+
+  const supabase = createAdminClient();
+  const institutionFilter = getInstitutionFilter(userAccess);
+
+  let query = supabase
+    .from('students')
+    .select('id, name, roll_number, email, department_id, institution_id, year, section, is_active')
+    .eq('is_active', true)
+    .order('name', { ascending: true });
+
+  // Apply institution filter for non-super-admin users
+  if (institutionFilter) {
+    query = query.eq('institution_id', institutionFilter);
+  }
+
+  if (limit > 0 && limit < 10000) {
+    query = query.limit(limit);
+  }
+
+  const { data: students, error } = await query;
+
+  if (error) {
+    console.error('[Students API] Supabase error:', error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+
+  console.log(`[Students API] Fetched ${students?.length || 0} students from local database`);
+
+  // Transform to match expected format
+  const transformedStudents = (students || []).map((student: any) => ({
+    id: student.id,
+    first_name: student.name?.split(' ')[0] || '',
+    last_name: student.name?.split(' ').slice(1).join(' ') || '',
+    roll_number: student.roll_number,
+    email: student.email,
+    institution: { id: student.institution_id },
+    department: { id: student.department_id },
+    institution_id: student.institution_id,
+    department_id: student.department_id,
+    year: student.year,
+    is_profile_complete: true,
+  }));
+
+  return {
+    data: transformedStudents,
+    metadata: {
+      page: 1,
+      totalPages: 1,
+      total: transformedStudents.length,
+    },
+    source: 'local_database'
+  };
+}
 
 /**
  * Helper function to extract institution and department IDs from student data
@@ -149,6 +210,18 @@ export async function GET(request: NextRequest) {
         });
 
         if (!response.ok) {
+          // If JKKN API returns 404, fall back to local Supabase data
+          if (response.status === 404) {
+            console.log('[Students API] JKKN API returned 404, falling back to local database');
+            const localData = await fetchStudentsFromSupabase(userAccess, requestedLimit);
+            return NextResponse.json({
+              success: true,
+              ...localData,
+              accessLevel: userAccess.role,
+              note: 'Data fetched from local database (JKKN API unavailable)'
+            });
+          }
+
           const errorData = await response.json().catch(() => ({}));
           return NextResponse.json(
             {
@@ -207,6 +280,18 @@ export async function GET(request: NextRequest) {
       });
 
       if (!response.ok) {
+        // If JKKN API returns 404, fall back to local Supabase data
+        if (response.status === 404) {
+          console.log('[Students API] JKKN API returned 404, falling back to local database');
+          const localData = await fetchStudentsFromSupabase(userAccess, requestedLimit);
+          return NextResponse.json({
+            success: true,
+            ...localData,
+            accessLevel: userAccess.role,
+            note: 'Data fetched from local database (JKKN API unavailable)'
+          });
+        }
+
         const errorData = await response.json().catch(() => ({}));
         return NextResponse.json(
           {
@@ -243,6 +328,29 @@ export async function GET(request: NextRequest) {
 
     console.log(`[BEFORE Access Control] Total students: ${studentsWithIds.length}`);
     console.log(`[User Access] Role: ${userAccess.role}, InstitutionID: ${userAccess.institutionId}, IsSuperAdmin: ${userAccess.isSuperAdmin}`);
+
+    // DEBUG: Log sample of institution IDs from API to compare with user's institution ID
+    if (studentsWithIds.length > 0) {
+      const sampleInstitutionIds = studentsWithIds.slice(0, 5).map((s: any) => ({
+        studentId: s.id,
+        institution_id: s.institution_id,
+        rawInstitution: s.institution,
+      }));
+      console.log(`[DEBUG] Sample institution IDs from JKKN API:`, JSON.stringify(sampleInstitutionIds, null, 2));
+      console.log(`[DEBUG] User's institution ID for comparison: "${userAccess.institutionId}"`);
+
+      // Check if there's a format mismatch
+      const apiInstitutionIds = [...new Set(studentsWithIds.map((s: any) => s.institution_id))];
+      console.log(`[DEBUG] All unique institution IDs from API (${apiInstitutionIds.length}):`, apiInstitutionIds);
+
+      // Check if user's institution ID exists in API data
+      const userInstIdInApiData = apiInstitutionIds.includes(userAccess.institutionId);
+      console.log(`[DEBUG] User's institution ID found in API data: ${userInstIdInApiData}`);
+
+      if (!userInstIdInApiData && apiInstitutionIds.length > 0) {
+        console.warn(`[WARNING] Institution ID mismatch! User: "${userAccess.institutionId}" not in API data: ${JSON.stringify(apiInstitutionIds)}`);
+      }
+    }
 
     // Check if mentor should only see assigned students
     let assignedStudentIds: string[] | null = null;

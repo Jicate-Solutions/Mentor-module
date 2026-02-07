@@ -105,7 +105,8 @@
       "mcp__chrome-devtools__take_screenshot",
       "mcp__chrome-devtools__click",
       "mcp__chrome-devtools__list_console_messages",
-      "WebFetch(domain:vercel.com)"
+      "WebFetch(domain:vercel.com)",
+      "Bash(head:*)"
     ],
     "deny": [],
     "ask": []
@@ -114,6 +115,9 @@
   "enabledMcpjsonServers": [
     "supabase",
     "filesystem",
-    "context7"
+    "context7",
+    "actor-critic-thinking",
+    "chrome-devtools",
+    "shadcn"
   ]
 }

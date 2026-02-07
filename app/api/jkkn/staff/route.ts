@@ -239,6 +239,29 @@ export async function GET(request: NextRequest) {
     console.log(`[BEFORE Access Control] Total staff: ${staffWithIds.length}`);
     console.log(`[User Access] Role: ${userAccess.role}, InstitutionID: ${userAccess.institutionId}, IsSuperAdmin: ${userAccess.isSuperAdmin}`);
 
+    // DEBUG: Log sample of institution IDs from API to compare with user's institution ID
+    if (staffWithIds.length > 0) {
+      const sampleInstitutionIds = staffWithIds.slice(0, 5).map((s: any) => ({
+        staffId: s.id,
+        institution_id: s.institution_id,
+        rawInstitution: s.institution,
+      }));
+      console.log(`[DEBUG Staff] Sample institution IDs from JKKN API:`, JSON.stringify(sampleInstitutionIds, null, 2));
+      console.log(`[DEBUG Staff] User's institution ID for comparison: "${userAccess.institutionId}"`);
+
+      // Check if there's a format mismatch
+      const apiInstitutionIds = [...new Set(staffWithIds.map((s: any) => s.institution_id))];
+      console.log(`[DEBUG Staff] All unique institution IDs from API (${apiInstitutionIds.length}):`, apiInstitutionIds);
+
+      // Check if user's institution ID exists in API data
+      const userInstIdInApiData = apiInstitutionIds.includes(userAccess.institutionId);
+      console.log(`[DEBUG Staff] User's institution ID found in API data: ${userInstIdInApiData}`);
+
+      if (!userInstIdInApiData && apiInstitutionIds.length > 0) {
+        console.warn(`[WARNING Staff] Institution ID mismatch! User: "${userAccess.institutionId}" not in API data: ${JSON.stringify(apiInstitutionIds)}`);
+      }
+    }
+
     // Apply access control filtering
     const filteredData = applyAccessFilters(staffWithIds, userAccess);
 

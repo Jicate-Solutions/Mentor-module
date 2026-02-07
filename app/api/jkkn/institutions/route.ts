@@ -1,5 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserAccess, getInstitutionFilter } from '@/lib/middleware/access-control';
+import { createAdminClient } from '@/lib/supabase/server';
+
+/**
+ * Fetch institutions from local Supabase database as fallback
+ * Extracts unique institution IDs from students table since no dedicated institutions table exists
+ */
+async function fetchInstitutionsFromSupabase(userAccess: any) {
+  console.log('[Institutions API] Falling back to local Supabase database...');
+
+  const supabase = createAdminClient();
+
+  // Get unique institution IDs from students table
+  const { data: students, error } = await supabase
+    .from('students')
+    .select('institution_id')
+    .not('institution_id', 'is', null);
+
+  if (error) {
+    console.error('[Institutions API] Supabase error:', error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+
+  // Extract unique IDs and create minimal institution objects
+  const uniqueInstitutions = [...new Set(students?.map(s => s.institution_id) || [])];
+
+  console.log(`[Institutions API] Found ${uniqueInstitutions.length} unique institutions in local database`);
+
+  return uniqueInstitutions.map(id => ({
+    id: id,
+    name: id, // Use ID as name since we don't have full details
+    counselling_code: 'N/A',
+    category: 'Uncategorized',
+    institution_type: 'Not Specified',
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }));
+}
 
 /**
  * Transform MyJKKN API institution response to match our interface
@@ -70,6 +108,29 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
+      // If JKKN API returns 404, fall back to local Supabase data
+      if (response.status === 404) {
+        console.log('[Institutions API] JKKN API returned 404, falling back to local database');
+        try {
+          const localInstitutions = await fetchInstitutionsFromSupabase(userAccess);
+
+          return NextResponse.json({
+            success: true,
+            data: localInstitutions,
+            metadata: {
+              page: 1,
+              totalPages: 1,
+              total: localInstitutions.length,
+            },
+            source: 'local_database',
+            accessLevel: userAccess.role,
+          });
+        } catch (fallbackError) {
+          console.error('[Institutions API] Supabase fallback failed:', fallbackError);
+          // Continue to return original error below
+        }
+      }
+
       const errorData = await response.json().catch(() => ({}));
 
       return NextResponse.json(

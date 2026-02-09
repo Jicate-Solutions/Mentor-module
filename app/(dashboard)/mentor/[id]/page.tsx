@@ -60,6 +60,10 @@ export default function MentorDetailPage() {
         });
 
         if (!mentorResponse.ok) {
+          if (mentorResponse.status === 403) {
+            const errorData = await mentorResponse.json().catch(() => ({}));
+            throw new Error(errorData.error || 'You do not have permission to view this profile');
+          }
           throw new Error('Failed to fetch mentor details');
         }
 
@@ -168,16 +172,42 @@ export default function MentorDetailPage() {
   }
 
   if (error || !mentor) {
+    const isPermissionError = error?.includes('permission') || error?.includes('403');
     return (
       <div className="min-h-screen bg-neutral-50/50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-md w-full">
-            <p className="text-red-700 text-[14px] leading-relaxed mb-4">{error || 'Mentor not found'}</p>
+          <div className={`${isPermissionError ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'} border rounded-xl p-6 max-w-md w-full`}>
+            {/* Icon */}
+            <div className={`w-12 h-12 mx-auto mb-4 rounded-full ${isPermissionError ? 'bg-amber-100' : 'bg-red-100'} flex items-center justify-center`}>
+              {isPermissionError ? (
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              )}
+            </div>
+            {/* Title */}
+            <h3 className={`text-lg font-semibold mb-2 ${isPermissionError ? 'text-amber-800' : 'text-red-800'}`}>
+              {isPermissionError ? 'Access Denied' : 'Error Loading Profile'}
+            </h3>
+            {/* Message */}
+            <p className={`${isPermissionError ? 'text-amber-700' : 'text-red-700'} text-[14px] leading-relaxed mb-4`}>
+              {error || 'Mentor not found'}
+            </p>
+            {/* Help text for permission errors */}
+            {isPermissionError && (
+              <p className="text-amber-600 text-xs mb-4">
+                Contact your HOD or administrator if you need access to this profile.
+              </p>
+            )}
             <button
               onClick={() => router.push('/mentor')}
               className="px-4 py-2 bg-white border border-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-50 transition text-[14px] font-medium"
             >
-              Back to Mentors
+              {isPermissionError ? 'Go to My Profile' : 'Back to Mentors'}
             </button>
           </div>
         </div>

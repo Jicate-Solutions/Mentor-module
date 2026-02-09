@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserAccess } from '@/lib/middleware/access-control';
+import { getUserAccess, getMentorListFilter, getProfileAccessLevel } from '@/lib/middleware/access-control';
 
 // Local interface for staff member (to avoid client-side imports)
 interface StaffMember {
@@ -432,15 +432,54 @@ export async function GET(request: NextRequest) {
     console.log(`[BEFORE Access Control] Total mentors: ${mentors.length}`);
     console.log(`[User Access] Role: ${userAccess.role}, InstitutionID: ${userAccess.institutionId}, IsSuperAdmin: ${userAccess.isSuperAdmin}`);
 
-    // Apply institution-based access control filtering
-    if (!userAccess.isSuperAdmin && userAccess.institutionId) {
-      const beforeFilter = mentors.length;
-      mentors = mentors.filter((mentor: any) =>
-        mentor.institution_id === userAccess.institutionId
-      );
-      console.log(`[AFTER Access Control] Filtered mentors: ${mentors.length} (from ${beforeFilter})`);
-    } else {
-      console.log(`[Access Control] Super Admin or no institution filter - showing all ${mentors.length} mentors`);
+    // Apply role-based access control filtering
+    const filterCriteria = getMentorListFilter(userAccess);
+    const profileAccessLevel = getProfileAccessLevel(userAccess);
+    console.log(`[Access Control] Profile access level: ${profileAccessLevel}, Filter type: ${filterCriteria.type}`);
+
+    const beforeFilter = mentors.length;
+
+    switch (filterCriteria.type) {
+      case 'all':
+        // Super admin - no filtering needed
+        console.log(`[Access Control] Super Admin - showing all ${mentors.length} mentors`);
+        break;
+
+      case 'institution':
+        // Institution-level access (principal, admin, mentor incharge)
+        mentors = mentors.filter((mentor: any) =>
+          mentor.institution_id === filterCriteria.institutionId
+        );
+        console.log(`[Access Control] Institution filter (${filterCriteria.institutionId}) - showing ${mentors.length} mentors (from ${beforeFilter})`);
+        break;
+
+      case 'department':
+        // HOD - department-level access
+        mentors = mentors.filter((mentor: any) =>
+          mentor.institution_id === filterCriteria.institutionId &&
+          mentor.department_id === filterCriteria.departmentId
+        );
+        console.log(`[Access Control] Department filter (${filterCriteria.departmentId}) - showing ${mentors.length} mentors (from ${beforeFilter})`);
+        break;
+
+      case 'own':
+        // Faculty - own profile only
+        // Find the user's JKKN ID to filter to only their profile
+        const { data: ownUser } = await supabaseAdmin
+          .from('users')
+          .select('jkkn_user_id')
+          .eq('id', filterCriteria.userId)
+          .single();
+
+        if (ownUser && ownUser.jkkn_user_id) {
+          mentors = mentors.filter((mentor: any) => mentor.id === ownUser.jkkn_user_id);
+          console.log(`[Access Control] Own profile filter (${ownUser.jkkn_user_id}) - showing ${mentors.length} mentor(s) (from ${beforeFilter})`);
+        } else {
+          // If we can't find the user's JKKN ID, show no mentors
+          console.log(`[Access Control] Could not find JKKN ID for user ${filterCriteria.userId} - showing no mentors`);
+          mentors = [];
+        }
+        break;
     }
 
     // Filter by search query if provided

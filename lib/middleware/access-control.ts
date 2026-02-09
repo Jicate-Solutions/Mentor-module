@@ -401,9 +401,23 @@ export async function canAssignStudents(
     .eq('user_id', userAccess.userId)
     .maybeSingle();
 
-  // Regular mentors can only assign students to themselves
+  // Regular mentors and faculty can only assign students to themselves
   if (mentor && mentor.id === targetMentorId) {
     return true;
+  }
+
+  // Faculty role: check if they are the target mentor (by profile_id match)
+  if (userAccess.role === 'faculty' || userAccess.role === 'mentor' || userAccess.role === 'hod') {
+    // Also check by profile_id for faculty who may have different user_id mapping
+    const { data: mentorByProfile } = await supabase
+      .from('mentors')
+      .select('id')
+      .eq('profile_id', userAccess.userId)
+      .maybeSingle();
+
+    if (mentorByProfile && mentorByProfile.id === targetMentorId) {
+      return true;
+    }
   }
 
   return false;
@@ -480,5 +494,127 @@ export async function getMentorAssignedStudentIds(userId: string): Promise<strin
   } catch (error) {
     console.error('[Access Control] Error getting mentor assigned students:', error);
     return null;
+  }
+}
+
+/**
+ * FACULTY PROFILE ACCESS CONTROL
+ * Implements role-based access for viewing/managing faculty profiles
+ */
+
+// Profile access level type
+export type ProfileAccessLevel = 'own_only' | 'department' | 'institution' | 'all';
+
+/**
+ * Get what scope of faculty profiles user can access
+ * - own_only: Can only view/manage their own profile (faculty, mentor)
+ * - department: Can view/manage profiles in their department (HOD)
+ * - institution: Can view/manage profiles in their institution (Principal, Mentor Incharge)
+ * - all: Can view/manage all profiles (Super Admin)
+ */
+export function getProfileAccessLevel(userAccess: UserAccess): ProfileAccessLevel {
+  // Super admin can access all profiles
+  if (userAccess.isSuperAdmin || userAccess.role === 'super_admin') {
+    return 'all';
+  }
+
+  // Institution-level roles
+  if (['administrator', 'digital_coordinator', 'principal'].includes(userAccess.role)) {
+    return 'institution';
+  }
+
+  // Mentor in-charge has institution-level access within their assigned institution
+  if (userAccess.isMentorIncharge) {
+    return 'institution';
+  }
+
+  // HOD has department-level access
+  if (userAccess.role === 'hod') {
+    return 'department';
+  }
+
+  // Faculty and regular mentors can only access their own profile
+  return 'own_only';
+}
+
+/**
+ * Check if user can access a specific faculty/mentor profile
+ * @param userAccess - Current user's access info
+ * @param targetUserId - The user_id of the profile being accessed
+ * @param targetDepartmentId - Department ID of the target profile
+ * @param targetInstitutionId - Institution ID of the target profile
+ */
+export async function canAccessFacultyProfile(
+  userAccess: UserAccess,
+  targetUserId: string,
+  targetDepartmentId: string | null,
+  targetInstitutionId: string | null
+): Promise<boolean> {
+  const level = getProfileAccessLevel(userAccess);
+
+  switch (level) {
+    case 'all':
+      return true;
+
+    case 'institution':
+      // For mentor in-charge, check against assigned institution
+      if (userAccess.isMentorIncharge) {
+        return targetInstitutionId === userAccess.mentorInchargeInstitutionId;
+      }
+      // For other institution-level roles, check against user's institution
+      return targetInstitutionId === userAccess.institutionId;
+
+    case 'department':
+      // HOD can access profiles in their department within their institution
+      return (
+        targetDepartmentId === userAccess.departmentId &&
+        targetInstitutionId === userAccess.institutionId
+      );
+
+    case 'own_only':
+      // Faculty can only access their own profile
+      return targetUserId === userAccess.userId;
+
+    default:
+      return false;
+  }
+}
+
+/**
+ * Get filter criteria for mentor list queries based on user access level
+ * Returns filter type and relevant IDs for filtering
+ */
+export function getMentorListFilter(userAccess: UserAccess): {
+  type: 'all' | 'institution' | 'department' | 'own';
+  institutionId?: string | null;
+  departmentId?: string | null;
+  userId?: string;
+} {
+  const level = getProfileAccessLevel(userAccess);
+
+  switch (level) {
+    case 'all':
+      return { type: 'all' };
+
+    case 'institution':
+      return {
+        type: 'institution',
+        institutionId: userAccess.isMentorIncharge
+          ? userAccess.mentorInchargeInstitutionId
+          : userAccess.institutionId,
+      };
+
+    case 'department':
+      return {
+        type: 'department',
+        institutionId: userAccess.institutionId,
+        departmentId: userAccess.departmentId,
+      };
+
+    default:
+      return {
+        type: 'own',
+        userId: userAccess.userId,
+      };
   }
 }

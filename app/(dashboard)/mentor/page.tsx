@@ -27,6 +27,7 @@ export default function MentorListingPage() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [hasSearched, setHasSearched] = useState(false);
+  const [profileAccessLevel, setProfileAccessLevel] = useState<string>('own_only');
 
   // Filter configuration - Fetch options from JKKN API
   const filterConfigs: FilterConfig[] = [
@@ -127,6 +128,14 @@ export default function MentorListingPage() {
   // Initialize filters hook
   const { filters, setFilter, clearAllFilters, activeFiltersCount } = useFilters({}, true);
 
+  // Auto-load own profile for faculty users
+  useEffect(() => {
+    if (accessToken && user?.role === 'faculty' && !hasSearched) {
+      // Faculty users should see their own profile automatically
+      searchMentors('*');
+    }
+  }, [accessToken, user?.role]);
+
   // Fetch mentors from JKKN API based on search query
   const searchMentors = async (query: string) => {
     if (!accessToken || !query.trim()) {
@@ -159,7 +168,13 @@ export default function MentorListingPage() {
       console.log('[MentorPage] Received mentors:', {
         count: data.mentors?.length,
         total: data.total,
+        accessLevel: data.accessLevel,
       });
+
+      // Capture the access level from API response
+      if (data.accessLevel) {
+        setProfileAccessLevel(data.accessLevel);
+      }
 
       const mentorData = data.mentors || [];
       setMentors(mentorData);
@@ -239,12 +254,28 @@ export default function MentorListingPage() {
       {/* Hero Header */}
       <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
         <h1 className="text-[22px] font-medium text-brand-green mb-2 tracking-tight">
-          Mentor Directory
+          {user?.role === 'faculty' ? 'My Profile' : 'Mentor Directory'}
         </h1>
         <p className="text-neutral-600 text-[14px] leading-relaxed">
-          Connect with faculty mentors to manage student counseling, guidance, and academic progress
+          {user?.role === 'faculty'
+            ? 'View and manage your mentor profile, assigned students, and counseling sessions'
+            : 'Connect with faculty mentors to manage student counseling, guidance, and academic progress'}
         </p>
       </div>
+
+      {/* Faculty Role Information Banner */}
+      {user?.role === 'faculty' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm text-amber-800">
+              <strong>Note:</strong> As faculty, you can only view and manage your own profile. Contact your HOD or administrator if you need access to other faculty profiles.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Search Bar and View Toggle */}
@@ -319,8 +350,8 @@ export default function MentorListingPage() {
           />
         )}
 
-        {/* Initial State - No Search */}
-        {!hasSearched && !loading && !error && (
+        {/* Initial State - No Search (only show for non-faculty users) */}
+        {!hasSearched && !loading && !error && user?.role !== 'faculty' && (
           <div className="bg-white rounded-xl border border-neutral-200/50 p-12 lg:p-16 text-center shadow-sm">
             <div className="max-w-md mx-auto">
               <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-neutral-100 flex items-center justify-center">

@@ -125,17 +125,48 @@ export async function GET(
       );
     }
 
+    // Fetch department names from JKKN API to resolve department_id
+    const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+    const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+    let departmentMap = new Map<string, string>();
+
+    if (apiKey) {
+      try {
+        const deptResponse = await fetch(`${baseUrl}/api-management/organizations/departments?page=1&limit=500`, {
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+          next: { revalidate: 60 },
+        });
+
+        if (deptResponse.ok) {
+          const deptData = await deptResponse.json();
+          (deptData.data || []).forEach((dept: any) => {
+            const id = dept.id || dept.department_id;
+            const name = dept.name || dept.department_name || 'Unknown Department';
+            if (id) departmentMap.set(id, name);
+          });
+          console.log(`[Students API] Built department lookup map with ${departmentMap.size} entries`);
+        }
+      } catch (e) {
+        console.warn('[Students API] Failed to fetch departments for lookup:', e);
+      }
+    }
+
     // Transform data to match frontend expectations
-    const students = (assignments || []).map((assignment: any) => ({
-      id: assignment.student?.id || assignment.student_id,
-      name: assignment.student?.name || 'Unknown Student',
-      email: assignment.student?.email || '',
-      rollNumber: assignment.student?.roll_number || '',
-      department: assignment.student?.department_id || 'Unknown',
-      year: assignment.student?.year || '',
-      assignedAt: assignment.assigned_at,
-      notes: assignment.notes || undefined,
-    }));
+    const students = (assignments || []).map((assignment: any) => {
+      const deptId = assignment.student?.department_id;
+      const departmentName = deptId ? (departmentMap.get(deptId) || 'Unknown Department') : 'Unknown Department';
+
+      return {
+        id: assignment.student?.id || assignment.student_id,
+        name: assignment.student?.name || 'Unknown Student',
+        email: assignment.student?.email || '',
+        rollNumber: assignment.student?.roll_number || '',
+        department: departmentName,
+        year: assignment.student?.year || '',
+        assignedAt: assignment.assigned_at,
+        notes: assignment.notes || undefined,
+      };
+    });
 
     console.log(`[Students API] Found ${students.length} students for mentor ${mentorId}`);
 
@@ -416,7 +447,12 @@ export async function POST(
       return NextResponse.json(
         {
           error: 'Forbidden: You do not have permission to assign students to this mentor',
-          details: 'Regular mentors can only assign students to themselves. Mentor in-charges can assign within their institution.'
+          details: 'Mentors and faculty can only assign students to themselves. Mentor in-charges can assign within their institution.',
+          debug: {
+            userId: userAccess.userId,
+            role: userAccess.role,
+            targetMentorId: mentor!.id,
+          }
         },
         { status: 403 }
       );

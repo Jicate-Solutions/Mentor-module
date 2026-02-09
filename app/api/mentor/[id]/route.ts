@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { getUserAccess, canAccessFacultyProfile } from '@/lib/middleware/access-control';
 
 /**
  * GET /api/mentor/[id]
@@ -22,7 +23,16 @@ export async function GET(
 
     const { id: mentorId } = await params;
 
-    console.log(`[Mentor Detail] Fetching mentor ${mentorId} from JKKN API`);
+    // Authorization check - verify user has access
+    const userAccess = await getUserAccess();
+    if (!userAccess) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please log in' },
+        { status: 401 }
+      );
+    }
+
+    console.log(`[Mentor Detail] Fetching mentor ${mentorId} from JKKN API (requested by ${userAccess.role})`);
 
     // Create admin client for this request
     const supabaseAdmin = createAdminClient();
@@ -195,6 +205,29 @@ export async function GET(
         totalStudents = count || 0;
         console.log(`[Mentor Detail] Found ${totalStudents} students for mentor ${mentorId}`);
       }
+
+      // Authorization check - verify user can access this profile
+      const canAccess = await canAccessFacultyProfile(
+        userAccess,
+        user.id,
+        user.department_id,
+        user.institution_id
+      );
+
+      if (!canAccess) {
+        console.log('[Mentor Detail] Access denied:', {
+          requestedMentorId: mentorId,
+          requestedUserId: user.id,
+          requestingUserRole: userAccess.role,
+          requestingUserId: userAccess.userId,
+        });
+        return NextResponse.json(
+          { error: 'You do not have permission to view this profile' },
+          { status: 403 }
+        );
+      }
+
+      console.log('[Mentor Detail] Access granted for user:', userAccess.userId);
     }
 
     // Return mentor data

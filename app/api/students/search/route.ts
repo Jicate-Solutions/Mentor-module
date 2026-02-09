@@ -458,16 +458,35 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Student Search] Found ${filteredStudents.length} matching students (isAdmin: ${isAdmin}, institution filter: ${isAdmin ? 'NONE (all institutions)' : userInstitutionId})`);
 
+    // Fetch department lookup map to resolve department_id to department name
+    const departmentMap = await fetchDepartmentLookup();
+    console.log(`[Student Search] Department lookup map has ${departmentMap.size} entries`);
+
     // Transform to expected format
     const transformedStudents = filteredStudents.map((student: any) => {
-      // Extract department name
+      // Extract department name - try multiple sources
       let departmentName = 'Unknown Department';
+
+      // 1. Check if department is an object with name
       if (typeof student.department === 'object' && student.department !== null) {
         departmentName = student.department.name || student.department.department_name || 'Unknown Department';
-      } else if (typeof student.department === 'string') {
+      }
+      // 2. Check if department is a string (might be the name directly)
+      else if (typeof student.department === 'string' && !student.department.includes('-')) {
+        // If it's a string without dashes, it's probably a name not a UUID
         departmentName = student.department;
-      } else if (student.department_name) {
+      }
+      // 3. Check department_name field
+      else if (student.department_name) {
         departmentName = student.department_name;
+      }
+      // 4. Use department_id to lookup from JKKN departments API
+      else if (student.department_id && departmentMap.has(student.department_id)) {
+        departmentName = departmentMap.get(student.department_id) || 'Unknown Department';
+      }
+      // 5. If department looks like a UUID, try to lookup
+      else if (typeof student.department === 'string' && student.department.includes('-')) {
+        departmentName = departmentMap.get(student.department) || 'Unknown Department';
       }
 
       return {

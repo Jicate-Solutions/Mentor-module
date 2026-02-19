@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CounselingSession } from '@/lib/types/mentor';
-import { randomBytes } from 'crypto';
-import { sendFeedbackRequestEmail } from '@/lib/email/send-feedback-request';
 import { sendSessionCreatedEmail } from '@/lib/email/send-session-notification';
 import { getUserAccess, canManageMentor } from '@/lib/middleware/access-control';
 import { getCurrentUser } from '@/lib/auth/get-current-user';
@@ -50,104 +48,6 @@ async function sendSessionCreationNotification(
   } catch (error) {
     console.error(`[Session Email] ❌ Exception while sending session creation notification:`, error);
     // Don't throw - session creation should succeed even if email fails
-  }
-}
-
-/**
- * Helper function to create feedback records and send emails
- * Runs asynchronously after session creation
- */
-async function createFeedbackRecordsAndSendEmails(
-  sessionId: string,
-  studentId: string,
-  mentorId: string,
-  studentEmail: string,
-  studentName: string,
-  mentorName: string,
-  sessionName: string,
-  sessionDate: string
-) {
-  try {
-    const supabaseAdmin = createAdminClient();
-
-    // Generate unique feedback token (cryptographically secure)
-    const feedbackToken = randomBytes(32).toString('hex');
-
-    // Token expires in 7 days
-    const tokenExpiresAt = new Date();
-    tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 7);
-
-    console.log(`[Feedback] Creating feedback record for session ${sessionId}, student ${studentId}`);
-
-    // Create feedback record
-    const { data: feedbackRecord, error: feedbackError } = await supabaseAdmin
-      .from('student_feedback')
-      .insert({
-        session_id: sessionId,
-        student_id: studentId,
-        mentor_id: mentorId,
-        feedback_token: feedbackToken,
-        token_expires_at: tokenExpiresAt.toISOString(),
-        is_anonymous: false,
-      })
-      .select()
-      .single();
-
-    if (feedbackError) {
-      console.error(`[Feedback] Failed to create feedback record:`, feedbackError);
-      console.error(`[Feedback] Error code:`, feedbackError.code);
-      console.error(`[Feedback] Full error:`, JSON.stringify(feedbackError, null, 2));
-
-      // Even if feedback record creation fails, we should still send the notification
-      // This can happen if duplicate records exist
-      console.warn(`[Feedback] Skipping feedback record creation but will still send email`);
-    } else {
-      console.log(`[Feedback] Created feedback record ${feedbackRecord.id}`);
-    }
-
-    // Send email regardless of whether feedback record was created
-    // The session creation notification is more important than the feedback record
-    try {
-      console.log(`[Feedback] Preparing to send email to ${studentEmail}`);
-      console.log(`[Feedback] Email data:`, {
-        studentEmail,
-        studentName,
-        mentorName,
-        sessionName,
-        sessionDate,
-        feedbackToken: feedbackToken.substring(0, 10) + '...',
-      });
-
-      const emailSent = await sendFeedbackRequestEmail({
-        studentEmail,
-        studentName,
-        mentorName,
-        sessionName,
-        sessionDate,
-        feedbackToken,
-      });
-
-      if (emailSent) {
-        // Update email_sent_at timestamp only if feedback record was created
-        if (feedbackRecord?.id) {
-          await supabaseAdmin
-            .from('student_feedback')
-            .update({ email_sent_at: new Date().toISOString() })
-            .eq('id', feedbackRecord.id);
-        }
-
-        console.log(`[Feedback] ✅ Email sent successfully to ${studentEmail}`);
-      } else {
-        console.error(`[Feedback] ❌ Email sending returned false for ${studentEmail}`);
-      }
-    } catch (emailError) {
-      console.error(`[Feedback] ❌ Exception while sending email to ${studentEmail}`);
-      console.error('[Feedback] Email error details:', emailError);
-      // Don't throw - we still want the session to be created successfully
-    }
-  } catch (error) {
-    console.error('[Feedback] Error in createFeedbackRecordsAndSendEmails:', error);
-    // Don't throw - session creation should succeed even if feedback fails
   }
 }
 
@@ -282,37 +182,118 @@ export async function GET(
       );
     }
 
+    // Resolve department_id UUIDs to department names (same pattern as students API)
+    const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+    const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+    let departmentMap = new Map<string, string>();
+
+    if (apiKey) {
+      try {
+        const deptResponse = await fetch(`${baseUrl}/api-management/organizations/departments?page=1&limit=500`, {
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+          next: { revalidate: 60 },
+        });
+
+        if (deptResponse.ok) {
+          const deptData = await deptResponse.json();
+          (deptData.data || []).forEach((dept: any) => {
+            const id = dept.id || dept.department_id;
+            const name = dept.name || dept.department_name || 'Unknown Department';
+            if (id) departmentMap.set(id, name);
+          });
+          console.log(`[Counseling API] Built department lookup map with ${departmentMap.size} entries`);
+        }
+      } catch (e) {
+        console.warn('[Counseling API] Failed to fetch departments for lookup:', e);
+      }
+    }
+
+    // Helper to detect UUID-based placeholder emails
+    const isPlaceholderEmail = (email: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@student\.jkkn\.ac\.in$/i.test(email);
+
+    // Collect student IDs that need real email resolution from JKKN API
+    const studentsNeedingEmail = (sessions || [])
+      .filter((s: any) => s.student?.email && isPlaceholderEmail(s.student.email))
+      .map((s: any) => s.student.id);
+
+    // Batch-resolve real emails from JKKN Learners API for students with placeholder emails
+    const realEmailMap = new Map<string, { email: string; year: string }>();
+    if (apiKey && studentsNeedingEmail.length > 0) {
+      // Resolve up to 20 students at a time to avoid excessive API calls
+      const toResolve = [...new Set(studentsNeedingEmail)].slice(0, 20);
+      await Promise.allSettled(
+        toResolve.map(async (studentId: string) => {
+          try {
+            const res = await fetch(`${baseUrl}/api-management/learners/profiles/${studentId}`, {
+              headers: { 'Authorization': `Bearer ${apiKey}` },
+              cache: 'no-store',
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const profile = data.data || data;
+              const realEmail = profile?.college_email || profile?.student_email || '';
+              const year = profile?.admission_year ? String(profile.admission_year) : '';
+              if (realEmail || year) {
+                realEmailMap.set(studentId, { email: realEmail, year });
+              }
+            }
+          } catch {
+            // Silently skip failed lookups
+          }
+        })
+      );
+      console.log(`[Counseling API] Resolved ${realEmailMap.size}/${toResolve.length} student emails from JKKN API`);
+    }
+
     // Transform data to match frontend interface with complete student info
-    const transformedSessions: CounselingSession[] = (sessions || []).map((session: any) => ({
-      id: session.id,
-      mentorId: session.mentor_id,
-      studentId: session.student_id,
-      studentName: session.student?.name || 'Unknown Student',
-      student: session.student ? {
-        id: session.student.id,
-        name: session.student.name,
-        email: session.student.email || '',
-        rollNumber: session.student.roll_number || '',
-        department: session.student.department_id || '',
-        year: session.student.year || '',
-        avatar: session.student.avatar_url || undefined,
-        isActive: session.student.is_active ?? true,
-      } : undefined,
-      sessionName: session.session_name,
-      date: session.date,
-      time: session.time,
-      notes: session.notes || undefined,
-      attachment: session.attachment_url || undefined,
-      status: session.status,
-      feedback: session.feedback ? {
-        counselingQueries: session.feedback.counseling_queries,
-        actionTaken: session.feedback.action_taken,
-        submittedAt: session.feedback.submitted_at,
-        submittedBy: session.feedback.submitted_by || '',
-      } : undefined,
-      createdAt: session.created_at,
-      updatedAt: session.updated_at,
-    }));
+    const transformedSessions: CounselingSession[] = (sessions || []).map((session: any) => {
+      // Resolve department name from UUID
+      const deptId = session.student?.department_id;
+      const departmentName = deptId ? (departmentMap.get(deptId) || deptId) : '';
+
+      // Resolve email: use real email from JKKN API if placeholder, otherwise use stored email
+      let studentEmail = session.student?.email || '';
+      let studentYear = session.student?.year || '';
+      if (session.student?.id && realEmailMap.has(session.student.id)) {
+        const resolved = realEmailMap.get(session.student.id)!;
+        if (resolved.email) studentEmail = resolved.email;
+        if (resolved.year && !studentYear) studentYear = resolved.year;
+      }
+      // Clear placeholder emails so frontend shows N/A instead of UUID
+      if (isPlaceholderEmail(studentEmail)) studentEmail = '';
+
+      return {
+        id: session.id,
+        mentorId: session.mentor_id,
+        studentId: session.student_id,
+        studentName: session.student?.name || 'Unknown Student',
+        student: session.student ? {
+          id: session.student.id,
+          name: session.student.name,
+          email: studentEmail,
+          rollNumber: session.student.roll_number || '',
+          department: departmentName,
+          year: studentYear,
+          avatar: session.student.avatar_url || undefined,
+          isActive: session.student.is_active ?? true,
+        } : undefined,
+        sessionName: session.session_name,
+        date: session.date,
+        time: session.time,
+        notes: session.notes || undefined,
+        attachment: session.attachment_url || undefined,
+        status: session.status,
+        feedback: session.feedback ? {
+          counselingQueries: session.feedback.counseling_queries,
+          actionTaken: session.feedback.action_taken,
+          submittedAt: session.feedback.submitted_at,
+          submittedBy: session.feedback.submitted_by || '',
+        } : undefined,
+        createdAt: session.created_at,
+        updatedAt: session.updated_at,
+      };
+    });
 
     console.log(`[Counseling API] Found ${transformedSessions.length} sessions for mentor ${mentorId}`);
 
@@ -716,19 +697,9 @@ export async function POST(
         console.error('[Counseling API] Background session notification failed:', err);
       });
 
-      // Also create feedback record and send feedback email (non-blocking)
-      createFeedbackRecordsAndSendEmails(
-        newSession.id,
-        student.id,
-        mentor!.id,
-        studentEmail,
-        studentData?.name || student.name || 'Student',
-        mentorName,
-        sessionName,
-        date
-      ).catch(err => {
-        console.error('[Counseling API] Background feedback creation failed:', err);
-      });
+      // NOTE: Feedback request email is NOT sent here.
+      // It will be triggered when the mentor submits the "Session Details & Student Profile" form
+      // via POST /api/mentor/[id]/counseling/[sessionId]/feedback
     } else {
       console.warn(`[Counseling API] ⚠️ Skipping emails - no valid email for student ${student.id}`);
       console.warn(`[Counseling API] Email details:`, {

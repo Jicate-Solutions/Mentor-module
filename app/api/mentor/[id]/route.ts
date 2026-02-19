@@ -128,12 +128,18 @@ export async function GET(
       if (userByEmail) {
         // Update the jkkn_user_id to the new one
         console.log(`[Mentor Detail] Found user by email, updating jkkn_user_id: ${userByEmail.jkkn_user_id} → ${mentorId}`);
-        await supabaseAdmin
+        const { error: updateError } = await supabaseAdmin
           .from('users')
           .update({ jkkn_user_id: mentorId })
           .eq('id', userByEmail.id);
 
-        user = { ...userByEmail, jkkn_user_id: mentorId };
+        if (updateError) {
+          console.error('[Mentor Detail] Failed to update jkkn_user_id:', updateError);
+          // Still use the found user even if jkkn_user_id update fails
+          user = userByEmail;
+        } else {
+          user = { ...userByEmail, jkkn_user_id: mentorId };
+        }
       }
     }
 

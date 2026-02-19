@@ -342,7 +342,7 @@ export async function POST(
             jkkn_user_id: mentorId,
             email: jkknMentor.email || jkknMentor.institution_email || `${mentorId}@jkkn.ac.in`,
             full_name: `${jkknMentor.first_name || ''} ${jkknMentor.last_name || ''}`.trim() || 'Unknown',
-            role: 'mentor',
+            role: user?.role || 'mentor',
             department_id: departmentId || null,
             institution_id: institutionId || null,
             phone_number: jkknMentor.phone || null,

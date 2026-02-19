@@ -72,7 +72,7 @@ export async function POST(
     // Verify session exists and belongs to this mentor
     const { data: session, error: sessionError } = await supabaseAdmin
       .from('counseling_sessions')
-      .select('id, mentor_id, student_id')
+      .select('id, mentor_id, student_id, session_name, date')
       .eq('id', sessionId)
       .eq('mentor_id', mentor.id) // Use resolved mentor.id
       .single();
@@ -129,6 +129,112 @@ export async function POST(
       console.error('[Feedback API] Error updating session status:', updateError);
       // Don't fail the request, feedback was saved successfully
     }
+
+    // --- Send feedback request email to student (non-blocking) ---
+    // Now that the mentor has completed session details, request the student's feedback
+    (async () => {
+      try {
+        // Get mentor name
+        const { data: mentorUser } = await supabaseAdmin
+          .from('users')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+        const mentorName = mentorUser?.full_name || 'Your Mentor';
+
+        // Get student details — prefer real email from JKKN API
+        const { data: studentRecord } = await supabaseAdmin
+          .from('students')
+          .select('id, name, email')
+          .eq('id', session.student_id)
+          .single();
+
+        let studentEmail = studentRecord?.email || '';
+        const studentName = studentRecord?.name || 'Student';
+
+        const isPlaceholder = (email: string) =>
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@student\.jkkn\.ac\.in$/i.test(email);
+
+        // If local email is a placeholder, try fetching real email from JKKN API
+        if (!studentEmail || isPlaceholder(studentEmail)) {
+          const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+          const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+          if (apiKey) {
+            try {
+              const jkknRes = await fetch(
+                `${baseUrl}/api-management/learners/profiles/${session.student_id}`,
+                { headers: { Authorization: `Bearer ${apiKey}` } }
+              );
+              if (jkknRes.ok) {
+                const jkknData = await jkknRes.json();
+                const profile = jkknData.data || jkknData;
+                studentEmail = profile?.college_email || profile?.student_email || studentEmail;
+              }
+            } catch (e) {
+              console.warn('[Feedback API] Could not fetch student email from JKKN API:', e);
+            }
+          }
+        }
+
+        // Only send if we have a valid email
+        const hasValidEmail = studentEmail &&
+          studentEmail.trim() !== '' &&
+          studentEmail.includes('@') &&
+          !isPlaceholder(studentEmail);
+
+        if (!hasValidEmail) {
+          console.warn(`[Feedback API] ⚠️ Skipping feedback email — no valid email for student ${session.student_id}`);
+          return;
+        }
+
+        console.log(`[Feedback API] Sending feedback request email to ${studentEmail}`);
+
+        // Generate unique feedback token
+        const feedbackToken = randomBytes(32).toString('hex');
+        const tokenExpiresAt = new Date();
+        tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 7);
+
+        // Create student_feedback record
+        const { data: studentFeedback, error: sfError } = await supabaseAdmin
+          .from('student_feedback')
+          .insert({
+            session_id: sessionId,
+            student_id: session.student_id,
+            mentor_id: mentor.id,
+            feedback_token: feedbackToken,
+            token_expires_at: tokenExpiresAt.toISOString(),
+            is_anonymous: false,
+          })
+          .select()
+          .single();
+
+        if (sfError) {
+          console.error('[Feedback API] Failed to create student_feedback record:', sfError);
+        }
+
+        // Send the email
+        const emailSent = await sendFeedbackRequestEmail({
+          studentEmail,
+          studentName,
+          mentorName,
+          sessionName: session.session_name,
+          sessionDate: session.date,
+          feedbackToken,
+        });
+
+        if (emailSent && studentFeedback?.id) {
+          await supabaseAdmin
+            .from('student_feedback')
+            .update({ email_sent_at: new Date().toISOString() })
+            .eq('id', studentFeedback.id);
+          console.log(`[Feedback API] ✅ Feedback request email sent to ${studentEmail}`);
+        } else if (!emailSent) {
+          console.error(`[Feedback API] ❌ Failed to send feedback email to ${studentEmail}`);
+        }
+      } catch (error) {
+        console.error('[Feedback API] Error sending feedback email:', error);
+      }
+    })();
 
     // Fetch complete session with feedback and student details
     const { data: updatedSession, error: fetchError } = await supabaseAdmin

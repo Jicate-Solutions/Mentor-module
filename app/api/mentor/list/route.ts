@@ -483,7 +483,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter by search query if provided
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() && searchQuery.trim() !== '*') {
       const query = searchQuery.toLowerCase();
 
       console.log('[Mentor List] Searching with query:', query);

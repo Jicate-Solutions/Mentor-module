@@ -51,14 +51,25 @@ export async function GET(request: NextRequest) {
       // The mentorIdParam from URL is always a JKKN user ID, we need to convert it
       console.log('[IDP API GET] Converting JKKN user ID to mentor ID:', mentorIdParam);
 
-      const { data: mentorUser, error: userError } = await supabase
+      // Try jkkn_user_id first, then fallback to direct UUID
+      let { data: mentorUser, error: userError } = await supabase
         .from('users')
         .select('id')
         .eq('jkkn_user_id', mentorIdParam)
         .single();
 
-      if (userError || !mentorUser) {
-        console.log('[IDP API GET] Mentor user not found for JKKN ID:', mentorIdParam, userError);
+      if (!mentorUser) {
+        // Fallback: Try direct Supabase UUID lookup
+        const { data: userById } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', mentorIdParam)
+          .maybeSingle();
+        if (userById) mentorUser = userById;
+      }
+
+      if (!mentorUser) {
+        console.log('[IDP API GET] Mentor user not found for ID:', mentorIdParam, userError);
         return NextResponse.json({ success: true, data: [] });
       }
 
@@ -148,16 +159,74 @@ export async function POST(request: NextRequest) {
 
     // Convert JKKN mentor ID to Supabase mentor ID
     // Step 1: Find user by jkkn_user_id
-    const { data: mentorUser, error: userError } = await supabase
+    let { data: mentorUser, error: userError } = await supabase
       .from('users')
       .select('id')
       .eq('jkkn_user_id', jkkn_mentor_id)
       .single();
 
-    if (userError || !mentorUser) {
-      console.error('[IDP API] User not found for JKKN ID:', jkkn_mentor_id, userError);
+    // Fallback: Try direct Supabase UUID lookup (in case mentorId is a Supabase user ID)
+    if (!mentorUser) {
+      console.log('[IDP API] jkkn_user_id lookup failed, trying direct UUID lookup...');
+      const { data: userById } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', jkkn_mentor_id)
+        .maybeSingle();
+      if (userById) {
+        mentorUser = userById;
+        console.log('[IDP API] Found user by direct UUID:', mentorUser.id);
+      }
+    }
+
+    // Fallback: Fetch from JKKN API and lookup by email
+    if (!mentorUser) {
+      console.log('[IDP API] UUID lookup failed, trying JKKN API email fallback...');
+      const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+      const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+      if (apiKey) {
+        try {
+          const apiResponse = await fetch(`${baseUrl}/api-management/staff/${jkkn_mentor_id}`, {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (apiResponse.ok) {
+            const apiData = await apiResponse.json();
+            const staff = apiData?.data;
+            const staffEmail = staff?.email || staff?.institution_email;
+
+            if (staffEmail) {
+              const { data: userByEmail } = await supabase
+                .from('users')
+                .select('id')
+                .eq('email', staffEmail)
+                .maybeSingle();
+
+              if (userByEmail) {
+                // Sync jkkn_user_id so future lookups work directly
+                await supabase
+                  .from('users')
+                  .update({ jkkn_user_id: jkkn_mentor_id })
+                  .eq('id', userByEmail.id);
+                mentorUser = userByEmail;
+                console.log('[IDP API] Found user by email fallback:', staffEmail, '→', mentorUser.id);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[IDP API] JKKN API email fallback failed:', e);
+        }
+      }
+    }
+
+    if (!mentorUser) {
+      console.error('[IDP API] User not found after all lookups for ID:', jkkn_mentor_id);
       return NextResponse.json(
-        { error: 'Mentor user not found in database' },
+        { error: 'Mentor user not found in database. Please visit the mentor profile page first to sync data.' },
         { status: 404 }
       );
     }

@@ -88,7 +88,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     try {
       setSearching(true);
       const response = await fetch(
-        `/api/students/search?q=${encodeURIComponent(query)}`,
+        `/api/students/search?q=${encodeURIComponent(query)}&for_assignment=true`,
         {
           credentials: 'include', // Important: Send cookies for server-side authentication
           headers: {

@@ -151,17 +151,18 @@ export async function GET(request: NextRequest) {
     const userInstitutionId = userAccess.institutionId;
     const mentorInchargeInstitutionId = userAccess.mentorInchargeInstitutionId;
 
+    const searchParams = request.nextUrl.searchParams;
+    const query = searchParams.get('q')?.toLowerCase() || '';
+    const forAssignment = searchParams.get('for_assignment') === 'true';
+
     // Check if mentor should only see assigned students
     let assignedStudentIds: string[] | null = null;
-    const shouldFilterByAssigned = shouldFilterByAssignedStudents(userAccess);
+    const shouldFilterByAssigned = !forAssignment && shouldFilterByAssignedStudents(userAccess);
     if (shouldFilterByAssigned) {
       console.log(`[Student Search] Mentor role detected - fetching assigned students for filtering`);
       assignedStudentIds = await getMentorAssignedStudentIds(userAccess.userId);
       console.log(`[Student Search] Mentor has ${assignedStudentIds?.length || 0} assigned students`);
     }
-
-    const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get('q')?.toLowerCase() || '';
 
     if (!query.trim()) {
       return NextResponse.json({

@@ -25,7 +25,7 @@ export const WelcomeHero = () => {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-100/40 via-primary-50/30 to-accent-50/40 shadow-xl border border-primary-100/50">
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-100/40 via-primary-50/30 to-accent-50/40 shadow-xl">
       {/* Floating Orbs Background */}
       <div className="absolute inset-0 overflow-hidden opacity-10">
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary-300 rounded-full blur-3xl animate-pulse" />
@@ -46,7 +46,7 @@ export const WelcomeHero = () => {
           <div className="inline-flex items-center gap-2.5 w-fit">
             <div className="relative">
               <div className="absolute inset-0 bg-primary-300/30 rounded-full blur-lg animate-pulse" />
-              <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center border border-primary-400/30 shadow-lg overflow-hidden p-2">
+              <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg overflow-hidden p-2">
                 <style jsx>{`
                   @keyframes rotateYSmooth {
                     0%, 100% {
@@ -87,7 +87,7 @@ export const WelcomeHero = () => {
 
           {/* Quick Info Pills */}
           <div className="flex items-center gap-2.5 flex-wrap">
-            <div className="group px-4 py-2 rounded-xl bg-white border border-primary-200/60 hover:bg-white hover:border-primary-300 hover:shadow-md transition-all duration-300 shadow-sm">
+            <div className="group px-4 py-2 rounded-xl bg-white hover:shadow-md transition-all duration-300 shadow-sm">
               <p className="text-[10px] text-primary-600 uppercase tracking-widest font-medium mb-0.5">Today</p>
               <p className="text-[13px] text-primary-800 font-medium flex items-center gap-1.5" suppressHydrationWarning>
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +97,7 @@ export const WelcomeHero = () => {
               </p>
             </div>
 
-            <div className="group px-4 py-2 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 border border-primary-400/40 hover:from-primary-600 hover:to-primary-700 hover:shadow-md transition-all duration-300 shadow-sm">
+            <div className="group px-4 py-2 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:shadow-md transition-all duration-300 shadow-sm">
               <p className="text-[10px] text-primary-100 uppercase tracking-widest font-medium mb-0.5">Time</p>
               <p className="text-[13px] text-white font-medium flex items-center gap-1.5" suppressHydrationWarning>
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +127,7 @@ export const WelcomeHero = () => {
             </div>
 
             {/* Main Circle Container */}
-            <div className="absolute inset-8 rounded-full bg-gradient-to-br from-white to-white border-2 border-gray-200 shadow-2xl flex items-center justify-center">
+            <div className="absolute inset-8 rounded-full bg-gradient-to-br from-white to-white shadow-2xl flex items-center justify-center">
               {/* Shine Effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-white via-transparent to-transparent rounded-full pointer-events-none" />
 
@@ -184,7 +184,7 @@ export const WelcomeHero = () => {
                       <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${item.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
 
                       {/* Icon Container */}
-                      <div className="relative w-full h-full rounded-xl bg-white border border-gray-200 flex items-center justify-center shadow-lg hover:shadow-xl hover:bg-white hover:scale-125 transition-all duration-300 cursor-pointer">
+                      <div className="relative w-full h-full rounded-xl bg-white flex items-center justify-center shadow-lg hover:shadow-xl hover:bg-white hover:scale-125 transition-all duration-300 cursor-pointer">
                         <span className="text-sm group-hover:scale-110 transition-transform duration-300">{item.icon}</span>
                       </div>
 

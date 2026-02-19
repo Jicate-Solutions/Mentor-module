@@ -83,7 +83,7 @@ export default function Modal({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+          <div className="flex items-center justify-between p-6 border-b border-neutral-100">
             {title && (
               <h2
                 id="modal-title"
@@ -140,7 +140,7 @@ interface ModalFooterProps {
 
 export function ModalFooter({ children, className = '' }: ModalFooterProps) {
   return (
-    <div className={`flex items-center justify-end gap-3 pt-6 border-t border-neutral-200 ${className}`}>
+    <div className={`flex items-center justify-end gap-3 pt-6 border-t border-neutral-100 ${className}`}>
       {children}
     </div>
   );

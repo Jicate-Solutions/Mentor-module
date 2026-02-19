@@ -29,7 +29,7 @@ export default function AccessLevelBadge({
 
   if (loading || !displayRole) {
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200 ${className}`}>
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-500 ${className}`}>
         Loading...
       </span>
     );
@@ -57,7 +57,7 @@ export default function AccessLevelBadge({
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 ${sizeClasses[size]} rounded-lg font-medium border ${colorClass} ${className}`}
+      className={`inline-flex items-center gap-1.5 ${sizeClasses[size]} rounded-lg font-medium ${colorClass} ${className}`}
       title={`Access Level: ${label}`}
     >
       {roleIcon}

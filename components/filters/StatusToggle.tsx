@@ -33,7 +33,7 @@ export default function StatusToggle({
       <label className="block text-xs font-medium text-gray-700 mb-1">
         {label}
       </label>
-      <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+      <div className="flex border border-gray-200 rounded-lg overflow-hidden">
         {options.map((option, index) => {
           const isSelected = value === option.value;
 
@@ -45,7 +45,7 @@ export default function StatusToggle({
               disabled={disabled}
               className={`
                 flex-1 px-3 py-2 text-xs font-medium transition-colors
-                ${index !== options.length - 1 ? 'border-r border-gray-300' : ''}
+                ${index !== options.length - 1 ? 'border-r border-gray-200' : ''}
                 ${isSelected
                   ? 'bg-blue-600 text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-50'

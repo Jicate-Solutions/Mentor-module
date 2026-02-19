@@ -23,9 +23,9 @@ export default function StatCard({
   className = '',
 }: StatCardProps) {
   const variantStyles = {
-    default: 'bg-white border-neutral-200 hover:border-brand-green/30',
-    primary: 'bg-gradient-to-br from-brand-green/5 to-brand-green/10 border-brand-green/30 hover:border-brand-green/50',
-    accent: 'bg-gradient-to-br from-brand-yellow/10 to-brand-yellow/15 border-brand-yellow/30 hover:border-brand-yellow/50',
+    default: 'bg-white shadow-sm hover:shadow-lg',
+    primary: 'bg-gradient-to-br from-brand-green/5 to-brand-green/10 shadow-sm hover:shadow-lg',
+    accent: 'bg-gradient-to-br from-brand-yellow/10 to-brand-yellow/15 shadow-sm hover:shadow-lg',
   };
 
   const iconBgStyles = {
@@ -37,7 +37,7 @@ export default function StatCard({
   return (
     <div
       className={`
-        group relative overflow-hidden rounded-2xl border p-6
+        group relative overflow-hidden rounded-2xl p-6
         transition-all duration-300 hover:shadow-xl hover:-translate-y-1
         ${variantStyles[variant]}
         ${className}

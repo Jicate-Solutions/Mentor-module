@@ -27,7 +27,7 @@ export default function FilterChip({
         transition-all duration-200 group
         ${variant === 'primary'
           ? 'bg-brand-green text-white border border-brand-green'
-          : 'bg-neutral-100 text-neutral-700 border border-neutral-300'
+          : 'bg-neutral-100 text-neutral-700 border border-neutral-200'
         }
       `}
     >

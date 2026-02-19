@@ -13,6 +13,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton';
 import { ErrorState, NoSearchResults } from '@/components/ui/EmptyState';
 import HorizontalFilterBar from '@/components/filters/HorizontalFilterBar';
 import { useFilters } from '@/hooks/useFilters';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import type { FilterConfig } from '@/lib/types/filters';
 import type { Mentor } from '@/lib/types/mentor';
 
@@ -88,7 +89,7 @@ export default function MentorListingPage() {
       setError(null);
       setHasSearched(true);
 
-      const response = await fetch(`/api/mentor/list?search=${encodeURIComponent(query)}`, {
+      const response = await fetchWithAuthRetry(`/api/mentor/list?search=${encodeURIComponent(query)}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
@@ -187,7 +188,7 @@ export default function MentorListingPage() {
   return (
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-6">
       {/* Compact Gradient Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-4 lg:p-6">
+      <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 rounded-xl p-4 lg:p-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between relative z-10">
           <div className="flex-1">
             <h1 className="text-[18px] lg:text-[22px] font-medium text-neutral-900 mb-1 tracking-tight">
@@ -212,7 +213,7 @@ export default function MentorListingPage() {
       </div>
 
       {/* Search, Filters & View Toggle - Combined */}
-      <div className="bg-white rounded-xl border border-neutral-200/50 p-4 lg:p-5 shadow-sm">
+      <div className="bg-white rounded-xl p-4 lg:p-5 shadow-sm">
         <div className="flex flex-col gap-3 lg:gap-4">
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
             <SearchInput
@@ -223,7 +224,7 @@ export default function MentorListingPage() {
             />
 
             {/* View Toggle - Hidden on mobile */}
-            <div className="hidden lg:flex items-center gap-1 rounded-lg border border-neutral-200/50 p-0.5">
+            <div className="hidden lg:flex items-center gap-1 rounded-lg bg-neutral-100 p-0.5">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center gap-1.5 text-sm font-medium ${
@@ -288,7 +289,7 @@ export default function MentorListingPage() {
 
       {/* Initial State - No Search (only show for non-faculty users) */}
       {!hasSearched && !loading && !error && user?.role !== 'faculty' && (
-        <div className="bg-white rounded-xl border border-neutral-200/50 p-10 lg:p-12 text-center shadow-sm">
+        <div className="bg-white rounded-xl p-10 lg:p-12 text-center shadow-sm">
           <div className="max-w-md mx-auto">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-neutral-100 flex items-center justify-center">
               <svg className="w-8 h-8 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -332,7 +333,7 @@ export default function MentorListingPage() {
                   <div
                     key={mentor.id}
                     onClick={() => handleMentorClick(mentor.id)}
-                    className="bg-white rounded-xl border border-neutral-200/50 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col h-full group"
+                    className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col h-full group"
                   >
                     {/* Avatar and Basic Info */}
                     <div className="flex items-start gap-4 mb-4">
@@ -410,7 +411,7 @@ export default function MentorListingPage() {
                     </div>
 
                     {/* Student Count and View Details - Footer */}
-                    <div className="mt-auto pt-4 border-t border-neutral-200/70">
+                    <div className="mt-auto pt-4 border-t border-neutral-100">
                       <div className="flex items-center justify-between">
                         {mentor.totalStudents !== undefined && (
                           <div className="flex items-center gap-2 text-sm">

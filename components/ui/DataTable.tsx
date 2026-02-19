@@ -136,7 +136,7 @@ export default function DataTable<T extends Record<string, any>>({
               key={key}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               className={`
-                bg-white rounded-lg border border-neutral-200 p-4
+                bg-white rounded-lg shadow-sm p-4
                 ${onRowClick ? 'cursor-pointer active:scale-[0.98]' : ''}
                 ${hoverable && onRowClick ? 'hover:shadow-md hover:-translate-y-0.5' : ''}
                 transition-all
@@ -157,9 +157,9 @@ export default function DataTable<T extends Record<string, any>>({
       </div>
 
       {/* Desktop View - Table */}
-      <div className="hidden md:block overflow-x-auto rounded-lg border border-neutral-200">
+      <div className="hidden md:block overflow-x-auto rounded-lg shadow-sm">
         <table className="w-full">
-          <thead className="bg-neutral-50 border-b border-neutral-200">
+          <thead className="bg-neutral-50 border-b border-neutral-100">
             <tr>
               {columns.map((column) => (
                 <th
@@ -199,7 +199,7 @@ export default function DataTable<T extends Record<string, any>>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-200">
+          <tbody className="divide-y divide-neutral-100/60">
             {sortedData.map((row, index) => {
               const key = keyExtractor(row);
 
@@ -271,7 +271,7 @@ export function DataTablePagination({
   const visiblePages = pages.slice(startPage - 1, endPage);
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-neutral-200 bg-white">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-neutral-100 bg-white">
       {/* Info */}
       {itemsPerPage && totalItems && (
         <div className="text-sm text-neutral-600">

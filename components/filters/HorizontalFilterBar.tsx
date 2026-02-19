@@ -126,7 +126,7 @@ export default function HorizontalFilterBar({
   };
 
   return (
-    <div className={`bg-white border border-neutral-200 rounded-lg p-2 lg:p-3 ${className}`}>
+    <div className={`bg-white shadow-sm rounded-lg p-2 lg:p-3 ${className}`}>
       <div className="flex flex-wrap items-center gap-1.5 lg:gap-2">
         {/* Filter Icon and Label - Hidden on mobile */}
         <div className="hidden sm:flex items-center gap-2 text-xs lg:text-sm font-medium text-neutral-700">
@@ -219,7 +219,7 @@ export default function HorizontalFilterBar({
         {/* Clear All Button */}
         {activeFiltersCount > 0 && (
           <>
-            <div className="hidden sm:block h-6 w-px bg-neutral-300 mx-0.5 lg:mx-1" />
+            <div className="hidden sm:block h-6 w-px bg-neutral-200 mx-0.5 lg:mx-1" />
             <button
               onClick={onClearAll}
               className="flex items-center gap-1 lg:gap-1.5 px-2 py-1 lg:px-3 lg:py-1.5 rounded-md text-xs lg:text-sm font-medium text-neutral-600 hover:text-red-600 hover:bg-red-50 transition-colors"

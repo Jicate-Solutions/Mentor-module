@@ -24,7 +24,7 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="bg-white border border-neutral-200 rounded-xl p-5 animate-pulse"
+            className="bg-white shadow-sm rounded-xl p-5 animate-pulse"
           >
             <div className="h-3 bg-neutral-100 rounded w-24 mb-3" />
             <div className="h-8 bg-neutral-100 rounded w-16 mb-2" />
@@ -38,7 +38,7 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
       {/* Mentor Card - Primary with Enhanced Style */}
-      <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-100/50 via-primary-50/40 to-primary-100/50 border border-primary-200/60 p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
+      <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-100/50 via-primary-50/40 to-primary-100/50 p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
         <div className="absolute inset-0 bg-grid-pattern opacity-[0.03]" />
         <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary-300/30 rounded-full blur-2xl group-hover:blur-xl transition-all" />
 
@@ -47,7 +47,7 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
             <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-md">
               <MentoringIllustration className="w-6 h-6 text-white" />
             </div>
-            <div className="px-2 py-0.5 rounded-full bg-primary-500 border border-primary-400/40">
+            <div className="px-2 py-0.5 rounded-full bg-primary-500">
               <span className="text-[9px] text-white font-medium uppercase tracking-wider">Active</span>
             </div>
           </div>
@@ -65,7 +65,7 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
       </div>
 
       {/* Learners Card - Accent with Bold Design */}
-      <div className="group relative overflow-hidden rounded-2xl bg-white border-2 border-brand-yellow/30 p-4 shadow-lg hover:shadow-xl hover:border-brand-yellow/60 transition-all duration-500 hover:scale-[1.02]">
+      <div className="group relative overflow-hidden rounded-2xl bg-white p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
         <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-brand-yellow/20 to-transparent rounded-full blur-2xl group-hover:blur-xl transition-all" />
 
         <div className="relative z-10">
@@ -89,7 +89,7 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
       </div>
 
       {/* Sessions Card - Clean with Trend */}
-      <div className="group relative overflow-hidden rounded-2xl bg-white border border-neutral-200 p-4 shadow-lg hover:shadow-xl hover:border-brand-green/30 transition-all duration-500 hover:scale-[1.02]">
+      <div className="group relative overflow-hidden rounded-2xl bg-white p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
         <div className="relative z-10">
@@ -126,7 +126,7 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
       </div>
 
       {/* Feedback Card - Alert Style */}
-      <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-neutral-50 to-white border border-neutral-200 p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
+      <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-neutral-50 to-white p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
         <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-full blur-2xl" />
 
         <div className="relative z-10">
@@ -150,7 +150,7 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
           </div>
 
           {stats.pendingFeedback > 0 && (
-            <div className="mt-3 px-2.5 py-1.5 rounded-lg bg-orange-50 border border-orange-200">
+            <div className="mt-3 px-2.5 py-1.5 rounded-lg bg-orange-50">
               <p className="text-[10px] text-orange-700 font-medium">Action required</p>
             </div>
           )}

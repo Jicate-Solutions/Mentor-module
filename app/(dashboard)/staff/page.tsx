@@ -193,7 +193,7 @@ export default function StaffPage() {
 
       {/* Initial API Check Loading */}
       {isCheckingApi && (
-        <div className="bg-white rounded-2xl border border-neutral-200/50 p-12 shadow-xl">
+        <div className="bg-white rounded-2xl p-12 shadow-xl">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-brand-green border-t-transparent mb-3"></div>
             <p className="text-neutral-600 text-sm">Checking API configuration...</p>
@@ -203,7 +203,7 @@ export default function StaffPage() {
 
       {/* API Not Configured Warning */}
       {!isCheckingApi && !isConfigured && (
-        <div className="bg-yellow-50/80 rounded-2xl border border-yellow-200/60 p-5 shadow-lg">
+        <div className="bg-yellow-50/80 rounded-2xl p-5 shadow-lg">
           <div className="flex items-start gap-3">
             <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -220,7 +220,7 @@ export default function StaffPage() {
 
       {/* Main Content */}
       {isConfigured && (
-        <div className="bg-white rounded-2xl border border-neutral-200/50 p-6 shadow-xl space-y-6">
+        <div className="bg-white rounded-2xl p-6 shadow-xl space-y-6">
           {/* Search and Actions Bar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex-1 w-full sm:max-w-md">
@@ -232,7 +232,7 @@ export default function StaffPage() {
             </div>
             <div className="flex items-center gap-3">
               {/* View Toggle */}
-              <div className="flex items-center gap-1 bg-white rounded-xl border border-neutral-200/50 p-1 shadow-sm">
+              <div className="flex items-center gap-1 bg-neutral-100 rounded-xl p-1">
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`px-4 py-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center gap-2 text-sm font-medium ${
@@ -302,7 +302,7 @@ export default function StaffPage() {
 
           {/* Error State */}
           {error && (
-            <div className="bg-red-50/80 border border-red-200/60 rounded-2xl p-4 shadow-lg">
+            <div className="bg-red-50/80 rounded-2xl p-4 shadow-lg">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -326,7 +326,7 @@ export default function StaffPage() {
                     return (
                       <div
                         key={member.id}
-                        className="group bg-white rounded-2xl border border-neutral-200/50 p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                        className="group bg-white rounded-2xl p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                       >
                         <div className="flex items-start gap-4">
                           {/* Avatar */}
@@ -389,7 +389,7 @@ export default function StaffPage() {
                               )}
                             </div>
 
-                            <div className="pt-3 border-t border-neutral-200/70 space-y-1">
+                            <div className="pt-3 border-t border-neutral-100 space-y-1">
                               <div className="text-xs text-neutral-500">Department</div>
                               <div className="text-sm font-medium text-brand-green">
                                 {formatDisplayValue(getDepartmentName(member.department))}
@@ -413,9 +413,9 @@ export default function StaffPage() {
 
               {/* Table View */}
               {viewMode === 'table' && (
-                <div className="overflow-x-auto rounded-2xl border border-neutral-200/50 shadow-sm">
+                <div className="overflow-x-auto rounded-2xl shadow-sm">
                   <table className="w-full">
-                    <thead className="bg-neutral-50/80 border-b border-neutral-200/70">
+                    <thead className="bg-neutral-50/80 border-b border-neutral-100">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                           Staff Member
@@ -437,7 +437,7 @@ export default function StaffPage() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-200/50">
+                    <tbody className="divide-y divide-neutral-100/60">
                       {filteredStaff.map((member) => {
                         const genderInfo = getGenderDisplay(member.gender);
                         return (
@@ -542,7 +542,7 @@ export default function StaffPage() {
                             className={`
                               px-3 py-1.5 text-xs rounded-lg transition-all font-medium
                               ${currentPage === pageNum
-                                ? 'bg-accent-100/80 text-brand-green shadow-sm border border-accent-200'
+                                ? 'bg-accent-100/80 text-brand-green shadow-sm'
                                 : 'text-neutral-600 hover:bg-neutral-100/70'
                               }
                               disabled:opacity-50 disabled:cursor-not-allowed

@@ -103,7 +103,7 @@ export const ActivityFeed = ({ activities, loading }: ActivityFeedProps) => {
           {activities.map((activity, index) => (
             <div
               key={activity.id}
-              className="relative flex gap-4 p-4 rounded-xl hover:bg-gradient-to-r hover:from-brand-cream/50 hover:to-transparent transition-all duration-300 cursor-pointer group border border-transparent hover:border-brand-green/10"
+              className="relative flex gap-4 p-4 rounded-xl hover:bg-gradient-to-r hover:from-brand-cream/50 hover:to-transparent transition-all duration-300 cursor-pointer group"
             >
               {/* Timeline Dot */}
               <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-brand-green border-2 border-white shadow-md group-hover:scale-150 transition-transform duration-300 z-10" />

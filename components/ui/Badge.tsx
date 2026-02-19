@@ -27,10 +27,10 @@ export default function Badge({
   // Professional badge variants with subtle colors
   const variants = {
     default: 'bg-neutral-100 text-neutral-700',
-    success: 'bg-neutral-50 text-black border border-neutral-200',
-    warning: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
-    error: 'bg-red-50 text-red-700 border border-red-200',
-    info: 'bg-blue-50 text-blue-700 border border-blue-200'
+    success: 'bg-neutral-50 text-black',
+    warning: 'bg-yellow-50 text-yellow-700',
+    error: 'bg-red-50 text-red-700',
+    info: 'bg-blue-50 text-blue-700'
   };
 
   const sizes = {

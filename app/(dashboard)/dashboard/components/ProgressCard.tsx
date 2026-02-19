@@ -21,7 +21,7 @@ export const ProgressCard = ({ departments, loading }: ProgressCardProps) => {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-white border border-primary-100/50 p-6 shadow-lg h-full">
+    <div className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-lg h-full">
       {/* Subtle Background Pattern */}
       <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
       <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary-300/20 rounded-full blur-2xl" />
@@ -131,7 +131,7 @@ export const ProgressCard = ({ departments, loading }: ProgressCardProps) => {
 
         {/* Enhanced Summary */}
         {!loading && departments.length > 0 && (
-          <div className="mt-8 pt-6 border-t-2 border-primary-100">
+          <div className="mt-8 pt-6 border-t border-neutral-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-md">

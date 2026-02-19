@@ -84,12 +84,13 @@ export async function fetchWithAuthRetry(
   let attempt = 0;
 
   while (attempt <= maxRetries) {
-    // Get current access token
+    // Get current access token from localStorage (always fresh on retry)
     const accessToken = localStorage.getItem('access_token');
 
-    // Add Authorization header if token exists and not already set
+    // Build headers - on retry (attempt > 0), always override Authorization
+    // with the freshly refreshed token from localStorage
     const headers = new Headers(options?.headers || {});
-    if (accessToken && !headers.has('Authorization')) {
+    if (accessToken) {
       headers.set('Authorization', `Bearer ${accessToken}`);
     }
 

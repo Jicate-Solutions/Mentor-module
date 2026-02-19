@@ -46,7 +46,7 @@ export default function Tabs({
   return (
     <div className={`w-full ${className}`}>
       {/* Tab Navigation */}
-      <div className="border-b-2 border-neutral-200">
+      <div className="border-b border-neutral-200">
         <nav className="flex space-x-1 overflow-x-auto" aria-label="Tabs">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;

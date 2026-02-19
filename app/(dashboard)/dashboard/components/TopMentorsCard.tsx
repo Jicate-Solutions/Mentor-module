@@ -76,7 +76,7 @@ export const TopMentorsCard = ({ mentors, loading }: TopMentorsCardProps) => {
                 key={mentor.id}
                 className={`
                   flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-md cursor-pointer
-                  ${isTopThree ? 'bg-gradient-to-r from-accent-50 to-transparent border border-accent-200' : 'hover:bg-neutral-50'}
+                  ${isTopThree ? 'bg-gradient-to-r from-accent-50 to-transparent' : 'hover:bg-neutral-50'}
                 `}
               >
                 {/* Rank */}
@@ -140,7 +140,7 @@ export const TopMentorsCard = ({ mentors, loading }: TopMentorsCardProps) => {
       )}
 
       {mentors.length > 10 && (
-        <div className="mt-4 pt-4 border-t border-neutral-200 text-center">
+        <div className="mt-4 pt-4 border-t border-neutral-100 text-center">
           <button className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors">
             View all mentors →
           </button>

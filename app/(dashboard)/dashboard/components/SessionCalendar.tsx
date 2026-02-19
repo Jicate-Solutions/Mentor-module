@@ -36,7 +36,7 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-white border border-primary-100/50 p-6 shadow-lg h-full">
+    <div className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-lg h-full">
       {/* Subtle Background Pattern */}
       <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
       <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary-300/20 rounded-full blur-2xl" />
@@ -88,10 +88,10 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
                       relative aspect-square rounded-lg p-2 text-center transition-all cursor-pointer shadow-sm
                       ${
                         isToday
-                          ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg border border-primary-400/40'
+                          ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg'
                           : sessionsCount > 0
-                          ? 'bg-primary-100/60 text-primary-800 hover:bg-primary-200/60 border border-primary-200/50'
-                          : 'bg-white text-primary-700 hover:bg-white border border-primary-100/30'
+                          ? 'bg-primary-100/60 text-primary-800 hover:bg-primary-200/60'
+                          : 'bg-white text-primary-700 hover:bg-neutral-50'
                       }
                     `}
                     suppressHydrationWarning
@@ -132,7 +132,7 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
               upcomingSessions.slice(0, 5).map((session) => (
                 <div
                   key={session.id}
-                  className="p-4 rounded-lg bg-white border border-primary-100/50 hover:border-primary-300/60 hover:bg-white hover:shadow-md transition-all cursor-pointer group"
+                  className="p-4 rounded-lg bg-white hover:bg-neutral-50 hover:shadow-md transition-all cursor-pointer group"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="text-sm font-medium text-primary-800 group-hover:text-primary-600 transition-colors">
@@ -143,10 +143,10 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
                         text-xs px-2 py-1 rounded-full font-medium
                         ${
                           session.status === 'scheduled'
-                            ? 'bg-primary-100/60 text-primary-700 border border-primary-200/50'
+                            ? 'bg-primary-100/60 text-primary-700'
                             : session.status === 'completed'
-                            ? 'bg-primary-100/60 text-primary-700 border border-primary-200/50'
-                            : 'bg-red-100/60 text-red-700 border border-red-200/50'
+                            ? 'bg-primary-100/60 text-primary-700'
+                            : 'bg-red-100/60 text-red-700'
                         }
                       `}
                     >
@@ -174,7 +174,7 @@ export const SessionCalendar = ({ upcomingSessions, loading }: SessionCalendarPr
           </div>
 
           {upcomingSessions.length > 5 && (
-            <div className="mt-4 pt-4 border-t border-primary-100 text-center">
+            <div className="mt-4 pt-4 border-t border-neutral-100 text-center">
               <button className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors hover:underline">
                 View all {upcomingSessions.length} sessions →
               </button>

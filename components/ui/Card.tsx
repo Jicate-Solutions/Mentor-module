@@ -46,11 +46,11 @@ export default function Card({
 }: CardProps) {
   // Professional card variants for institutional design
   const variants = {
-    default: 'bg-white shadow-professional border border-neutral-200',
-    elevated: 'bg-white shadow-elevated border border-neutral-100',
-    subtle: 'bg-card-subtle border border-neutral-100',
+    default: 'bg-white shadow-professional',
+    elevated: 'bg-white shadow-elevated',
+    subtle: 'bg-card-subtle',
     institutional: 'bg-white border-l-4 border-l-brand-green shadow-professional',
-    outline: 'bg-white border border-neutral-300'
+    outline: 'bg-white border border-neutral-200'
   };
 
   const paddings = {
@@ -113,7 +113,7 @@ interface CardHeaderProps {
 
 export function CardHeader({ children, className = '' }: CardHeaderProps) {
   return (
-    <div className={`mb-4 pb-4 border-b border-neutral-200 ${className}`}>
+    <div className={`mb-4 pb-4 border-b border-neutral-100 ${className}`}>
       {children}
     </div>
   );
@@ -164,7 +164,7 @@ interface CardFooterProps {
 
 export function CardFooter({ children, className = '' }: CardFooterProps) {
   return (
-    <div className={`mt-4 pt-4 border-t border-neutral-200 ${className}`}>
+    <div className={`mt-4 pt-4 border-t border-neutral-100 ${className}`}>
       {children}
     </div>
   );

@@ -442,7 +442,7 @@ export default function StudentsPage() {
 
           {/* Stats */}
           <div className="flex items-center gap-2 text-sm text-neutral-600">
-            <span className="font-semibold text-brand-green">
+            <span className="font-medium text-brand-green">
               {searchQuery ? filteredStudents.length : total}
             </span>
             {searchQuery ? 'matching' : 'total'} learners
@@ -470,7 +470,7 @@ export default function StudentsPage() {
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
                 <div>
-                  <p className="text-sm font-semibold text-red-800">Error loading data</p>
+                  <p className="text-sm font-medium text-red-800">Error loading data</p>
                   <p className="text-sm text-red-600 mt-1">{error}</p>
                 </div>
               </div>
@@ -484,22 +484,22 @@ export default function StudentsPage() {
                 <table className="w-full">
                   <thead className="bg-neutral-50/80 border-b border-neutral-200/70">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Learner Name
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Roll Number
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Institution
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Department
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Program
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Profile Status
                       </th>
                     </tr>
@@ -512,7 +512,7 @@ export default function StudentsPage() {
                       >
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-green to-brand-green/80 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-md transition-transform duration-300 group-hover:scale-110">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-green to-brand-green/80 text-white flex items-center justify-center text-xs font-medium flex-shrink-0 shadow-md transition-transform duration-300 group-hover:scale-110">
                               {student.first_name.charAt(0)}{student.last_name.charAt(0)}
                             </div>
                             <div>
@@ -615,7 +615,7 @@ export default function StudentsPage() {
           {!loading && !error && filteredStudents.length === 0 && (
             <div className="text-center py-12">
               <div className="text-5xl mb-4">👨‍🎓</div>
-              <h3 className="text-lg font-semibold text-neutral-800 mb-2">
+              <h3 className="text-lg font-medium text-neutral-800 mb-2">
                 {searchQuery ? 'No matching learners' : 'No learners found'}
               </h3>
               <p className="text-sm text-neutral-600">

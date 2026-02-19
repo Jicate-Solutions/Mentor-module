@@ -55,7 +55,7 @@ export default function Button({
 }: ButtonProps) {
   const baseStyles = `
     inline-flex items-center justify-center gap-2
-    font-semibold rounded-lg
+    font-medium rounded-lg
     transition-colors-smooth
     focus:outline-none focus:ring-2 focus:ring-offset-2
     disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none

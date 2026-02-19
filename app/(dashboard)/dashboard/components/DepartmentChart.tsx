@@ -24,7 +24,7 @@ export const DepartmentChart = ({ data, loading }: DepartmentChartProps) => {
       const percentage = total > 0 ? ((payload[0].value / total) * 100).toFixed(1) : 0;
       return (
         <div className="bg-white px-3 py-2 rounded-lg shadow-lg border border-neutral-200">
-          <p className="font-semibold text-neutral-900">{payload[0].name}</p>
+          <p className="font-medium text-neutral-900">{payload[0].name}</p>
           <p className="text-sm text-neutral-600">
             {payload[0].value} sessions ({percentage}%)
           </p>

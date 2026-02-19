@@ -48,7 +48,7 @@ export default function PageHeader({
                 </div>
               )}
               <div className="flex-1">
-                <h1 className="text-[24px] lg:text-[28px] font-extrabold text-primary-800 mb-1 tracking-tight leading-tight">
+                <h1 className="text-[24px] lg:text-[28px] font-medium text-primary-800 mb-1 tracking-tight leading-tight">
                   {title}
                 </h1>
                 {description && (
@@ -78,7 +78,7 @@ export default function PageHeader({
 
   // Default variant - Light Glass Effect
   return (
-    <div className={`relative overflow-hidden bg-white/80 backdrop-blur-sm rounded-2xl border border-primary-100/50 p-6 shadow-lg ${className}`}>
+    <div className={`relative overflow-hidden bg-white rounded-2xl border border-primary-100/50 p-6 shadow-lg ${className}`}>
       {/* Subtle Background Pattern */}
       <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
 
@@ -90,7 +90,7 @@ export default function PageHeader({
                 <div className="text-white text-xl">{icon}</div>
               </div>
             )}
-            <h1 className="text-[22px] font-extrabold text-primary-800 tracking-tight">
+            <h1 className="text-[22px] font-medium text-primary-800 tracking-tight">
               {title}
             </h1>
           </div>

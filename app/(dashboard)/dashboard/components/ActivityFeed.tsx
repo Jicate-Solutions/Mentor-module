@@ -116,7 +116,7 @@ export const ActivityFeed = ({ activities, loading }: ActivityFeedProps) => {
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2 mb-1">
-                  <h4 className="text-[14px] font-semibold text-neutral-900 group-hover:text-brand-green transition-colors">
+                  <h4 className="text-[14px] font-medium text-neutral-900 group-hover:text-brand-green transition-colors">
                     {activity.title}
                   </h4>
                   <span className="text-[11px] text-neutral-500 whitespace-nowrap font-medium px-2 py-1 rounded-full bg-neutral-100 group-hover:bg-brand-green/10 group-hover:text-brand-green transition-colors">
@@ -136,7 +136,7 @@ export const ActivityFeed = ({ activities, loading }: ActivityFeedProps) => {
                       />
                     ) : (
                       <div className="w-6 h-6 rounded-full bg-gradient-to-br from-brand-green to-brand-green/80 flex items-center justify-center shadow-sm">
-                        <span className="text-[10px] font-bold text-white">
+                        <span className="text-[10px] font-medium text-white">
                           {activity.user.name.charAt(0)}
                         </span>
                       </div>

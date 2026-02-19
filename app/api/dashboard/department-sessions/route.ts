@@ -80,30 +80,65 @@ export async function GET(request: NextRequest) {
     // Get real-time session statistics from Supabase
     const supabase = createAdminClient();
 
-    // Fetch ALL students from JKKN API (not just those in Supabase)
+    // Fetch ALL students from JKKN API with pagination (max 200 per page)
     // This ensures we get complete student counts including those not yet synced
-    const studentsUrl = `${baseUrl}/api-management/learners/profiles?lifecycle_status=active,alumni,exited,graduated,inactive&page=1&limit=10000`;
-    const studentsResponse = await fetch(studentsUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      next: { revalidate: 60 },
-    });
-
     let students: any[] = [];
-    if (studentsResponse.ok) {
-      const studentsData = await studentsResponse.json();
-      students = (studentsData.data || []).map((s: any) => ({
-        id: s.id,
-        department_id: s.department?.id || s.department_id || s.department,
-        institution_id: s.institution?.id || s.institution_id || s.institution,
-      }));
-      console.log('[Department Sessions] Fetched', students.length, 'students from JKKN API');
-    } else {
-      console.warn('[Department Sessions] Failed to fetch students from JKKN API, using Supabase data');
-      // Fallback to Supabase students if JKKN API fails
+    let studentPage = 1;
+    let hasMoreStudents = true;
+    const studentPageLimit = 200; // JKKN API max per page
+    const maxStudentPages = 75; // Safety limit (75 × 200 = 15,000)
+    let jkknApiFailed = false;
+
+    while (hasMoreStudents && studentPage <= maxStudentPages) {
+      const studentsUrl = `${baseUrl}/api-management/learners/profiles?lifecycle_status=active,alumni,exited,graduated,inactive&page=${studentPage}&limit=${studentPageLimit}`;
+
+      try {
+        const studentsResponse = await fetch(studentsUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          next: { revalidate: 60 },
+        });
+
+        if (!studentsResponse.ok) {
+          console.warn(`[Department Sessions] JKKN API returned ${studentsResponse.status} on page ${studentPage}`);
+          jkknApiFailed = true;
+          break;
+        }
+
+        const studentsData = await studentsResponse.json();
+        const pageStudents = studentsData.data || [];
+
+        const mapped = pageStudents.map((s: any) => ({
+          id: s.id,
+          department_id: s.department?.id || s.department_id || s.department,
+          institution_id: s.institution?.id || s.institution_id || s.institution,
+        }));
+
+        students = [...students, ...mapped];
+
+        // Check if more pages exist
+        hasMoreStudents = pageStudents.length === studentPageLimit;
+        const paginationInfo = studentsData.pagination || studentsData.metadata;
+        if (paginationInfo?.totalPages && studentPage >= paginationInfo.totalPages) {
+          hasMoreStudents = false;
+        }
+
+        studentPage++;
+      } catch (fetchError) {
+        console.error(`[Department Sessions] Error fetching students page ${studentPage}:`, fetchError);
+        jkknApiFailed = true;
+        break;
+      }
+    }
+
+    console.log(`[Department Sessions] Fetched ${students.length} students from JKKN API across ${studentPage - 1} pages`);
+
+    // Fallback to Supabase if JKKN API failed and we got no students
+    if (jkknApiFailed && students.length === 0) {
+      console.warn('[Department Sessions] JKKN API failed, using Supabase data');
       const { data: supabaseStudents, error: studentsError } = await supabase
         .from('students')
         .select('id, department_id, institution_id')

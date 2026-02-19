@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Activity } from 'lucide-react';
+import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useUserAccess } from '@/hooks/useUserAccess';
 import type { MentorActivity, ActivityStats } from '@/lib/types/activity';
@@ -100,20 +101,11 @@ export default function MentorActivityPage() {
     fetchMentorId();
   }, [user, accessToken, authLoading, accessLoading, accessInfo]);
 
-  // Fetch activities - for admins, fetch immediately; for mentors, wait for mentorId
-  useEffect(() => {
-    // Wait for loading to complete
-    if (authLoading || accessLoading) return;
+  // Fetch activities wrapped in useCallback for realtime subscriptions
+  const fetchActivities = useCallback(async (loadMore = false) => {
     if (!accessToken) return;
-    // For non-admins, wait until we have a mentorId
     if (!isAdmin && !mentorId) return;
 
-    fetchActivities();
-    fetchStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mentorId, isAdmin, filterKey, accessToken, authLoading, accessLoading]);
-
-  async function fetchActivities(loadMore = false) {
     try {
       setLoading(true);
 
@@ -121,13 +113,10 @@ export default function MentorActivityPage() {
 
       // Set mentor ID - only for non-admin users or when explicitly filtered
       if (filters.mentorId) {
-        // Admin filtering by specific mentor
         params.append('mentorId', filters.mentorId);
       } else if (!isAdmin && mentorId) {
-        // Non-admin users must filter by their own mentor ID
         params.append('mentorId', mentorId);
       }
-      // For admin/mentor-incharge without filter, don't send mentorId - API will handle institution filtering
 
       // Set activity types
       if (filters.activityTypes.length > 0) {
@@ -148,9 +137,7 @@ export default function MentorActivityPage() {
       params.append('offset', currentOffset.toString());
 
       const response = await fetch(`/api/mentor-activity?${params.toString()}`, {
-        headers: accessToken ? {
-          'Authorization': `Bearer ${accessToken}`,
-        } : {},
+        headers: { 'Authorization': `Bearer ${accessToken}` },
         credentials: 'include',
       });
 
@@ -181,10 +168,11 @@ export default function MentorActivityPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [accessToken, isAdmin, mentorId, filters, pagination.limit, pagination.offset]);
 
-  async function fetchStats() {
-    // For non-admins, we need a mentorId
+  // Fetch stats wrapped in useCallback for realtime subscriptions
+  const fetchStats = useCallback(async () => {
+    if (!accessToken) return;
     if (!isAdmin && !mentorId) {
       setStatsLoading(false);
       return;
@@ -193,19 +181,15 @@ export default function MentorActivityPage() {
     try {
       setStatsLoading(true);
 
-      // Build URL - only send mentorId for non-admins or when explicitly filtered
       let url = '/api/mentor-activity/stats';
       if (filters.mentorId) {
         url = `/api/mentor-activity/stats?mentorId=${filters.mentorId}`;
       } else if (!isAdmin && mentorId) {
         url = `/api/mentor-activity/stats?mentorId=${mentorId}`;
       }
-      // For admin/mentor-incharge without filter, don't send mentorId - API will handle institution filtering
 
       const response = await fetch(url, {
-        headers: accessToken ? {
-          'Authorization': `Bearer ${accessToken}`,
-        } : {},
+        headers: { 'Authorization': `Bearer ${accessToken}` },
         credentials: 'include',
       });
 
@@ -220,7 +204,81 @@ export default function MentorActivityPage() {
     } finally {
       setStatsLoading(false);
     }
-  }
+  }, [accessToken, isAdmin, mentorId, filters.mentorId]);
+
+  // Fetch activities - for admins, fetch immediately; for mentors, wait for mentorId
+  useEffect(() => {
+    if (authLoading || accessLoading) return;
+    if (!accessToken) return;
+    if (!isAdmin && !mentorId) return;
+
+    fetchActivities();
+    fetchStats();
+  }, [mentorId, isAdmin, filterKey, accessToken, authLoading, accessLoading, fetchActivities, fetchStats]);
+
+  // Set up Supabase Realtime subscriptions for live updates
+  useEffect(() => {
+    const activityLogChannel = supabase
+      .channel('mentor-activity-log')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mentor_activity_log' }, () => {
+        console.log('[MentorActivity] Realtime: mentor_activity_log changed, refreshing...');
+        fetchActivities();
+        fetchStats();
+      })
+      .subscribe();
+
+    const sessionsChannel = supabase
+      .channel('mentor-activity-sessions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'counseling_sessions' }, () => {
+        console.log('[MentorActivity] Realtime: counseling_sessions changed, refreshing...');
+        fetchActivities();
+        fetchStats();
+      })
+      .subscribe();
+
+    const assignmentsChannel = supabase
+      .channel('mentor-activity-assignments')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mentor_students' }, () => {
+        console.log('[MentorActivity] Realtime: mentor_students changed, refreshing...');
+        fetchActivities();
+        fetchStats();
+      })
+      .subscribe();
+
+    const idpsChannel = supabase
+      .channel('mentor-activity-idps')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'individual_development_plans' }, () => {
+        console.log('[MentorActivity] Realtime: individual_development_plans changed, refreshing...');
+        fetchStats();
+      })
+      .subscribe();
+
+    const feedbackChannel = supabase
+      .channel('mentor-activity-feedback')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'session_feedback' }, () => {
+        console.log('[MentorActivity] Realtime: session_feedback changed, refreshing...');
+        fetchActivities();
+        fetchStats();
+      })
+      .subscribe();
+
+    const emailsChannel = supabase
+      .channel('mentor-activity-emails')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'email_notifications' }, () => {
+        console.log('[MentorActivity] Realtime: email_notifications changed, refreshing...');
+        fetchStats();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(activityLogChannel);
+      supabase.removeChannel(sessionsChannel);
+      supabase.removeChannel(assignmentsChannel);
+      supabase.removeChannel(idpsChannel);
+      supabase.removeChannel(feedbackChannel);
+      supabase.removeChannel(emailsChannel);
+    };
+  }, [fetchActivities, fetchStats]);
 
   function handleFilterChange(newFilters: FilterState) {
     setFilters(newFilters);

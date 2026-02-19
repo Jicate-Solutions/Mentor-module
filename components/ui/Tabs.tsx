@@ -68,7 +68,7 @@ export default function Tabs({
                 {tab.icon && <span className="text-lg">{tab.icon}</span>}
                 <span>{tab.label}</span>
                 {tab.badge !== undefined && tab.badge > 0 && (
-                  <span className="bg-brand-yellow text-brand-green text-xs font-bold px-2 py-0.5 rounded-full">
+                  <span className="bg-brand-yellow text-brand-green text-xs font-medium px-2 py-0.5 rounded-full">
                     {tab.badge}
                   </span>
                 )}

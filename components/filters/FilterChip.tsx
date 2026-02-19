@@ -32,13 +32,13 @@ export default function FilterChip({
       `}
     >
       <span className="whitespace-nowrap">
-        {label}: <span className="font-semibold">{value}</span>
+        {label}: <span className="font-medium">{value}</span>
       </span>
       <button
         onClick={onRemove}
         className={`
           flex-shrink-0 rounded-sm transition-transform hover:scale-110
-          ${variant === 'primary' ? 'hover:bg-white/20' : 'hover:bg-neutral-200'}
+          ${variant === 'primary' ? 'hover:bg-white' : 'hover:bg-neutral-200'}
         `}
         aria-label={`Remove ${label} filter`}
       >

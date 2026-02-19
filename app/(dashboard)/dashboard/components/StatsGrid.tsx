@@ -48,13 +48,13 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
               <MentoringIllustration className="w-6 h-6 text-white" />
             </div>
             <div className="px-2 py-0.5 rounded-full bg-primary-500 border border-primary-400/40">
-              <span className="text-[9px] text-white font-bold uppercase tracking-wider">Active</span>
+              <span className="text-[9px] text-white font-medium uppercase tracking-wider">Active</span>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <h3 className="text-[11px] font-bold text-primary-600 uppercase tracking-wide">Total Mentors</h3>
-            <p className="text-[32px] font-extrabold text-primary-800 leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
+            <h3 className="text-[11px] font-medium text-primary-600 uppercase tracking-wide">Total Mentors</h3>
+            <p className="text-[32px] font-medium text-primary-800 leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
               {stats.totalMentors}
             </p>
             <p className="text-[12px] text-primary-700/70 font-medium">Active faculty members</p>
@@ -77,8 +77,8 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
           </div>
 
           <div className="space-y-1.5">
-            <h3 className="text-[11px] font-bold text-neutral-600 uppercase tracking-wide">Active Learners</h3>
-            <p className="text-[32px] font-extrabold text-brand-green leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
+            <h3 className="text-[11px] font-medium text-neutral-600 uppercase tracking-wide">Active Learners</h3>
+            <p className="text-[32px] font-medium text-brand-green leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
               {stats.activeStudents}
             </p>
             <p className="text-[12px] text-neutral-500 font-medium">Currently enrolled</p>
@@ -110,14 +110,14 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   )}
                 </svg>
-                <span className="text-[10px] font-black">{Math.abs(stats.trends.sessions)}%</span>
+                <span className="text-[10px] font-medium">{Math.abs(stats.trends.sessions)}%</span>
               </div>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <h3 className="text-[11px] font-bold text-neutral-600 uppercase tracking-wide">Sessions</h3>
-            <p className="text-[32px] font-extrabold text-neutral-900 leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
+            <h3 className="text-[11px] font-medium text-neutral-600 uppercase tracking-wide">Sessions</h3>
+            <p className="text-[32px] font-medium text-neutral-900 leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
               {stats.totalSessions}
             </p>
             <p className="text-[12px] text-neutral-500 font-medium">All time counseling</p>
@@ -136,14 +136,14 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
             </div>
             {stats.pendingFeedback > 0 && (
               <div className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 animate-bounce">
-                <span className="text-[11px] font-black">{stats.pendingFeedback}</span>
+                <span className="text-[11px] font-medium">{stats.pendingFeedback}</span>
               </div>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <h3 className="text-[11px] font-bold text-neutral-600 uppercase tracking-wide">Pending</h3>
-            <p className="text-[32px] font-extrabold text-neutral-900 leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
+            <h3 className="text-[11px] font-medium text-neutral-600 uppercase tracking-wide">Pending</h3>
+            <p className="text-[32px] font-medium text-neutral-900 leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
               {stats.pendingFeedback}
             </p>
             <p className="text-[12px] text-neutral-500 font-medium">Awaiting feedback</p>
@@ -151,7 +151,7 @@ export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
 
           {stats.pendingFeedback > 0 && (
             <div className="mt-3 px-2.5 py-1.5 rounded-lg bg-orange-50 border border-orange-200">
-              <p className="text-[10px] text-orange-700 font-bold">Action required</p>
+              <p className="text-[10px] text-orange-700 font-medium">Action required</p>
             </div>
           )}
         </div>

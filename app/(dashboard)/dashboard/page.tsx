@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { WelcomeHero } from './components/WelcomeHero';
 import { StatsGrid } from './components/StatsGrid';
 import { ProgressCard } from './components/ProgressCard';
@@ -73,6 +74,7 @@ interface Notification {
 }
 
 export default function DashboardPage() {
+  const { accessToken } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalMentors: 0,
     activeStudents: 0,
@@ -88,66 +90,105 @@ export default function DashboardPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch dashboard data
+  // Fetch dashboard data (gate on accessToken)
   useEffect(() => {
+    if (!accessToken) return;
     fetchDashboardData();
-  }, []);
+  }, [accessToken]);
 
-  // Set up real-time subscriptions
+  // Set up real-time subscriptions for live dashboard updates
   useEffect(() => {
-
     // Subscribe to counseling sessions changes
     const sessionsChannel = supabase
       .channel('dashboard-sessions')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'counseling_sessions' }, () => {
+        console.log('[Dashboard] Realtime: counseling_sessions changed, refreshing...');
         fetchDashboardData();
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Dashboard] Sessions channel status:', status);
+      });
 
     // Subscribe to mentor-student assignments changes
     const assignmentsChannel = supabase
       .channel('dashboard-assignments')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mentor_students' }, () => {
+        console.log('[Dashboard] Realtime: mentor_students changed, refreshing...');
         fetchDashboardData();
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Dashboard] Assignments channel status:', status);
+      });
 
     // Subscribe to feedback changes
     const feedbackChannel = supabase
       .channel('dashboard-feedback')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'session_feedback' }, () => {
+        console.log('[Dashboard] Realtime: session_feedback changed, refreshing...');
         fetchDashboardData();
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Dashboard] Feedback channel status:', status);
+      });
+
+    // Subscribe to mentor changes (new mentors added/removed)
+    const mentorsChannel = supabase
+      .channel('dashboard-mentors')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mentors' }, () => {
+        console.log('[Dashboard] Realtime: mentors changed, refreshing...');
+        fetchDashboardData();
+      })
+      .subscribe((status) => {
+        console.log('[Dashboard] Mentors channel status:', status);
+      });
+
+    // Subscribe to student changes
+    const studentsChannel = supabase
+      .channel('dashboard-students')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+        console.log('[Dashboard] Realtime: students changed, refreshing...');
+        fetchDashboardData();
+      })
+      .subscribe((status) => {
+        console.log('[Dashboard] Students channel status:', status);
+      });
 
     return () => {
       supabase.removeChannel(sessionsChannel);
       supabase.removeChannel(assignmentsChannel);
       supabase.removeChannel(feedbackChannel);
+      supabase.removeChannel(mentorsChannel);
+      supabase.removeChannel(studentsChannel);
     };
   }, []);
 
   const fetchDashboardData = async () => {
+    if (!accessToken) return;
+
+    const authHeaders = {
+      Authorization: `Bearer ${accessToken}`,
+    };
+
     setLoading(true);
     try {
       // Fetch stats
-      const statsResponse = await fetch('/api/dashboard/stats');
+      const statsResponse = await fetch('/api/dashboard/stats', { headers: authHeaders });
       const statsData = await statsResponse.json();
       setStats(statsData);
 
       // Fetch activity feed
-      const activityResponse = await fetch('/api/dashboard/activity?limit=10');
+      const activityResponse = await fetch('/api/dashboard/activity?limit=10', { headers: authHeaders });
       const activityData = await activityResponse.json();
       setActivities(activityData.activities || []);
 
       // Fetch trends (includes top mentors and department distribution)
-      const trendsResponse = await fetch('/api/dashboard/trends?days=30');
+      const trendsResponse = await fetch('/api/dashboard/trends?days=30', { headers: authHeaders });
       const trendsData = await trendsResponse.json();
       setTopMentors(trendsData.topMentors || []);
       setDepartmentData(trendsData.departmentDistribution || []);
 
-      // Fetch upcoming sessions from API (bypasses RLS to show all system sessions)
-      const sessionsResponse = await fetch('/api/dashboard/sessions?limit=10');
+      // Fetch upcoming sessions from API
+      const sessionsResponse = await fetch('/api/dashboard/sessions?limit=10', { headers: authHeaders });
       const sessionsData = await sessionsResponse.json();
       setUpcomingSessions(sessionsData.sessions || []);
 

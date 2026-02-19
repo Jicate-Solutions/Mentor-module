@@ -85,7 +85,7 @@ export default function FileManagementTable({
         <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <FileText className="w-8 h-8 text-neutral-400" />
         </div>
-        <h3 className="text-lg font-semibold text-neutral-900 mb-2">No documents yet</h3>
+        <h3 className="text-lg font-medium text-neutral-900 mb-2">No documents yet</h3>
         <p className="text-sm text-neutral-600">
           {canManage
             ? 'Upload your first document to get started'
@@ -102,22 +102,22 @@ export default function FileManagementTable({
         <table className="w-full">
           <thead className="bg-neutral-50 border-b border-neutral-200">
             <tr>
-              <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+              <th className="text-left px-6 py-4 text-xs font-medium text-neutral-600 uppercase tracking-wider">
                 Document
               </th>
-              <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+              <th className="text-left px-6 py-4 text-xs font-medium text-neutral-600 uppercase tracking-wider">
                 Category
               </th>
-              <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+              <th className="text-left px-6 py-4 text-xs font-medium text-neutral-600 uppercase tracking-wider">
                 Type
               </th>
-              <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+              <th className="text-left px-6 py-4 text-xs font-medium text-neutral-600 uppercase tracking-wider">
                 Size
               </th>
-              <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+              <th className="text-left px-6 py-4 text-xs font-medium text-neutral-600 uppercase tracking-wider">
                 Uploaded
               </th>
-              <th className="text-right px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+              <th className="text-right px-6 py-4 text-xs font-medium text-neutral-600 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -226,7 +226,7 @@ export default function FileManagementTable({
                     <span className="px-2 py-1 bg-brand-yellow/20 text-brand-green rounded font-medium">
                       {doc.category || 'Uncategorized'}
                     </span>
-                    <span className="font-semibold uppercase">{config.label}</span>
+                    <span className="font-medium uppercase">{config.label}</span>
                     {doc.file_size && <span>• {formatFileSize(doc.file_size)}</span>}
                     <span>• {formatDate(doc.upload_date)}</span>
                   </div>

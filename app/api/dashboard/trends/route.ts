@@ -1,25 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+import { getUserAccess, getInstitutionFilter, getMentorIdsForInstitution } from '@/lib/middleware/access-control';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // --- Auth guard ---
+    const userAccess = await getUserAccess();
+    if (!userAccess) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const supabase = createAdminClient();
+    const institutionFilter = getInstitutionFilter(userAccess);
+    const mentorIds = await getMentorIdsForInstitution(institutionFilter);
+
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '30');
 
     // Calculate date range
     const today = new Date();
     const startDate = new Date(today.getTime() - days * 24 * 60 * 60 * 1000);
+    const startDateStr = startDate.toISOString().split('T')[0];
 
     // Fetch sessions within date range
-    const { data: sessions } = await supabase
+    let sessionsQuery = supabase
       .from('counseling_sessions')
       .select('id, date, status, created_at, mentor_id')
-      .gte('date', startDate.toISOString().split('T')[0])
+      .gte('date', startDateStr)
       .order('date', { ascending: true });
+
+    if (mentorIds) {
+      sessionsQuery = sessionsQuery.in('mentor_id', mentorIds);
+    }
+
+    const { data: sessions } = await sessionsQuery;
 
     // Group sessions by date
     const sessionsByDate: { [key: string]: { scheduled: number; completed: number; cancelled: number } } = {};
@@ -49,10 +63,16 @@ export async function GET(request: NextRequest) {
     }));
 
     // Get top mentors by session count
-    const { data: topMentorsData } = await supabase
+    let topMentorsQuery = supabase
       .from('counseling_sessions')
       .select('mentor_id, mentors(id, users(full_name, avatar_url))')
-      .gte('date', startDate.toISOString().split('T')[0]);
+      .gte('date', startDateStr);
+
+    if (mentorIds) {
+      topMentorsQuery = topMentorsQuery.in('mentor_id', mentorIds);
+    }
+
+    const { data: topMentorsData } = await topMentorsQuery;
 
     const mentorSessionCounts: { [key: string]: { name: string; avatar?: string; count: number } } = {};
 
@@ -94,8 +114,8 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Get department-wise session distribution with completion data
-    const { data: departmentSessions } = await supabase
+    // Get department-wise session distribution
+    let deptSessionsQuery = supabase
       .from('counseling_sessions')
       .select(`
         id,
@@ -105,7 +125,13 @@ export async function GET(request: NextRequest) {
           departments(name)
         )
       `)
-      .gte('date', startDate.toISOString().split('T')[0]);
+      .gte('date', startDateStr);
+
+    if (mentorIds) {
+      deptSessionsQuery = deptSessionsQuery.in('mentor_id', mentorIds);
+    }
+
+    const { data: departmentSessions } = await deptSessionsQuery;
 
     const departmentCounts: { [key: string]: { total: number; completed: number } } = {};
 
@@ -149,7 +175,7 @@ export async function GET(request: NextRequest) {
         completedSessions,
         completionRate: overallCompletionRate,
         dateRange: {
-          from: startDate.toISOString().split('T')[0],
+          from: startDateStr,
           to: today.toISOString().split('T')[0],
         },
       },

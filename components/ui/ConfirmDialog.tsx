@@ -110,7 +110,7 @@ export default function ConfirmDialog({
         </div>
 
         {/* Title */}
-        <h3 className="text-xl font-bold text-brand-green mb-2">
+        <h3 className="text-xl font-medium text-brand-green mb-2">
           {title}
         </h3>
 

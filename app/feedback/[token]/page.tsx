@@ -172,7 +172,7 @@ export default function FeedbackPage() {
       <div className="min-h-screen bg-neutral-50/50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg border border-red-200 p-6 max-w-md w-full">
           <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-neutral-900 text-center mb-2">
+          <h2 className="text-xl font-medium text-neutral-900 text-center mb-2">
             Unable to Load Form
           </h2>
           <p className="text-sm text-neutral-600 text-center mb-4">{error}</p>
@@ -190,7 +190,7 @@ export default function FeedbackPage() {
       <div className="min-h-screen bg-neutral-50/50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg border border-green-200 p-6 max-w-md w-full">
           <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-neutral-900 text-center mb-2">
+          <h2 className="text-xl font-medium text-neutral-900 text-center mb-2">
             Thank You!
           </h2>
           <p className="text-sm text-neutral-600 text-center mb-4">
@@ -215,7 +215,7 @@ export default function FeedbackPage() {
               <MessageSquare className="w-6 h-6 text-brand-green" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-neutral-900">Session Feedback</h1>
+              <h1 className="text-2xl font-medium text-neutral-900">Session Feedback</h1>
               <p className="text-sm text-neutral-600">Help us improve your mentoring experience</p>
             </div>
           </div>

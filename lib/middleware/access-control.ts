@@ -72,6 +72,21 @@ export async function getUserAccess(): Promise<UserAccess | null> {
 }
 
 /**
+ * Get mentor IDs for a given institution filter.
+ * Used by dashboard routes to filter counseling_sessions (which lack institution_id).
+ * Returns null for super admin (no filtering needed).
+ * Returns a sentinel UUID when institution has 0 mentors to avoid empty .in() returning all rows.
+ */
+export async function getMentorIdsForInstitution(institutionFilter: string | null): Promise<string[] | null> {
+  if (institutionFilter === null) return null; // super admin sees everything
+  const supabase = createAdminClient();
+  const { data } = await supabase.from('mentors').select('id').eq('institution_id', institutionFilter);
+  const ids = data?.map(m => m.id) || [];
+  // Sentinel to prevent empty .in() from matching all rows
+  return ids.length > 0 ? ids : ['00000000-0000-0000-0000-000000000000'];
+}
+
+/**
  * Check if user can access institution data
  */
 export function canAccessInstitution(

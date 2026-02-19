@@ -60,7 +60,7 @@ export default function AdminDocumentsPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">Manage Documents</h1>
+          <h1 className="text-2xl font-medium text-neutral-900">Manage Documents</h1>
           <p className="text-sm text-neutral-600 mt-1">Upload and manage mentor guide documents</p>
         </div>
         <button className="px-4 py-2 bg-brand-green text-white rounded-lg flex items-center gap-2 hover:bg-green-700 transition">

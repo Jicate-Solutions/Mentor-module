@@ -87,7 +87,7 @@ export default function FilterBar({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-gray-600" />
-          <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+          <h3 className="text-sm font-medium text-gray-900">Filters</h3>
           {activeFiltersCount > 0 && (
             <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
               {activeFiltersCount}

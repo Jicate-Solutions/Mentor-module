@@ -157,12 +157,12 @@ export default function FileUploadDialog({ isOpen, onClose, onUploadSuccess }: F
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">
           <div>
-            <h2 className="text-2xl font-bold text-brand-green">Import Guide Documents</h2>
+            <h2 className="text-2xl font-medium text-brand-green">Import Guide Documents</h2>
             <p className="text-sm text-neutral-600 mt-1">
               Upload PDF, DOCX, XLSX, PPTX, CSV, TXT, MD, or image files (Max 50MB each)
             </p>
@@ -201,7 +201,7 @@ export default function FileUploadDialog({ isOpen, onClose, onUploadSuccess }: F
               <Upload className="w-8 h-8 text-brand-green" />
             </div>
 
-            <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+            <h3 className="text-lg font-medium text-neutral-900 mb-2">
               {isDragging ? 'Drop files here' : 'Drag and drop files here'}
             </h3>
 
@@ -209,7 +209,7 @@ export default function FileUploadDialog({ isOpen, onClose, onUploadSuccess }: F
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-6 py-3 bg-brand-green text-white font-semibold rounded-lg hover:bg-primary-700 transition"
+              className="px-6 py-3 bg-brand-green text-white font-medium rounded-lg hover:bg-primary-700 transition"
             >
               Browse Files
             </button>
@@ -222,7 +222,7 @@ export default function FileUploadDialog({ isOpen, onClose, onUploadSuccess }: F
           {/* File List */}
           {files.length > 0 && (
             <div className="mt-6 space-y-3">
-              <h4 className="text-sm font-semibold text-neutral-700">
+              <h4 className="text-sm font-medium text-neutral-700">
                 Selected Files ({files.length})
               </h4>
               {files.map((uploadFile) => {
@@ -290,7 +290,7 @@ export default function FileUploadDialog({ isOpen, onClose, onUploadSuccess }: F
         <div className="flex items-center justify-between p-6 border-t border-neutral-200">
           <button
             onClick={handleClose}
-            className="px-6 py-3 border-2 border-neutral-300 text-neutral-700 font-semibold rounded-lg hover:border-neutral-400 transition"
+            className="px-6 py-3 border-2 border-neutral-300 text-neutral-700 font-medium rounded-lg hover:border-neutral-400 transition"
           >
             Cancel
           </button>
@@ -298,7 +298,7 @@ export default function FileUploadDialog({ isOpen, onClose, onUploadSuccess }: F
           <button
             onClick={handleUploadAll}
             disabled={files.length === 0 || files.every((f) => f.status !== 'pending')}
-            className="px-6 py-3 bg-brand-yellow text-brand-green font-semibold rounded-lg hover:bg-accent-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-brand-yellow text-brand-green font-medium rounded-lg hover:bg-accent-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Upload {files.filter((f) => f.status === 'pending').length} File(s)
           </button>

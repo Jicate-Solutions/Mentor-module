@@ -87,7 +87,7 @@ export default function Modal({
             {title && (
               <h2
                 id="modal-title"
-                className="text-2xl font-bold text-brand-green"
+                className="text-2xl font-medium text-brand-green"
               >
                 {title}
               </h2>

@@ -160,7 +160,7 @@ export function Hero({
     <Section background={background} spacing="sm">
       <Container className={noPadding ? '!px-0' : ''}>
         <div className={alignments[alignment]}>
-          <h1 className={`text-xl md:text-2xl lg:text-3xl font-semibold ${textColor} mb-2`}>
+          <h1 className={`text-xl md:text-2xl lg:text-3xl font-medium ${textColor} mb-2`}>
             {title}
           </h1>
 

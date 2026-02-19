@@ -82,11 +82,11 @@ export default function DocumentViewerPage() {
             className="flex items-center gap-2 text-brand-green hover:text-green-700 transition mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-semibold">Back to Documents</span>
+            <span className="font-medium">Back to Documents</span>
           </button>
 
           <div className="bg-white rounded-lg border border-neutral-200 p-6">
-            <h1 className="text-2xl font-semibold text-neutral-900 mb-2">{document.title}</h1>
+            <h1 className="text-2xl font-medium text-neutral-900 mb-2">{document.title}</h1>
             {document.description && (
               <p className="text-sm text-neutral-600 mb-4">{document.description}</p>
             )}

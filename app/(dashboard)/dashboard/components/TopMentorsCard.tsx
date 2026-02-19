@@ -84,7 +84,7 @@ export const TopMentorsCard = ({ mentors, loading }: TopMentorsCardProps) => {
                   {isTopThree ? (
                     <TrophyIcon className={`w-6 h-6 ${getMedalColor(rank)}`} />
                   ) : (
-                    <span className="text-sm font-bold text-neutral-400">#{rank}</span>
+                    <span className="text-sm font-medium text-neutral-400">#{rank}</span>
                   )}
                 </div>
 
@@ -98,7 +98,7 @@ export const TopMentorsCard = ({ mentors, loading }: TopMentorsCardProps) => {
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center border-2 border-white shadow-sm">
-                      <span className="text-sm font-semibold text-primary-600">
+                      <span className="text-sm font-medium text-primary-600">
                         {mentor.name
                           .split(' ')
                           .map((n) => n[0])
@@ -112,7 +112,7 @@ export const TopMentorsCard = ({ mentors, loading }: TopMentorsCardProps) => {
 
                 {/* Name & Sessions */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-neutral-900 truncate">
+                  <h4 className="text-sm font-medium text-neutral-900 truncate">
                     {mentor.name}
                   </h4>
                   <p className="text-xs text-neutral-600">
@@ -123,7 +123,7 @@ export const TopMentorsCard = ({ mentors, loading }: TopMentorsCardProps) => {
                 {/* Session Count Badge */}
                 <div
                   className={`
-                    flex-shrink-0 px-3 py-1 rounded-full text-sm font-bold
+                    flex-shrink-0 px-3 py-1 rounded-full text-sm font-medium
                     ${
                       isTopThree
                         ? 'bg-accent-600 text-white'

@@ -126,7 +126,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             {/* Page Title */}
-            <h1 className="text-base sm:text-lg lg:text-xl font-semibold text-neutral-900 truncate px-2 flex-1">
+            <h1 className="text-base sm:text-lg lg:text-xl font-medium text-neutral-900 truncate px-2 flex-1">
               {getPageTitle()}
             </h1>
 
@@ -165,8 +165,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     {/* Dropdown Panel */}
                     <div className="absolute right-0 top-full mt-2 w-80 glass-dropdown rounded-lg z-50 max-h-96 overflow-hidden">
                       {/* Header */}
-                      <div className="px-4 py-3 border-b border-white/20 glass-subtle flex items-center justify-between">
-                        <h3 className="font-semibold text-brand-green">
+                      <div className="px-4 py-3 border-b border-gray-200 glass-subtle flex items-center justify-between">
+                        <h3 className="font-medium text-brand-green">
                           Notifications {unreadCount > 0 && `(${unreadCount})`}
                         </h3>
                         {unreadCount > 0 && (
@@ -263,7 +263,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Search Input */}
-                    <div className="p-4 border-b border-white/20">
+                    <div className="p-4 border-b border-gray-200">
                       <div className="flex items-center gap-3">
                         <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -392,7 +392,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     </div>
                     {/* Search Footer */}
-                    <div className="px-4 py-3 glass-subtle border-t border-white/20">
+                    <div className="px-4 py-3 glass-subtle border-t border-gray-200">
                       <p className="text-xs text-neutral-500 text-center">
                         Press <kbd className="px-2 py-0.5 bg-white border border-neutral-300 rounded text-xs">ESC</kbd> to close
                       </p>
@@ -435,7 +435,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <p>© 2025 JKKN Institutions. All rights reserved.</p>
             <p className="flex items-center gap-2">
               Powered by
-              <span className="font-semibold text-brand-green">JKKN Institutions</span>
+              <span className="font-medium text-brand-green">JKKN Institutions</span>
             </p>
           </div>
         </footer>

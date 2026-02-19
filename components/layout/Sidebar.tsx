@@ -315,7 +315,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
           fixed top-0 left-0 z-50 h-full
           ${isCollapsed ? 'lg:w-16' : 'w-56'}
           bg-gradient-to-b from-primary-50/95 via-white/90 to-primary-50/95
-          backdrop-blur-xl
+         
           border-r border-primary-100/60
           shadow-2xl shadow-primary-900/5
           transform transition-all duration-300 ease-in-out
@@ -326,7 +326,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         aria-label="Main navigation"
       >
         {/* Header */}
-        <div className={`border-b border-primary-100/50 ${isCollapsed ? 'lg:p-2' : 'p-4'} transition-all duration-300 bg-white/40 backdrop-blur-sm`}>
+        <div className={`border-b border-primary-100/50 ${isCollapsed ? 'lg:p-2' : 'p-4'} transition-all duration-300 bg-white`}>
           <div className={`flex items-center ${isCollapsed ? 'lg:justify-center' : 'justify-between'} gap-2`}>
             {/* Logo and Title */}
             <div className={`flex items-center gap-2 ${isCollapsed ? 'lg:hidden' : ''}`}>
@@ -340,7 +340,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
 
               {/* Title and Subtitle */}
               <div className="flex-1 min-w-0">
-                <h1 className="text-[14px] font-bold text-primary-800 leading-tight">
+                <h1 className="text-[14px] font-medium text-primary-800 leading-tight">
                   Mentor & Mentee
                 </h1>
                 <p className="text-[11px] text-primary-600 leading-relaxed font-medium">
@@ -394,7 +394,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                         ${isCollapsed ? 'lg:justify-center lg:px-2 lg:py-2.5' : 'px-3 py-2.5'}
                         ${active
                           ? 'bg-gradient-to-br from-primary-100/60 via-primary-50/40 to-primary-100/60 border border-primary-200/60 text-brand-green shadow-md'
-                          : 'bg-white/40 backdrop-blur-sm border border-white/60 text-neutral-600 hover:bg-white/60 hover:border-primary-200/40'
+                          : 'bg-white border border-gray-200 text-neutral-600 hover:bg-white hover:border-primary-200/40'
                         }
                         ${item.comingSoon ? 'opacity-60' : ''}
                         focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-1
@@ -412,7 +412,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                         </span>
                       )}
                       {item.badge !== undefined && item.badge > 0 && !isCollapsed && (
-                        <span className="bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full lg:block shadow-sm">
+                        <span className="bg-red-500 text-white text-xs font-medium px-2 py-0.5 rounded-full lg:block shadow-sm">
                           {item.badge}
                         </span>
                       )}
@@ -436,8 +436,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                         w-full flex items-center gap-2.5 px-3 py-2.5 text-[14px] font-medium
                         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-300 rounded-xl
                         ${isExpanded
-                          ? 'text-primary-700 bg-primary-50/50 backdrop-blur-sm border border-primary-100/50'
-                          : 'text-neutral-600 bg-white/30 backdrop-blur-sm border border-white/50 hover:bg-white/50'
+                          ? 'text-primary-700 bg-primary-50/50 border border-primary-100/50'
+                          : 'text-neutral-600 bg-white border border-gray-200 hover:bg-white'
                         }
                       `}
                       aria-expanded={isExpanded}
@@ -483,7 +483,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                             ${isCollapsed ? 'lg:justify-center lg:px-3 lg:py-2.5' : 'px-3 py-2 pl-11'}
                             ${active
                               ? 'bg-gradient-to-br from-primary-100/60 via-primary-50/40 to-primary-100/60 border border-primary-200/60 text-brand-green shadow-md'
-                              : 'bg-white/40 backdrop-blur-sm border border-white/60 text-neutral-600 hover:bg-white/60 hover:border-primary-200/40'
+                              : 'bg-white border border-gray-200 text-neutral-600 hover:bg-white hover:border-primary-200/40'
                             }
                             ${item.comingSoon ? 'opacity-60' : ''}
                             focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-1
@@ -501,7 +501,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                             </span>
                           )}
                           {item.badge !== undefined && item.badge > 0 && !isCollapsed && (
-                            <span className="bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full lg:block shadow-sm">
+                            <span className="bg-red-500 text-white text-xs font-medium px-2 py-0.5 rounded-full lg:block shadow-sm">
                               {item.badge}
                             </span>
                           )}
@@ -518,9 +518,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
 
         {/* Footer - User Profile */}
         {user && (
-          <div className={`border-t border-primary-100/50 bg-white/40 backdrop-blur-sm ${isCollapsed ? 'lg:p-2' : 'p-2.5'} transition-all duration-300`}>
+          <div className={`border-t border-primary-100/50 bg-white ${isCollapsed ? 'lg:p-2' : 'p-2.5'} transition-all duration-300`}>
             <div className={`flex items-center gap-2 ${isCollapsed ? 'lg:justify-center' : ''}`}>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-xs font-semibold flex-shrink-0 shadow-md border border-primary-400/30">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-xs font-medium flex-shrink-0 shadow-md border border-primary-400/30">
                 {user.full_name.charAt(0).toUpperCase()}
               </div>
               <div className={`flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>

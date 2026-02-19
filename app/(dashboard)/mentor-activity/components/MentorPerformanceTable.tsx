@@ -295,7 +295,7 @@ export default function MentorPerformanceTable() {
               <Users className="w-5 h-5 text-[#0b6d41]" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-neutral-900">
+              <h2 className="text-lg font-medium text-neutral-900">
                 Mentor Performance
               </h2>
               <p className="text-sm text-neutral-500">
@@ -424,19 +424,19 @@ export default function MentorPerformanceTable() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-6 border-b border-neutral-100 bg-neutral-50/50">
             <div className="bg-white rounded-xl p-4 border border-neutral-100 shadow-sm">
               <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Total Mentors</p>
-              <p className="text-2xl font-bold text-neutral-900 mt-1">{summary.totalMentors}</p>
+              <p className="text-2xl font-medium text-neutral-900 mt-1">{summary.totalMentors}</p>
             </div>
             <div className="bg-white rounded-xl p-4 border border-emerald-100 shadow-sm">
               <p className="text-xs font-medium text-emerald-600 uppercase tracking-wide">Active</p>
-              <p className="text-2xl font-bold text-emerald-700 mt-1">{summary.activeMentors}</p>
+              <p className="text-2xl font-medium text-emerald-700 mt-1">{summary.activeMentors}</p>
             </div>
             <div className="bg-white rounded-xl p-4 border border-amber-100 shadow-sm">
               <p className="text-xs font-medium text-amber-600 uppercase tracking-wide">Low Activity</p>
-              <p className="text-2xl font-bold text-amber-700 mt-1">{summary.lowActivityMentors}</p>
+              <p className="text-2xl font-medium text-amber-700 mt-1">{summary.lowActivityMentors}</p>
             </div>
             <div className="bg-white rounded-xl p-4 border border-red-100 shadow-sm">
               <p className="text-xs font-medium text-red-600 uppercase tracking-wide">No Sessions</p>
-              <p className="text-2xl font-bold text-red-700 mt-1">{summary.inactiveMentors}</p>
+              <p className="text-2xl font-medium text-red-700 mt-1">{summary.inactiveMentors}</p>
             </div>
           </div>
         )}

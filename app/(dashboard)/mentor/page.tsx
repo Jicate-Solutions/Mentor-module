@@ -295,7 +295,7 @@ export default function MentorListingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <h3 className="text-base font-semibold text-neutral-800 mb-1.5">
+            <h3 className="text-base font-medium text-neutral-800 mb-1.5">
               Search for Mentors
             </h3>
             <p className="text-neutral-600 text-sm">
@@ -318,7 +318,7 @@ export default function MentorListingPage() {
         <>
           <div className="flex items-center justify-between">
             <p className="text-sm text-neutral-600">
-              Found <span className="font-semibold text-brand-green">{filteredMentors.length}</span> mentor{filteredMentors.length !== 1 ? 's' : ''}
+              Found <span className="font-medium text-brand-green">{filteredMentors.length}</span> mentor{filteredMentors.length !== 1 ? 's' : ''}
               {activeFiltersCount > 0 && (
                 <span className="text-xs ml-2">({mentors.length} total)</span>
               )}
@@ -345,7 +345,7 @@ export default function MentorListingPage() {
                             className="w-14 h-14 rounded-full object-cover border-2 border-primary-500 shadow-sm"
                           />
                         ) : (
-                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center text-lg font-bold shadow-sm">
+                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center text-lg font-medium shadow-sm">
                             {mentor.name ? mentor.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2) : '?'}
                           </div>
                         )}
@@ -353,7 +353,7 @@ export default function MentorListingPage() {
 
                       {/* Mentor Basic Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-semibold text-neutral-800 mb-1 line-clamp-2 group-hover:text-brand-green transition-colors">
+                        <h3 className="text-base font-medium text-neutral-800 mb-1 line-clamp-2 group-hover:text-brand-green transition-colors">
                           {mentor.name}
                         </h3>
 
@@ -427,7 +427,7 @@ export default function MentorListingPage() {
                                 d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
                               />
                             </svg>
-                            <span className="font-bold text-brand-green">
+                            <span className="font-medium text-brand-green">
                               {mentor.totalStudents}
                             </span>
                             <span className="text-neutral-600 text-xs">
@@ -436,7 +436,7 @@ export default function MentorListingPage() {
                           </div>
                         )}
 
-                        <div className="flex items-center text-brand-green font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                        <div className="flex items-center text-brand-green font-medium text-sm group-hover:translate-x-1 transition-transform">
                           View
                           <svg
                             className="w-4 h-4 ml-1"
@@ -476,11 +476,11 @@ export default function MentorListingPage() {
                               className="w-10 h-10 rounded-full object-cover border-2 border-brand-green"
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center text-lg font-bold border-2 border-brand-green">
+                            <div className="w-10 h-10 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center text-lg font-medium border-2 border-brand-green">
                               {mentor.name?.charAt(0).toUpperCase() || '?'}
                             </div>
                           )}
-                          <span className="font-semibold text-brand-green">{mentor.name}</span>
+                          <span className="font-medium text-brand-green">{mentor.name}</span>
                         </div>
                       ),
                     },
@@ -510,7 +510,7 @@ export default function MentorListingPage() {
                       label: 'Students',
                       sortable: true,
                       render: (mentor) => (
-                        <span className="font-semibold text-brand-green">
+                        <span className="font-medium text-brand-green">
                           {mentor.totalStudents || 0}
                         </span>
                       ),

@@ -356,7 +356,7 @@ export default function MentorInchargePage() {
                   {/* Header Section */}
                   <div className="flex items-start justify-between gap-3">
                     {/* User Avatar */}
-                    <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-brand-green to-primary-600 text-white flex items-center justify-center text-sm lg:text-base font-semibold flex-shrink-0">
+                    <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-brand-green to-primary-600 text-white flex items-center justify-center text-sm lg:text-base font-medium flex-shrink-0">
                       {inchargeUser?.full_name?.charAt(0).toUpperCase() || 'N'}
                     </div>
 

@@ -30,7 +30,7 @@ export default function AchievementTab({ mentorId }: AchievementTabProps) {
         </div>
 
         {/* Coming Soon Message */}
-        <h3 className="text-2xl font-semibold text-brand-green mb-3">
+        <h3 className="text-2xl font-medium text-brand-green mb-3">
           Student Achievement Tracking
         </h3>
         <p className="text-neutral-600 mb-4 leading-relaxed">
@@ -39,7 +39,7 @@ export default function AchievementTab({ mentorId }: AchievementTabProps) {
 
         {/* Features Preview */}
         <div className="bg-brand-cream/50 rounded-xl border border-brand-green/20 p-6 mb-6">
-          <p className="text-sm font-semibold text-brand-green mb-3 uppercase tracking-wide">
+          <p className="text-sm font-medium text-brand-green mb-3 uppercase tracking-wide">
             Coming Soon
           </p>
           <ul className="text-left space-y-2 text-sm text-neutral-700">

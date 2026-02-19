@@ -42,7 +42,7 @@ export default function Home() {
 
       <div className="text-center animate-fadeIn relative z-10">
         {/* Glass Card Container */}
-        <div className="relative overflow-hidden rounded-3xl bg-white/80 backdrop-blur-xl border border-primary-100/50 p-12 shadow-2xl">
+        <div className="relative overflow-hidden rounded-3xl bg-white border border-primary-100/50 p-12 shadow-2xl">
           {/* Subtle Background Pattern */}
           <div className="absolute inset-0 bg-grid-pattern opacity-[0.03]" />
           <div className="absolute -top-8 -right-8 w-32 h-32 bg-primary-300/20 rounded-full blur-2xl" />
@@ -50,7 +50,7 @@ export default function Home() {
           <div className="relative z-10 space-y-6">
             {/* Logo Badge */}
             <div className="inline-flex items-center justify-center w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 shadow-xl border border-primary-400/30">
-              <span className="text-2xl font-black text-white tracking-tighter">JKKN</span>
+              <span className="text-2xl font-medium text-white tracking-tighter">JKKN</span>
             </div>
 
             {/* Animated spinner with gradient */}
@@ -67,7 +67,7 @@ export default function Home() {
 
             {/* Loading text */}
             <div className="space-y-2">
-              <h2 className="text-primary-800 font-extrabold text-2xl tracking-tight">
+              <h2 className="text-primary-800 font-medium text-2xl tracking-tight">
                 Loading JKKN Mentor...
               </h2>
 

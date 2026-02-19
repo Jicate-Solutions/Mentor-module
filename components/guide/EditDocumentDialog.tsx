@@ -69,12 +69,12 @@ export default function EditDocumentDialog({
   if (!isOpen || !document) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">
           <div>
-            <h2 className="text-2xl font-bold text-brand-green">Edit Document</h2>
+            <h2 className="text-2xl font-medium text-brand-green">Edit Document</h2>
             <p className="text-sm text-neutral-600 mt-1">
               Update document information
             </p>
@@ -99,7 +99,7 @@ export default function EditDocumentDialog({
 
           {/* Title */}
           <div>
-            <label htmlFor="title" className="block text-sm font-semibold text-neutral-700 mb-2">
+            <label htmlFor="title" className="block text-sm font-medium text-neutral-700 mb-2">
               Title <span className="text-red-500">*</span>
             </label>
             <input
@@ -115,7 +115,7 @@ export default function EditDocumentDialog({
 
           {/* Description */}
           <div>
-            <label htmlFor="description" className="block text-sm font-semibold text-neutral-700 mb-2">
+            <label htmlFor="description" className="block text-sm font-medium text-neutral-700 mb-2">
               Description
             </label>
             <textarea
@@ -131,7 +131,7 @@ export default function EditDocumentDialog({
 
           {/* Category */}
           <div>
-            <label htmlFor="category" className="block text-sm font-semibold text-neutral-700 mb-2">
+            <label htmlFor="category" className="block text-sm font-medium text-neutral-700 mb-2">
               Category
             </label>
             <input
@@ -148,15 +148,15 @@ export default function EditDocumentDialog({
           {/* File Info */}
           <div className="bg-neutral-50 rounded-lg p-4 border-2 border-neutral-200">
             <p className="text-sm text-neutral-700 mb-2">
-              <span className="font-semibold">File:</span> {document.title}.{document.file_type}
+              <span className="font-medium">File:</span> {document.title}.{document.file_type}
             </p>
             {document.file_size && (
               <p className="text-sm text-neutral-700 mb-2">
-                <span className="font-semibold">Size:</span> {(document.file_size / 1024 / 1024).toFixed(2)} MB
+                <span className="font-medium">Size:</span> {(document.file_size / 1024 / 1024).toFixed(2)} MB
               </p>
             )}
             <p className="text-sm text-neutral-700">
-              <span className="font-semibold">Uploaded:</span> {new Date(document.upload_date).toLocaleDateString()}
+              <span className="font-medium">Uploaded:</span> {new Date(document.upload_date).toLocaleDateString()}
             </p>
           </div>
         </div>
@@ -166,7 +166,7 @@ export default function EditDocumentDialog({
           <button
             onClick={handleClose}
             disabled={saving}
-            className="px-6 py-3 border-2 border-neutral-300 text-neutral-700 font-semibold rounded-lg hover:border-neutral-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 border-2 border-neutral-300 text-neutral-700 font-medium rounded-lg hover:border-neutral-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
@@ -174,7 +174,7 @@ export default function EditDocumentDialog({
           <button
             onClick={handleSave}
             disabled={saving || !title.trim()}
-            className="px-6 py-3 bg-brand-yellow text-brand-green font-semibold rounded-lg hover:bg-accent-400 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-3 bg-brand-yellow text-brand-green font-medium rounded-lg hover:bg-accent-400 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {saving ? (
               <>

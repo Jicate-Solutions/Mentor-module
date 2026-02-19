@@ -132,7 +132,7 @@ export default function SearchInput({
           onClick={handleSearchClick}
           disabled={loading}
           className="
-            ml-2 px-6 py-3 bg-brand-green text-brand-cream font-semibold rounded-lg
+            ml-2 px-6 py-3 bg-brand-green text-brand-cream font-medium rounded-lg
             hover:bg-primary-700 transition-colors
             disabled:opacity-50 disabled:cursor-not-allowed
           "

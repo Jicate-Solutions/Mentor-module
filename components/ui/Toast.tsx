@@ -94,7 +94,7 @@ export function Toast({
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm">
+        <p className="font-medium text-sm">
           {message}
         </p>
         {description && (

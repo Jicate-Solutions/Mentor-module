@@ -190,7 +190,7 @@ export default function GuideDocumentsPage() {
             {canManage && (
               <button
                 onClick={() => setIsUploadOpen(true)}
-                className="px-6 py-3 bg-brand-green text-white font-semibold rounded-lg hover:bg-brand-green/90 transition flex items-center gap-2 justify-center shadow-sm"
+                className="px-6 py-3 bg-brand-green text-white font-medium rounded-lg hover:bg-brand-green/90 transition flex items-center gap-2 justify-center shadow-sm"
               >
                 <Upload className="w-5 h-5" />
                 Import Documents

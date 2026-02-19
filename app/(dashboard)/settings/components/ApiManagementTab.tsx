@@ -91,7 +91,7 @@ export default function ApiManagementTab() {
       <Card variant="outline">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-xl font-bold text-brand-green mb-2">
+            <h3 className="text-xl font-medium text-brand-green mb-2">
               MyJKKN API Configuration
             </h3>
             <p className="text-sm text-neutral-600">
@@ -135,7 +135,7 @@ export default function ApiManagementTab() {
         <Card variant="default">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xl font-bold text-brand-green mb-1">
+              <h3 className="text-xl font-medium text-brand-green mb-1">
                 Institutions Data
               </h3>
               <p className="text-sm text-neutral-600">
@@ -185,12 +185,12 @@ export default function ApiManagementTab() {
                 <table className="w-full">
                   <thead className="bg-brand-cream border-b-2 border-brand-green">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">Name</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">Code</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">Category</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">Type</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">Status</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-brand-green">Created</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-brand-green">Name</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-brand-green">Code</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-brand-green">Category</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-brand-green">Type</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-brand-green">Status</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-brand-green">Created</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-200">
@@ -258,7 +258,7 @@ export default function ApiManagementTab() {
                             className={`
                               px-3 py-1 text-sm rounded transition-colors
                               ${currentPage === pageNum
-                                ? 'bg-brand-yellow text-brand-green font-semibold'
+                                ? 'bg-brand-yellow text-brand-green font-medium'
                                 : 'text-neutral-700 hover:bg-brand-cream'
                               }
                               disabled:opacity-50 disabled:cursor-not-allowed
@@ -287,7 +287,7 @@ export default function ApiManagementTab() {
           {!loading && !error && institutions.length === 0 && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">📚</div>
-              <h3 className="text-xl font-semibold text-brand-green mb-2">
+              <h3 className="text-xl font-medium text-brand-green mb-2">
                 No institutions found
               </h3>
               <p className="text-neutral-600">

@@ -64,7 +64,7 @@ export default function GuideSectionPage() {
               />
             </svg>
             <div>
-              <h3 className="font-semibold text-red-900 dark:text-red-200">Section Not Found</h3>
+              <h3 className="font-medium text-red-900 dark:text-red-200">Section Not Found</h3>
               <p className="mt-1 text-sm text-red-700 dark:text-red-300">
                 {error || 'The requested section could not be found.'}
               </p>
@@ -108,7 +108,7 @@ export default function GuideSectionPage() {
         <div className="flex items-start gap-4">
           <div className="text-4xl">{section.icon || '📖'}</div>
           <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
+            <h1 className="text-2xl md:text-3xl font-medium text-zinc-900 dark:text-zinc-100 mb-2">
               {section.title}
             </h1>
             {section.description && (
@@ -127,7 +127,7 @@ export default function GuideSectionPage() {
             <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Your Progress
             </span>
-            <span className="text-sm font-semibold text-[#0b6d41]">
+            <span className="text-sm font-medium text-[#0b6d41]">
               {section.progress.percentage}%
             </span>
           </div>
@@ -253,7 +253,7 @@ function ContentBlock({ content }: { content: GuideContent }) {
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0">{getIcon()}</div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-3">
+          <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-3">
             {content.title}
           </h2>
 

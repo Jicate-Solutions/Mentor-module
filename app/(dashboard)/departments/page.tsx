@@ -144,7 +144,7 @@ export default function DepartmentsPage() {
               <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
             <div>
-              <p className="text-base font-semibold text-yellow-800 mb-1">API Not Configured</p>
+              <p className="text-base font-medium text-yellow-800 mb-1">API Not Configured</p>
               <p className="text-sm text-yellow-700">
                 {statusMessage}. Please add NEXT_PUBLIC_MYJKKN_API_KEY to your .env.local file to view departments data.
               </p>
@@ -180,7 +180,7 @@ export default function DepartmentsPage() {
 
           {/* Stats */}
           <div className="flex items-center gap-2 text-sm text-neutral-600">
-            <span className="font-semibold text-brand-green">
+            <span className="font-medium text-brand-green">
               {searchQuery ? filteredDepartments.length : total}
             </span>
             {searchQuery ? 'matching' : 'total'} departments
@@ -208,7 +208,7 @@ export default function DepartmentsPage() {
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
                 <div>
-                  <p className="text-sm font-semibold text-red-800">Error loading data</p>
+                  <p className="text-sm font-medium text-red-800">Error loading data</p>
                   <p className="text-sm text-red-600 mt-1">{error}</p>
                 </div>
               </div>
@@ -222,22 +222,22 @@ export default function DepartmentsPage() {
                 <table className="w-full">
                   <thead className="bg-neutral-50/80 border-b border-neutral-200/70">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Department Name
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Code
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Institution ID
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Status
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Created
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Updated
                       </th>
                     </tr>
@@ -346,7 +346,7 @@ export default function DepartmentsPage() {
           {!loading && !error && filteredDepartments.length === 0 && (
             <div className="text-center py-12">
               <div className="text-5xl mb-4">📚</div>
-              <h3 className="text-lg font-semibold text-neutral-800 mb-2">
+              <h3 className="text-lg font-medium text-neutral-800 mb-2">
                 {searchQuery ? 'No matching departments' : 'No departments found'}
               </h3>
               <p className="text-sm text-neutral-600">

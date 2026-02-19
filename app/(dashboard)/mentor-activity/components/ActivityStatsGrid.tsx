@@ -134,7 +134,7 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
         return (
           <div
             key={index}
-            className="group relative overflow-hidden rounded-2xl bg-white/80 backdrop-blur-sm border border-primary-100/50 p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]"
+            className="group relative overflow-hidden rounded-2xl bg-white border border-primary-100/50 p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]"
           >
             {/* Subtle Background Pattern */}
             <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
@@ -145,13 +145,13 @@ export default function ActivityStatsGrid({ stats, loading }: ActivityStatsGridP
                 <div className={`w-11 h-11 rounded-xl ${card.bgClass} flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-md`}>
                   <Icon className={`w-6 h-6 ${card.colorClass}`} />
                 </div>
-                <div className={`text-[32px] font-extrabold ${card.colorClass} leading-none tracking-tight group-hover:scale-105 transition-transform inline-block tabular-nums`}>
+                <div className={`text-[32px] font-medium ${card.colorClass} leading-none tracking-tight group-hover:scale-105 transition-transform inline-block tabular-nums`}>
                   {card.value.toLocaleString()}
                 </div>
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-[11px] font-bold text-neutral-600 uppercase tracking-wide">
+                <h3 className="text-[11px] font-medium text-neutral-600 uppercase tracking-wide">
                   {card.label}
                 </h3>
                 {card.description && (

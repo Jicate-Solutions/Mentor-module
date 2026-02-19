@@ -71,7 +71,7 @@ export default function ActivityTimeline({
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
             <Inbox className="w-8 h-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
             No Activities Found
           </h3>
           <p className="text-sm text-gray-500 max-w-md">
@@ -87,7 +87,7 @@ export default function ActivityTimeline({
     <div className="bg-white rounded-lg border border-gray-200">
       {/* Timeline Header */}
       <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-lg font-medium text-gray-900">
           Activity Timeline
         </h3>
         <p className="text-sm text-gray-500 mt-1">
@@ -118,7 +118,7 @@ export default function ActivityTimeline({
                   {/* Activity Header */}
                   <div className="flex items-start justify-between gap-4 mb-2">
                     <div className="flex-1">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                      <h4 className="text-sm font-medium text-gray-900 mb-1">
                         {formatActivityDescription(activity)}
                       </h4>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
@@ -173,7 +173,7 @@ export default function ActivityTimeline({
                   {/* Expanded Details */}
                   {isExpanded && hasDetails && (
                     <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                      <h5 className="text-xs font-semibold text-gray-700 mb-2">
+                      <h5 className="text-xs font-medium text-gray-700 mb-2">
                         Additional Details
                       </h5>
                       <dl className="space-y-1">

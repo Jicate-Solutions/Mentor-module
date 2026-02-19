@@ -229,8 +229,9 @@ async function fetchAllStudentsFromJKKN(): Promise<any[]> {
 
     hasMore = pageStudents.length === maxLimit;
 
-    if (pageData.metadata) {
-      const totalPages = pageData.metadata.totalPages || pageData.metadata.total_pages;
+    const paginationInfo = pageData.pagination || pageData.metadata;
+    if (paginationInfo) {
+      const totalPages = paginationInfo.totalPages || paginationInfo.total_pages;
       if (totalPages && currentPage >= totalPages) {
         hasMore = false;
       }

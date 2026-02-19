@@ -48,12 +48,12 @@ export default function StatCard({
 
       <div className="flex items-start justify-between relative z-10">
         <div className="flex-1">
-          <p className="text-[12px] font-semibold text-neutral-600 mb-3 tracking-wider uppercase">{title}</p>
+          <p className="text-[12px] font-medium text-neutral-600 mb-3 tracking-wider uppercase">{title}</p>
           <div className="flex items-baseline gap-2 mb-1">
-            <h3 className="text-[32px] font-bold text-neutral-900 tracking-tight transition-all duration-300 group-hover:scale-105">{value}</h3>
+            <h3 className="text-[32px] font-medium text-neutral-900 tracking-tight transition-all duration-300 group-hover:scale-105">{value}</h3>
             {trend && (
               <span
-                className={`text-[12px] font-semibold flex items-center gap-0.5 px-2 py-0.5 rounded-full ${
+                className={`text-[12px] font-medium flex items-center gap-0.5 px-2 py-0.5 rounded-full ${
                   trend.isPositive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
                 }`}
               >

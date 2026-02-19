@@ -114,7 +114,7 @@ function CallbackContent() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-red-600 mb-4">
+          <h1 className="text-2xl font-medium text-red-600 mb-4">
             Authentication Error
           </h1>
           <p className="text-zinc-600 dark:text-zinc-400 mb-6">{error}</p>
@@ -135,7 +135,7 @@ function CallbackContent() {
         <div className="mb-4">
           <div className="w-16 h-16 mx-auto border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <h1 className="text-2xl font-bold mb-4 text-black dark:text-zinc-50">
+        <h1 className="text-2xl font-medium mb-4 text-black dark:text-zinc-50">
           Authenticating...
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400">
@@ -155,7 +155,7 @@ export default function CallbackPage() {
             <div className="mb-4">
               <div className="w-16 h-16 mx-auto border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
-            <h1 className="text-2xl font-bold mb-4 text-black dark:text-zinc-50">
+            <h1 className="text-2xl font-medium mb-4 text-black dark:text-zinc-50">
               Loading...
             </h1>
           </div>

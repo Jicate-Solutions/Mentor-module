@@ -618,7 +618,7 @@ export default function CounselingSessionsPage() {
           <svg className="w-4 h-4 lg:w-5 lg:h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
           </svg>
-          <h2 className="text-[16px] lg:text-lg font-semibold text-neutral-700">Filters & Search</h2>
+          <h2 className="text-[16px] lg:text-lg font-medium text-neutral-700">Filters & Search</h2>
         </div>
 
         <div className="space-y-3 lg:space-y-4">
@@ -650,7 +650,7 @@ export default function CounselingSessionsPage() {
               px-4 py-2.5 lg:py-2 rounded-lg font-medium text-[13px] lg:text-sm transition-all whitespace-nowrap min-h-[44px] lg:min-h-0 flex items-center
               ${activeTab === tab.id
                 ? 'bg-white text-brand-green border border-neutral-200 shadow-sm'
-                : 'text-neutral-600 hover:bg-white/50 hover:text-neutral-800'
+                : 'text-neutral-600 hover:bg-white hover:text-neutral-800'
               }
             `}
           >
@@ -675,7 +675,7 @@ export default function CounselingSessionsPage() {
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
               <div>
-                <p className="text-sm font-semibold text-red-800">Error loading sessions</p>
+                <p className="text-sm font-medium text-red-800">Error loading sessions</p>
                 <p className="text-sm text-red-600 mt-1">{error}</p>
               </div>
             </div>
@@ -692,7 +692,7 @@ export default function CounselingSessionsPage() {
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-bold text-neutral-900 mb-2">
+            <h3 className="text-lg font-medium text-neutral-900 mb-2">
               No sessions found
             </h3>
             <p className="text-sm text-neutral-600 text-center max-w-sm">
@@ -726,7 +726,7 @@ export default function CounselingSessionsPage() {
                 {/* Session Header */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-neutral-800 text-lg mb-2">
+                    <h3 className="font-medium text-neutral-800 text-lg mb-2">
                       {session.sessionName}
                     </h3>
                     <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm text-neutral-600">
@@ -776,14 +776,14 @@ export default function CounselingSessionsPage() {
 
                 {/* Students List */}
                 <div className="mt-4">
-                  <h4 className="text-sm font-semibold text-neutral-700 mb-2">Learners:</h4>
+                  <h4 className="text-sm font-medium text-neutral-700 mb-2">Learners:</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                     {session.students.map((student, index) => (
                       <div
                         key={student.id || index}
                         className="flex items-center gap-2 p-2 bg-neutral-50 rounded-lg border border-neutral-200"
                       >
-                        <div className="w-8 h-8 rounded-full bg-brand-green/10 flex items-center justify-center text-brand-green font-semibold text-sm">
+                        <div className="w-8 h-8 rounded-full bg-brand-green/10 flex items-center justify-center text-brand-green font-medium text-sm">
                           {student.name?.charAt(0).toUpperCase() || '?'}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -804,7 +804,7 @@ export default function CounselingSessionsPage() {
                 {/* Notes */}
                 {session.notes && (
                   <div className="mt-4 pt-4 border-t border-neutral-200">
-                    <h4 className="text-sm font-semibold text-neutral-700 mb-1">Notes:</h4>
+                    <h4 className="text-sm font-medium text-neutral-700 mb-1">Notes:</h4>
                     <p className="text-sm text-neutral-600 bg-neutral-50 rounded p-3">
                       {session.notes}
                     </p>
@@ -818,12 +818,12 @@ export default function CounselingSessionsPage() {
 
       {/* Session Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="border-b border-neutral-200 p-6 sticky top-0 bg-white rounded-t-xl">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-neutral-800">
+                <h2 className="text-xl font-medium text-neutral-800">
                   {editingSession ? 'Edit Session' : 'New Counseling Session'}
                 </h2>
                 <button

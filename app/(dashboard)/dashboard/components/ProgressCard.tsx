@@ -21,14 +21,14 @@ export const ProgressCard = ({ departments, loading }: ProgressCardProps) => {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-white/80 backdrop-blur-sm border border-primary-100/50 p-6 shadow-lg h-full">
+    <div className="relative overflow-hidden rounded-2xl bg-white border border-primary-100/50 p-6 shadow-lg h-full">
       {/* Subtle Background Pattern */}
       <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
       <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary-300/20 rounded-full blur-2xl" />
 
       <div className="relative z-10">
         <div className="mb-6">
-          <h3 className="text-[17px] font-bold text-primary-800">Department Progress</h3>
+          <h3 className="text-[17px] font-medium text-primary-800">Department Progress</h3>
           <p className="text-[13px] text-primary-700/80 mt-1 leading-relaxed font-medium">Session completion rates</p>
         </div>
 
@@ -51,7 +51,7 @@ export const ProgressCard = ({ departments, loading }: ProgressCardProps) => {
                 </svg>
               </div>
             </div>
-            <h4 className="text-[16px] font-bold text-primary-800 mb-2">No department data available</h4>
+            <h4 className="text-[16px] font-medium text-primary-800 mb-2">No department data available</h4>
             <p className="text-[14px] text-primary-700/70 text-center max-w-sm leading-relaxed">
               Department progress tracking will appear here once counseling sessions are scheduled and completed
             </p>
@@ -68,12 +68,12 @@ export const ProgressCard = ({ departments, loading }: ProgressCardProps) => {
                         className="w-4 h-4 rounded-full shadow-md ring-2 ring-white/80 transition-transform group-hover:scale-125"
                         style={{ backgroundColor: dept.color }}
                       />
-                      <span className="text-[14px] font-bold text-primary-800 group-hover:text-primary-600 transition-colors">
+                      <span className="text-[14px] font-medium text-primary-800 group-hover:text-primary-600 transition-colors">
                         {dept.name}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[20px] font-extrabold text-primary-800 tracking-tight">
+                      <span className="text-[20px] font-medium text-primary-800 tracking-tight">
                         {percentage}%
                       </span>
                       {percentage === 100 && (
@@ -139,10 +139,10 @@ export const ProgressCard = ({ departments, loading }: ProgressCardProps) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <span className="text-[14px] font-bold text-primary-800">Overall Progress</span>
+                <span className="text-[14px] font-medium text-primary-800">Overall Progress</span>
               </div>
               <div className="text-right">
-                <p className="text-[28px] font-extrabold text-primary-600 tracking-tight">
+                <p className="text-[28px] font-medium text-primary-600 tracking-tight">
                   {Math.round(
                     departments.reduce((acc, dept) => acc + calculatePercentage(dept.completed, dept.total), 0) /
                       departments.length

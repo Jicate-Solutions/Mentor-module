@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
       statusText: response.statusText,
       message: 'Successfully connected to JKKN API',
       data: {
-        total: data?.metadata?.total || data?.data?.length || 0,
+        total: data?.count || data?.pagination?.total || data?.metadata?.total || data?.data?.length || 0,
         sample: data?.data?.[0] || null
       },
       endpoint: url,

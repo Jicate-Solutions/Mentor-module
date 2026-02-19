@@ -11,7 +11,7 @@ export default function GeneralSettingsTab() {
     <div className="space-y-6">
       {/* Profile Information */}
       <Card variant="outline">
-        <h3 className="text-xl font-bold text-brand-green mb-4">
+        <h3 className="text-xl font-medium text-brand-green mb-4">
           Profile Information
         </h3>
         <div className="space-y-4">
@@ -54,7 +54,7 @@ export default function GeneralSettingsTab() {
 
       {/* Application Settings */}
       <Card variant="default">
-        <h3 className="text-xl font-bold text-brand-green mb-4">
+        <h3 className="text-xl font-medium text-brand-green mb-4">
           Application Settings
         </h3>
         <p className="text-neutral-600 mb-4">

@@ -164,7 +164,7 @@ export default function DataTable<T extends Record<string, any>>({
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-6 py-4 text-left text-sm font-semibold text-brand-green ${
+                  className={`px-6 py-4 text-left text-sm font-medium text-brand-green ${
                     column.width ? `w-${column.width}` : ''
                   }`}
                 >

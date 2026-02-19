@@ -23,7 +23,7 @@ export default function LoginPage() {
           <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-brand-green border-r-transparent">
             <span className="sr-only">Loading...</span>
           </div>
-          <p className="mt-4 text-lg font-semibold text-brand-green">
+          <p className="mt-4 text-lg font-medium text-brand-green">
             Loading JKKN Mentor...
           </p>
         </div>
@@ -53,10 +53,10 @@ export default function LoginPage() {
           <div className="animate-fadeIn mb-8">
             <div className="inline-flex items-center gap-3">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 border border-primary-400/30 flex items-center justify-center shadow-xl">
-                <span className="text-2xl font-semibold text-white tracking-tighter">JKKN</span>
+                <span className="text-2xl font-medium text-white tracking-tighter">JKKN</span>
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-primary-800">JKKN Mentor</h2>
+                <h2 className="text-xl font-medium text-primary-800">JKKN Mentor</h2>
                 <p className="text-xs text-primary-700 font-medium">JKKN Institutions</p>
               </div>
             </div>
@@ -66,7 +66,7 @@ export default function LoginPage() {
           <div className="flex-1 flex items-center justify-center animate-fadeIn" style={{ animationDelay: '200ms' }}>
             <div className="relative">
               {/* Large decorative circle - Pastel Style */}
-              <div className="relative w-64 h-64 rounded-full bg-white/40 backdrop-blur-xl border-2 border-white/60 flex items-center justify-center shadow-2xl">
+              <div className="relative w-64 h-64 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center shadow-2xl">
                 {/* Inner glow - pastel */}
                 <div className="absolute inset-4 rounded-full bg-gradient-to-br from-brand-yellow/30 to-transparent blur-2xl" />
 
@@ -87,13 +87,13 @@ export default function LoginPage() {
                 </div>
                 <div className="absolute inset-0 animate-spin" style={{ animationDuration: '15s', animationDirection: 'reverse' }}>
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-brand-yellow/70 rounded-full" />
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white/70 rounded-full" />
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full" />
                 </div>
               </div>
 
               {/* Floating particles - colorful */}
               <div className="absolute -top-6 -right-6 w-3 h-3 bg-brand-yellow/40 rounded-full blur-sm animate-pulse" />
-              <div className="absolute -bottom-6 -left-6 w-2.5 h-2.5 bg-white/60 rounded-full blur-sm animate-pulse" style={{ animationDelay: '1s' }} />
+              <div className="absolute -bottom-6 -left-6 w-2.5 h-2.5 bg-white rounded-full blur-sm animate-pulse" style={{ animationDelay: '1s' }} />
               <div className="absolute top-1/2 -left-8 w-2 h-2 bg-brand-yellow/50 rounded-full blur-sm animate-pulse" style={{ animationDelay: '0.5s' }} />
             </div>
           </div>
@@ -101,7 +101,7 @@ export default function LoginPage() {
           {/* Bottom Features - Pastel Cards */}
           <div className="grid grid-cols-3 gap-4 mt-6 animate-fadeIn" style={{ animationDelay: '400ms' }}>
             <div className="text-center">
-              <div className="w-10 h-10 rounded-xl bg-white/60 backdrop-blur-sm border border-white/80 flex items-center justify-center mx-auto mb-2 shadow-lg">
+              <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center mx-auto mb-2 shadow-lg">
                 <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
@@ -110,7 +110,7 @@ export default function LoginPage() {
             </div>
 
             <div className="text-center">
-              <div className="w-10 h-10 rounded-xl bg-white/60 backdrop-blur-sm border border-white/80 flex items-center justify-center mx-auto mb-2 shadow-lg">
+              <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center mx-auto mb-2 shadow-lg">
                 <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
@@ -119,7 +119,7 @@ export default function LoginPage() {
             </div>
 
             <div className="text-center">
-              <div className="w-10 h-10 rounded-xl bg-white/60 backdrop-blur-sm border border-white/80 flex items-center justify-center mx-auto mb-2 shadow-lg">
+              <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center mx-auto mb-2 shadow-lg">
                 <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                 </svg>
@@ -151,16 +151,16 @@ export default function LoginPage() {
           <div className="lg:hidden flex justify-center mb-6">
             <div className="inline-flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-xl border border-primary-400/30">
-                <span className="text-lg font-semibold text-white tracking-tighter">JKKN</span>
+                <span className="text-lg font-medium text-white tracking-tighter">JKKN</span>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-primary-800">JKKN Mentor</h2>
+                <h2 className="text-lg font-medium text-primary-800">JKKN Mentor</h2>
                 <p className="text-xs text-primary-700 font-medium">JKKN Institutions</p>
               </div>
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-3xl bg-white/80 backdrop-blur-xl border border-primary-100/50 p-6 sm:p-8 shadow-2xl">
+          <div className="relative overflow-hidden rounded-3xl bg-white border border-primary-100/50 p-6 sm:p-8 shadow-2xl">
             {/* Subtle Background Pattern */}
             <div className="absolute inset-0 bg-grid-pattern opacity-[0.03]" />
             <div className="absolute -top-8 -right-8 w-32 h-32 bg-primary-300/20 rounded-full blur-2xl" />
@@ -169,12 +169,12 @@ export default function LoginPage() {
               {/* Welcome Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-50 border border-primary-100 mb-4">
                 <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse" />
-                <span className="text-xs font-semibold text-primary-700 uppercase tracking-wider">Welcome Back</span>
+                <span className="text-xs font-medium text-primary-700 uppercase tracking-wider">Welcome Back</span>
               </div>
 
               {/* Title Section */}
               <div className="space-y-2 mb-6">
-                <h1 className="text-2xl sm:text-3xl font-semibold text-primary-800 tracking-tight">
+                <h1 className="text-2xl sm:text-3xl font-medium text-primary-800 tracking-tight">
                   Sign In
                 </h1>
                 <p className="text-primary-700/80 text-sm leading-relaxed">
@@ -230,7 +230,7 @@ export default function LoginPage() {
                   <div className="w-full border-t border-primary-100" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white/80 px-3 text-primary-600 font-medium">Benefits</span>
+                  <span className="bg-white px-3 text-primary-600 font-medium">Benefits</span>
                 </div>
               </div>
 
@@ -268,17 +268,17 @@ export default function LoginPage() {
               <div className="pt-6 mt-6 border-t border-primary-100 text-center space-y-2">
                 <p className="text-xs text-primary-700/70">
                   By signing in, you agree to our{' '}
-                  <a href="#" className="text-primary-600 hover:text-primary-700 font-semibold hover:underline">
+                  <a href="#" className="text-primary-600 hover:text-primary-700 font-medium hover:underline">
                     Terms
                   </a>
                   {' '}and{' '}
-                  <a href="#" className="text-primary-600 hover:text-primary-700 font-semibold hover:underline">
+                  <a href="#" className="text-primary-600 hover:text-primary-700 font-medium hover:underline">
                     Privacy Policy
                   </a>
                 </p>
 
                 <p className="text-xs text-primary-700/60">
-                  Powered by <span className="font-semibold text-primary-700">JKKN Institutions</span>
+                  Powered by <span className="font-medium text-primary-700">JKKN Institutions</span>
                 </p>
               </div>
             </div>

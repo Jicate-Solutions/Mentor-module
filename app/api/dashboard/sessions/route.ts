@@ -1,20 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+import { getUserAccess, getInstitutionFilter, getMentorIdsForInstitution } from '@/lib/middleware/access-control';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // --- Auth guard ---
+    const userAccess = await getUserAccess();
+    if (!userAccess) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const supabase = createAdminClient();
+    const institutionFilter = getInstitutionFilter(userAccess);
+    const mentorIds = await getMentorIdsForInstitution(institutionFilter);
+
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '10');
 
     // Get today's date
     const today = new Date().toISOString().split('T')[0];
 
-    // Fetch upcoming sessions (bypassing RLS with service role)
-    const { data: sessions, error } = await supabase
+    // Fetch upcoming sessions
+    let sessionsQuery = supabase
       .from('counseling_sessions')
       .select(`
         id,
@@ -39,6 +46,12 @@ export async function GET(request: NextRequest) {
       .eq('status', 'scheduled')
       .order('date', { ascending: true })
       .limit(limit);
+
+    if (mentorIds) {
+      sessionsQuery = sessionsQuery.in('mentor_id', mentorIds);
+    }
+
+    const { data: sessions, error } = await sessionsQuery;
 
     if (error) {
       console.error('Error fetching upcoming sessions:', error);

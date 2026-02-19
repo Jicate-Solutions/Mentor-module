@@ -730,7 +730,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
                         {/* Student Info */}
                         <div className="flex-1 min-w-0">
-                          <h5 className="font-semibold text-brand-green text-sm mb-0.5 truncate">
+                          <h5 className="font-medium text-brand-green text-sm mb-0.5 truncate">
                             {session.studentName}
                           </h5>
                           <div className="flex items-center gap-2 text-xs text-neutral-600">
@@ -784,7 +784,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         <div className="space-y-6">
           {/* Student Selection with Search and Checkboxes */}
           <div className="bg-brand-cream p-5 rounded-xl border-2 border-brand-yellow">
-            <label className="block text-base font-semibold text-brand-green mb-4 flex items-center gap-2">
+            <label className="block text-base font-medium text-brand-green mb-4 flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
@@ -818,7 +818,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   onChange={handleSelectAll}
                   className="w-5 h-5 text-brand-green focus:ring-brand-green focus:ring-offset-2 rounded border-2 border-brand-green/30 cursor-pointer"
                 />
-                <span className="font-semibold text-brand-green group-hover:text-brand-green flex items-center gap-2">
+                <span className="font-medium text-brand-green group-hover:text-brand-green flex items-center gap-2">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
@@ -855,7 +855,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                       className="w-5 h-5 text-brand-green focus:ring-brand-green focus:ring-offset-2 rounded border-2 border-brand-green/30 cursor-pointer"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-brand-green mb-0.5 truncate">{student.name}</div>
+                      <div className="font-medium text-brand-green mb-0.5 truncate">{student.name}</div>
                       <div className="text-sm text-neutral-600 flex items-center gap-2">
                         <span className="font-medium">{student.rollNumber}</span>
                         <span className="text-brand-green/40">•</span>
@@ -882,7 +882,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 <svg className="w-4 h-4 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="font-semibold text-brand-green">
+                <span className="font-medium text-brand-green">
                   {formData.selectedStudentIds.length} learner{formData.selectedStudentIds.length > 1 ? 's' : ''} selected
                 </span>
               </div>
@@ -891,7 +891,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
           {/* Session Details Section */}
           <div className="bg-brand-cream p-5 rounded-xl border-2 border-brand-yellow">
-            <h4 className="text-base font-semibold text-brand-green mb-4 flex items-center gap-2">
+            <h4 className="text-base font-medium text-brand-green mb-4 flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
@@ -992,7 +992,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
           {/* Additional Information Section */}
           <div className="bg-brand-cream p-5 rounded-xl border-2 border-brand-yellow">
-            <h4 className="text-base font-semibold text-brand-green mb-4 flex items-center gap-2">
+            <h4 className="text-base font-medium text-brand-green mb-4 flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -1114,7 +1114,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
             <button
               type="button"
               onClick={() => setShowCreateModal(false)}
-              className="flex-1 px-6 py-3.5 rounded-xl border-2 border-brand-green/30 bg-white hover:bg-brand-cream text-brand-green font-semibold transition-all duration-200 hover:border-brand-green"
+              className="flex-1 px-6 py-3.5 rounded-xl border-2 border-brand-green/30 bg-white hover:bg-brand-cream text-brand-green font-medium transition-all duration-200 hover:border-brand-green"
             >
               Cancel
             </button>
@@ -1122,7 +1122,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               type="button"
               onClick={handleCreateSession}
               disabled={creating || formData.selectedStudentIds.length === 0 || !formData.sessionName || !formData.date || !formData.time}
-              className="flex-1 px-6 py-3.5 rounded-xl bg-brand-green hover:bg-brand-green/90 text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+              className="flex-1 px-6 py-3.5 rounded-xl bg-brand-green hover:bg-brand-green/90 text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
             >
               {creating ? (
                 <>
@@ -1158,11 +1158,11 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
             {selectedSession.student && (
               <Card variant="elevated" className="border-2 border-brand-green">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-16 h-16 rounded-full bg-brand-green flex items-center justify-center text-white text-2xl font-bold">
+                  <div className="w-16 h-16 rounded-full bg-brand-green flex items-center justify-center text-white text-2xl font-medium">
                     {selectedSession.student.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-brand-green mb-1">
+                    <h3 className="text-2xl font-medium text-brand-green mb-1">
                       {selectedSession.student.name}
                     </h3>
                     <p className="text-neutral-600 flex items-center gap-2">
@@ -1217,7 +1217,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               <div className="flex items-start gap-3 mb-4">
                 <div className="text-3xl">💬</div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-brand-green mb-2">
+                  <h3 className="text-xl font-medium text-brand-green mb-2">
                     {selectedSession.sessionName}
                   </h3>
                   <Badge
@@ -1282,7 +1282,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
             {/* Session Log Form */}
             <div>
-              <h3 className="text-xl font-bold text-brand-green mb-4 flex items-center gap-2">
+              <h3 className="text-xl font-medium text-brand-green mb-4 flex items-center gap-2">
                 <span>📝</span>
                 Session Log
               </h3>
@@ -1291,7 +1291,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 <Card variant="outline">
                   <div className="space-y-4">
                     <div className="bg-brand-cream p-4 rounded-lg">
-                      <p className="text-sm font-semibold text-brand-green mb-2">
+                      <p className="text-sm font-medium text-brand-green mb-2">
                         Counseling Queries
                       </p>
                       <p className="text-neutral-700 whitespace-pre-wrap">
@@ -1299,7 +1299,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                       </p>
                     </div>
                     <div className="bg-brand-cream p-4 rounded-lg">
-                      <p className="text-sm font-semibold text-brand-green mb-2">
+                      <p className="text-sm font-medium text-brand-green mb-2">
                         Action Taken
                       </p>
                       <p className="text-neutral-700 whitespace-pre-wrap">
@@ -1308,7 +1308,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                     </div>
                     {selectedSession.feedback.attachmentUrl && (
                       <div className="bg-brand-cream p-4 rounded-lg">
-                        <p className="text-sm font-semibold text-brand-green mb-2">
+                        <p className="text-sm font-medium text-brand-green mb-2">
                           Attachment
                         </p>
                         <a
@@ -1378,7 +1378,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                               attachment: file
                             }));
                           }}
-                          className="flex-1 text-sm text-neutral-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green/90 cursor-pointer"
+                          className="flex-1 text-sm text-neutral-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-green file:text-white hover:file:bg-brand-green/90 cursor-pointer"
                         />
                         {feedbackData.attachment && (
                           <button
@@ -1561,7 +1561,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               <button
                 type="button"
                 onClick={() => setShowEditModal(false)}
-                className="flex-1 px-6 py-3.5 rounded-xl border-2 border-brand-green/30 bg-white hover:bg-brand-cream text-brand-green font-semibold transition-all duration-200 hover:border-brand-green"
+                className="flex-1 px-6 py-3.5 rounded-xl border-2 border-brand-green/30 bg-white hover:bg-brand-cream text-brand-green font-medium transition-all duration-200 hover:border-brand-green"
               >
                 Cancel
               </button>
@@ -1569,7 +1569,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 type="button"
                 onClick={handleUpdateSession}
                 disabled={updating || !editFormData.sessionName || !editFormData.date || !editFormData.time}
-                className="flex-1 px-6 py-3.5 rounded-xl bg-brand-green hover:bg-brand-green/90 text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                className="flex-1 px-6 py-3.5 rounded-xl bg-brand-green hover:bg-brand-green/90 text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               >
                 {updating ? (
                   <>
@@ -1609,14 +1609,14 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                <h3 className="text-lg font-medium text-neutral-900 mb-2">
                   Are you sure you want to delete this session?
                 </h3>
                 <p className="text-sm text-neutral-600 mb-4">
                   This action cannot be undone. This will permanently delete the counseling session:
                 </p>
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="font-semibold text-brand-green mb-1">{deletingSession.sessionName}</p>
+                  <p className="font-medium text-brand-green mb-1">{deletingSession.sessionName}</p>
                   <p className="text-sm text-neutral-600">
                     {new Date(deletingSession.date).toLocaleDateString()} at {deletingSession.time}
                   </p>
@@ -1632,7 +1632,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
-                className="flex-1 px-6 py-3.5 rounded-xl border-2 border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-700 font-semibold transition-all duration-200"
+                className="flex-1 px-6 py-3.5 rounded-xl border-2 border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-700 font-medium transition-all duration-200"
               >
                 Cancel
               </button>
@@ -1640,7 +1640,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 type="button"
                 onClick={handleDeleteSession}
                 disabled={deleting}
-                className="flex-1 px-6 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {deleting ? (
                   <>

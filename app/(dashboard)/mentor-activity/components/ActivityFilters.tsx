@@ -97,7 +97,7 @@ export default function ActivityFilters({ onFilterChange, isAdmin, mentors }: Ac
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Filter className="w-5 h-5 text-gray-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+          <h3 className="text-lg font-medium text-gray-900">Filters</h3>
           {activeFiltersCount > 0 && (
             <span className="px-2 py-1 text-xs font-medium bg-[#0b6d41] text-white rounded-full">
               {activeFiltersCount}

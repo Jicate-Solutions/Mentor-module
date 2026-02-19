@@ -95,7 +95,7 @@ export default function IDPForm({
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-2xl">🎯</span>
-                <h2 className="text-xl font-bold text-neutral-900">
+                <h2 className="text-xl font-medium text-neutral-900">
                   {existingPlan ? 'Edit' : 'Create New'} Goal & Action Plan
                 </h2>
               </div>

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+import { getUserAccess, getInstitutionFilter, getMentorIdsForInstitution } from '@/lib/middleware/access-control';
+import { createAdminClient } from '@/lib/supabase/server';
 
 interface Activity {
   id: string;
@@ -19,12 +17,21 @@ interface Activity {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // --- Auth guard ---
+    const userAccess = await getUserAccess();
+    if (!userAccess) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const supabase = createAdminClient();
+    const institutionFilter = getInstitutionFilter(userAccess);
+    const mentorIds = await getMentorIdsForInstitution(institutionFilter);
+
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '20');
 
     // Fetch recent counseling sessions
-    const { data: recentSessions } = await supabase
+    let sessionsQuery = supabase
       .from('counseling_sessions')
       .select(`
         id,
@@ -46,8 +53,12 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(10);
 
+    if (mentorIds) {
+      sessionsQuery = sessionsQuery.in('mentor_id', mentorIds);
+    }
+
     // Fetch recent mentor-student assignments
-    const { data: recentAssignments } = await supabase
+    let assignmentsQuery = supabase
       .from('mentor_students')
       .select(`
         id,
@@ -65,14 +76,19 @@ export async function GET(request: NextRequest) {
       .order('assigned_at', { ascending: false })
       .limit(10);
 
-    // Fetch recent feedback submissions
-    const { data: recentFeedback } = await supabase
+    if (mentorIds) {
+      assignmentsQuery = assignmentsQuery.in('mentor_id', mentorIds);
+    }
+
+    // For feedback: first get session IDs for institution mentors, then filter feedback
+    let feedbackQuery = supabase
       .from('session_feedback')
       .select(`
         id,
         submitted_at,
         counseling_sessions:session_id (
           session_name,
+          mentor_id,
           mentors:mentor_id (
             users:user_id (
               full_name,
@@ -84,12 +100,39 @@ export async function GET(request: NextRequest) {
       .order('submitted_at', { ascending: false })
       .limit(10);
 
+    // Feedback filtering: fetch session IDs belonging to institution mentors
+    if (mentorIds) {
+      const { data: institutionSessions } = await supabase
+        .from('counseling_sessions')
+        .select('id')
+        .in('mentor_id', mentorIds);
+      const sessionIds = institutionSessions?.map(s => s.id) || ['00000000-0000-0000-0000-000000000000'];
+      feedbackQuery = feedbackQuery.in('session_id', sessionIds);
+    }
+
     // Fetch recently added students
-    const { data: recentStudents } = await supabase
+    let studentsQuery = supabase
       .from('students')
       .select('id, name, created_at, departments(name)')
       .order('created_at', { ascending: false })
       .limit(10);
+
+    if (institutionFilter) {
+      studentsQuery = studentsQuery.eq('institution_id', institutionFilter);
+    }
+
+    // Execute all queries in parallel
+    const [
+      { data: recentSessions },
+      { data: recentAssignments },
+      { data: recentFeedback },
+      { data: recentStudents },
+    ] = await Promise.all([
+      sessionsQuery,
+      assignmentsQuery,
+      feedbackQuery,
+      studentsQuery,
+    ]);
 
     // Combine and format activities
     const activities: Activity[] = [];

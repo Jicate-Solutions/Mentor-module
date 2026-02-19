@@ -193,7 +193,7 @@ export default function DegreesPage() {
 
           {/* Stats */}
           <div className="flex items-center gap-2 text-sm text-neutral-600">
-            <span className="font-semibold text-brand-green">
+            <span className="font-medium text-brand-green">
               {searchQuery ? filteredDegrees.length : total}
             </span>
             {searchQuery ? 'matching' : 'total'} degrees
@@ -221,7 +221,7 @@ export default function DegreesPage() {
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
                 <div>
-                  <p className="text-sm font-semibold text-red-800">Error loading data</p>
+                  <p className="text-sm font-medium text-red-800">Error loading data</p>
                   <p className="text-sm text-red-600 mt-1">{error}</p>
                 </div>
               </div>
@@ -235,22 +235,22 @@ export default function DegreesPage() {
                 <table className="w-full">
                   <thead className="bg-neutral-50/80 border-b border-neutral-200/70">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Degree Name
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Abbreviation
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Level
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Status
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Created
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wide">
                         Updated
                       </th>
                     </tr>
@@ -364,7 +364,7 @@ export default function DegreesPage() {
           {!loading && !error && filteredDegrees.length === 0 && (
             <div className="text-center py-12">
               <div className="text-5xl mb-4">🎓</div>
-              <h3 className="text-lg font-semibold text-neutral-800 mb-2">
+              <h3 className="text-lg font-medium text-neutral-800 mb-2">
                 {searchQuery ? 'No matching degrees' : 'No degrees found'}
               </h3>
               <p className="text-sm text-neutral-600">

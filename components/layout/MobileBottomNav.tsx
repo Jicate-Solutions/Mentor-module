@@ -163,7 +163,7 @@ const MobileBottomNav = () => {
           - Brand colors: green primary
           ============================================ */}
       <nav
-        className="fixed bottom-4 left-4 right-16 bg-gradient-to-r from-[rgba(11,109,65,0.95)] to-[rgba(14,140,82,0.9)] backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-full lg:hidden z-50"
+        className="fixed bottom-4 left-4 right-16 bg-gradient-to-r from-[#0b6d41] to-[#0e8c52] border border-green-700 shadow-lg rounded-full lg:hidden z-50"
         role="navigation"
         aria-label="Mobile navigation"
       >
@@ -180,11 +180,11 @@ const MobileBottomNav = () => {
                 {/* Active: Horizontal Pill with Icon + Label
                     Inactive: Just Icon */}
                 {active ? (
-                  <div className="flex flex-row items-center justify-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[rgba(251,251,238,0.95)] backdrop-blur-md shadow-lg border border-brand-green/30 transition-all duration-300">
+                  <div className="flex flex-row items-center justify-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#fbfbee] shadow-lg border border-brand-green/30 transition-all duration-300">
                     <div className="text-brand-green transition-all duration-300">
                       {item.icon}
                     </div>
-                    <span className="text-xs font-semibold text-brand-green whitespace-nowrap">
+                    <span className="text-xs font-medium text-brand-green whitespace-nowrap">
                       {item.label}
                     </span>
                   </div>
@@ -210,7 +210,7 @@ const MobileBottomNav = () => {
       <div className="fixed bottom-4 right-4 lg:hidden z-50">
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className="relative flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-brand-yellow to-[rgba(255,222,89,0.9)] shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95 border-2 border-white/30"
+          className="relative flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-brand-yellow to-[rgba(255,222,89,0.9)] shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95 border-2 border-gray-200"
           aria-label="More options"
         >
           {showMenu ? (
@@ -233,11 +233,11 @@ const MobileBottomNav = () => {
           ============================================ */}
       {showMenu && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 animate-in fade-in duration-200 lg:hidden"
+          className="fixed inset-0 bg-black/40 z-40 animate-in fade-in duration-200 lg:hidden"
           onClick={() => setShowMenu(false)}
         >
           <div
-            className="absolute bottom-[4.5rem] right-4 bg-white/98 backdrop-blur-lg rounded-2xl shadow-2xl border border-neutral-200 overflow-hidden animate-in slide-in-from-bottom-4 duration-300"
+            className="absolute bottom-[4.5rem] right-4 bg-white rounded-2xl shadow-2xl border border-neutral-200 overflow-hidden animate-in slide-in-from-bottom-4 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col p-2 min-w-[180px]">
@@ -245,7 +245,7 @@ const MobileBottomNav = () => {
               {user && (
                 <>
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-200">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-green to-primary-600 text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-green to-primary-600 text-white flex items-center justify-center text-sm font-medium flex-shrink-0">
                       {user.full_name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">

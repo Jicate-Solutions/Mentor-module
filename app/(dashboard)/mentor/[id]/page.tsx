@@ -190,7 +190,7 @@ export default function MentorDetailPage() {
               )}
             </div>
             {/* Title */}
-            <h3 className={`text-lg font-semibold mb-2 ${isPermissionError ? 'text-amber-800' : 'text-red-800'}`}>
+            <h3 className={`text-lg font-medium mb-2 ${isPermissionError ? 'text-amber-800' : 'text-red-800'}`}>
               {isPermissionError ? 'Access Denied' : 'Error Loading Profile'}
             </h3>
             {/* Message */}

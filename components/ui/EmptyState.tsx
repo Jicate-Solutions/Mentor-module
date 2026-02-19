@@ -96,7 +96,7 @@ export default function EmptyState({
 
       {/* Content */}
       <div className="max-w-md">
-        <h3 className="text-xl font-semibold text-brand-green mb-2">
+        <h3 className="text-xl font-medium text-brand-green mb-2">
           {title}
         </h3>
         {description && (

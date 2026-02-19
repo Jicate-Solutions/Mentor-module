@@ -220,7 +220,7 @@ async function testStudentsData() {
       addResult('Students Data', 'PASS', `Fetched ${students.length} students from ${Object.keys(byInstitution).length} institutions (sample)`, {
         total: students.length,
         institutions: Object.keys(byInstitution).length,
-        totalAvailable: data.metadata?.total || 'unknown',
+        totalAvailable: data.count || data.pagination?.total || data.metadata?.total || 'unknown',
         breakdown: Object.entries(byInstitution).map(([instId, studentList]) => ({
           institution: instId,
           count: studentList.length,
@@ -228,7 +228,7 @@ async function testStudentsData() {
       });
 
       log(`✅ Students: ${students.length} students found (sample page)`, 'green');
-      log(`   📊 Total available: ${data.metadata?.total || 'unknown'}`, 'blue');
+      log(`   📊 Total available: ${data.count || data.pagination?.total || data.metadata?.total || 'unknown'}`, 'blue');
       log(`   📊 Across ${Object.keys(byInstitution).length} institutions`, 'blue');
 
       if (Object.keys(byInstitution).length > 0) {

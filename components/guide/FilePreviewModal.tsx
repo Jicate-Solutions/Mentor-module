@@ -150,13 +150,13 @@ export default function FilePreviewModal({ document, isOpen, onClose }: FilePrev
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <FileText className="w-16 h-16 text-neutral-300 mb-4" />
-        <h3 className="text-lg font-semibold text-neutral-900 mb-2">Preview not available</h3>
+        <h3 className="text-lg font-medium text-neutral-900 mb-2">Preview not available</h3>
         <p className="text-sm text-neutral-600 mb-6 text-center max-w-md">
           Preview is not supported for this file type. Please download the file to view it.
         </p>
         <button
           onClick={handleDownload}
-          className="px-6 py-3 bg-brand-green text-white font-semibold rounded-lg hover:bg-primary-700 transition flex items-center gap-2"
+          className="px-6 py-3 bg-brand-green text-white font-medium rounded-lg hover:bg-primary-700 transition flex items-center gap-2"
         >
           <Download className="w-4 h-4" />
           Download File
@@ -166,14 +166,14 @@ export default function FilePreviewModal({ document, isOpen, onClose }: FilePrev
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">
           <div className="flex-1 min-w-0 mr-4">
-            <h2 className="text-xl font-bold text-brand-green truncate">{document.title}</h2>
+            <h2 className="text-xl font-medium text-brand-green truncate">{document.title}</h2>
             <div className="flex items-center gap-3 mt-1 text-sm text-neutral-600">
-              <span className="uppercase font-semibold">{document.file_type}</span>
+              <span className="uppercase font-medium">{document.file_type}</span>
               {document.file_size && (
                 <>
                   <span>•</span>
@@ -188,7 +188,7 @@ export default function FilePreviewModal({ document, isOpen, onClose }: FilePrev
           <div className="flex items-center gap-2">
             <button
               onClick={handleDownload}
-              className="p-2.5 bg-brand-yellow text-brand-green font-semibold rounded-lg hover:bg-accent-400 transition"
+              className="p-2.5 bg-brand-yellow text-brand-green font-medium rounded-lg hover:bg-accent-400 transition"
               aria-label="Download file"
               title="Download"
             >
@@ -227,7 +227,7 @@ export default function FilePreviewModal({ document, isOpen, onClose }: FilePrev
         {document.description && (
           <div className="p-6 border-t border-neutral-200 bg-neutral-50">
             <p className="text-sm text-neutral-700">
-              <span className="font-semibold">Description:</span> {document.description}
+              <span className="font-medium">Description:</span> {document.description}
             </p>
           </div>
         )}

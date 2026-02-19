@@ -274,7 +274,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
       // Assign each student
       let successCount = 0;
       let failCount = 0;
-      const failedStudents: string[] = [];
+      const errorMessages: string[] = [];
 
       for (const student of selectedStudents) {
         try {
@@ -291,17 +291,17 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
             successCount++;
           } else {
             failCount++;
-            failedStudents.push(student.name);
             try {
               const errorData = await response.json();
-              console.error(`Failed to assign ${student.name}:`, errorData.error);
-            } catch (e) {
-              console.error(`Failed to assign ${student.name}`);
+              // Use the actual API error message (e.g. "KAVIPRIYA M is already assigned to Dr. Radhika")
+              errorMessages.push(errorData.error || `Could not assign ${student.name}`);
+            } catch {
+              errorMessages.push(`Could not assign ${student.name}`);
             }
           }
         } catch (error) {
           failCount++;
-          failedStudents.push(student.name);
+          errorMessages.push(`Could not assign ${student.name}`);
           console.error(`Error assigning ${student.name}:`, error);
         }
       }
@@ -311,7 +311,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
         await fetchStudents();
       }
 
-      // Show results
+      // Show results with actual error messages from the API
       if (successCount > 0 && failCount === 0) {
         toast.success(
           'Learners assigned',
@@ -320,13 +320,13 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
       } else if (successCount > 0 && failCount > 0) {
         toast.warning(
           'Partial success',
-          `Assigned ${successCount}, failed ${failCount}. Already assigned: ${failedStudents.join(', ')}`
+          `Assigned ${successCount}. ${errorMessages.join('. ')}`
         );
       } else {
         toast.error(
           'Assignment failed',
-          failedStudents.length > 0
-            ? `Could not assign: ${failedStudents.join(', ')}. They may already be assigned.`
+          errorMessages.length > 0
+            ? errorMessages.join('. ')
             : 'Could not assign any learners'
         );
       }
@@ -589,7 +589,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
                           className="w-10 h-10 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center font-bold">
+                        <div className="w-10 h-10 rounded-full bg-brand-yellow text-brand-green flex items-center justify-center font-medium">
                           {student.name.charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -597,7 +597,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
                       {/* Info */}
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-brand-green">
+                          <h4 className="font-medium text-brand-green">
                             {student.name}
                           </h4>
                         </div>

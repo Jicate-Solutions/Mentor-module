@@ -68,7 +68,8 @@ async function main() {
   // Test various endpoints
   const endpoints = [
     // Learners API
-    { name: 'Learners/Students', url: `${BASE_URL}/api-management/learners/profiles?page=1&limit=1` },
+    { name: 'Learners/Students (Profiles)', url: `${BASE_URL}/api-management/learners/profiles?page=1&limit=1` },
+    { name: 'Students (Legacy/Alt)', url: `${BASE_URL}/api-management/students?page=1&limit=1` },
     // Staff API
     { name: 'Staff', url: `${BASE_URL}/api-management/staff?page=1&limit=1` },
     // Organizations API

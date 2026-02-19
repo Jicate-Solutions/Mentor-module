@@ -26,9 +26,12 @@ interface JKKNStudent {
   last_name?: string;
   lastName?: string;
   email?: string;
+  student_email?: string;
+  college_email?: string;
   roll_number?: string;
   rollNumber?: string;
   roll_no?: string;
+  register_number?: string;
   institution_id?: string;
   institution?: { id?: string; institution_id?: string; name?: string };
   department_id?: string;
@@ -36,7 +39,9 @@ interface JKKNStudent {
   year?: string;
   current_year?: string;
   academic_year?: string;
+  admission_year?: string | number;
   section?: string;
+  section_id?: string;
   is_active?: boolean;
 }
 
@@ -82,34 +87,43 @@ function transformStudent(jkknStudent: JKKNStudent): LocalStudent {
   const lastName = jkknStudent.last_name || jkknStudent.lastName || '';
   const fullName = `${firstName} ${lastName}`.trim() || 'Unknown';
 
-  const rollNumber = jkknStudent.roll_number || jkknStudent.rollNumber || jkknStudent.roll_no || jkknStudent.id;
-  const year = jkknStudent.year || jkknStudent.current_year || jkknStudent.academic_year || '';
+  // Use roll number, fallback to register number, then ID
+  let rollNumber = jkknStudent.roll_number || jkknStudent.rollNumber || jkknStudent.roll_no || jkknStudent.register_number || jkknStudent.id;
+  // Clean up roll number if it's empty string
+  if (!rollNumber || rollNumber.trim() === '') {
+    rollNumber = jkknStudent.register_number || jkknStudent.id;
+  }
+
+  const year = jkknStudent.year || jkknStudent.current_year || jkknStudent.academic_year || String(jkknStudent.admission_year || '');
+
+  // Prefer college email, then student email, then email, then fallback
+  const email = jkknStudent.college_email || jkknStudent.student_email || jkknStudent.email || `${jkknStudent.id}@student.jkkn.ac.in`;
 
   return {
     id: jkknStudent.id,
     name: fullName,
     roll_number: rollNumber,
-    email: jkknStudent.email || `${jkknStudent.id}@student.jkkn.ac.in`,
+    email: email,
     department_id: extractDepartmentId(jkknStudent),
     institution_id: extractInstitutionId(jkknStudent),
     year: year,
-    section: jkknStudent.section || '',
+    section: jkknStudent.section || jkknStudent.section_id || '', // Section ID is often mapped to section in simpler setups
     is_active: jkknStudent.is_active !== false, // Default to true
   };
 }
 
 async function fetchAllStudentsFromJKKN(): Promise<JKKNStudent[]> {
-  console.log('\n📥 Fetching ALL students from JKKN API...');
-  console.log(`   Using endpoint: ${BASE_URL}/api-management/students`);
+  console.log('\n📥 Fetching ALL students from JKKN API (Learners Profiles)...');
+  console.log(`   Using endpoint: ${BASE_URL}/api-management/learners/profiles`);
 
   let allStudents: JKKNStudent[] = [];
   let currentPage = 1;
   const maxLimit = 1000;
   let hasMore = true;
-  const maxPages = 20; // Safety limit (20 pages × 1000 = 20,000 max students)
+  const maxPages = 50; // Increased safety limit as learners API might have more data
 
   while (hasMore && currentPage <= maxPages) {
-    const url = `${BASE_URL}/api-management/students?page=${currentPage}&limit=${maxLimit}`;
+    const url = `${BASE_URL}/api-management/learners/profiles?page=${currentPage}&limit=${maxLimit}`;
 
     try {
       const response = await fetch(url, {
@@ -122,8 +136,7 @@ async function fetchAllStudentsFromJKKN(): Promise<JKKNStudent[]> {
 
       if (!response.ok) {
         if (response.status === 404) {
-          console.error(`❌ JKKN API returned 404 - students endpoint may not exist or be accessible`);
-          console.log('   Try checking the API endpoint or permissions');
+          console.error(`❌ JKKN API returned 404 - endpoint may not exist`);
           break;
         }
         console.error(`❌ Failed to fetch students page ${currentPage}: ${response.status} ${response.statusText}`);
@@ -141,7 +154,12 @@ async function fetchAllStudentsFromJKKN(): Promise<JKKNStudent[]> {
       hasMore = pageStudents.length === maxLimit;
 
       // Also check metadata if available
-      if (data.metadata) {
+      if (data.pagination) {
+        const totalPages = data.pagination.totalPages;
+        if (totalPages && currentPage >= totalPages) {
+          hasMore = false;
+        }
+      } else if (data.metadata) {
         const totalPages = data.metadata.totalPages || data.metadata.total_pages;
         if (totalPages && currentPage >= totalPages) {
           hasMore = false;

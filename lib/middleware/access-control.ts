@@ -557,9 +557,12 @@ export async function canAccessFacultyProfile(
       return true;
 
     case 'institution':
-      // For mentor in-charge, check against assigned institution
+      // For mentor in-charge, check against assigned institution OR their own institution
       if (userAccess.isMentorIncharge) {
-        return targetInstitutionId === userAccess.mentorInchargeInstitutionId;
+        return (
+          targetInstitutionId === userAccess.mentorInchargeInstitutionId ||
+          targetInstitutionId === userAccess.institutionId
+        );
       }
       // For other institution-level roles, check against user's institution
       return targetInstitutionId === userAccess.institutionId;

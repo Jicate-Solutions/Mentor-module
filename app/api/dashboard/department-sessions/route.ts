@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch ALL students from JKKN API (not just those in Supabase)
     // This ensures we get complete student counts including those not yet synced
-    const studentsUrl = `${baseUrl}/api-management/students?page=1&limit=10000`;
+    const studentsUrl = `${baseUrl}/api-management/learners/profiles?lifecycle_status=active,alumni,exited,graduated,inactive&page=1&limit=10000`;
     const studentsResponse = await fetch(studentsUrl, {
       method: 'GET',
       headers: {

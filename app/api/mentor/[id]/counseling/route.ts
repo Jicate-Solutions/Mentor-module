@@ -492,13 +492,14 @@ export async function POST(
 
     console.log('[Counseling API] ✅ Authorization passed');
 
-    // Fetch real student email from JKKN API
-    console.log('[Counseling API] Fetching student details from JKKN API:', student.id);
-    let realStudentEmail = student.email || '';
+    // Fetch real student email from JKKN API (Learners Profiles endpoint)
+    console.log('[Counseling API] Fetching student details from JKKN Learners API:', student.id);
+    let realStudentEmail = '';
     let realStudentData = null;
 
     try {
-      const jkknResponse = await fetch(`${process.env.NEXT_PUBLIC_MYJKKN_BASE_URL}/api-management/students/${student.id}`, {
+      // Correct endpoint: /api-management/learners/profiles/[id] (NOT /students/)
+      const jkknResponse = await fetch(`${process.env.NEXT_PUBLIC_MYJKKN_BASE_URL}/api-management/learners/profiles/${student.id}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_MYJKKN_API_KEY}`,
@@ -509,14 +510,27 @@ export async function POST(
 
       if (jkknResponse.ok) {
         const jkknData = await jkknResponse.json();
-        realStudentData = jkknData.data;
-        realStudentEmail = realStudentData?.email || realStudentData?.college_email || student.email || '';
+        // Single profile endpoint returns data directly OR wrapped in data property
+        realStudentData = jkknData.data || jkknData;
+
+        // Prefer college_email over student_email (personal email)
+        realStudentEmail = realStudentData?.college_email || realStudentData?.student_email || '';
         console.log('[Counseling API] ✅ Got real student email from JKKN API:', realStudentEmail);
+        console.log('[Counseling API] JKKN API fields:', {
+          student_email: realStudentData?.student_email,
+          college_email: realStudentData?.college_email,
+          name: `${realStudentData?.first_name || ''} ${realStudentData?.last_name || ''}`.trim(),
+        });
       } else {
-        console.warn('[Counseling API] Could not fetch student from JKKN API, will use provided email');
+        console.warn('[Counseling API] Could not fetch student from JKKN Learners API:', jkknResponse.status, jkknResponse.statusText);
       }
     } catch (jkknError) {
-      console.error('[Counseling API] Error fetching student from JKKN API:', jkknError);
+      console.error('[Counseling API] Error fetching student from JKKN Learners API:', jkknError);
+    }
+
+    // Fallback to request email only if it's not a placeholder
+    if (!realStudentEmail && student.email && !student.email.includes('@student.jkkn.ac.in')) {
+      realStudentEmail = student.email;
     }
 
     // Verify student exists in Supabase (should exist from assignment)
@@ -535,12 +549,16 @@ export async function POST(
 
     // If student exists but has placeholder email, update with real email from JKKN API
     if (studentData && realStudentEmail && studentData.email?.includes('@student.jkkn.ac.in')) {
-      console.log('[Counseling API] Updating student with real email from JKKN API');
+      console.log('[Counseling API] Updating student with real email from JKKN API:', realStudentEmail);
+      // JKKN API uses first_name/last_name, not name
+      const jkknName = realStudentData
+        ? `${realStudentData.first_name || ''} ${realStudentData.last_name || ''}`.trim()
+        : '';
       const { data: updatedStudent } = await supabaseAdmin
         .from('students')
         .update({
           email: realStudentEmail,
-          name: realStudentData?.name || studentData.name,
+          name: jkknName || studentData.name,
           updated_at: new Date().toISOString(),
         })
         .eq('id', student.id)
@@ -562,16 +580,21 @@ export async function POST(
         institution_id: institutionId
       });
 
+      // JKKN API uses first_name/last_name, not name
+      const jkknStudentName = realStudentData
+        ? `${realStudentData.first_name || ''} ${realStudentData.last_name || ''}`.trim()
+        : '';
+
       const { error: createError } = await supabaseAdmin
         .from('students')
         .upsert({
           id: student.id,
-          name: realStudentData?.name || student.name,
-          email: realStudentEmail || `${student.id}@student.jkkn.ac.in`,  // Use real email from JKKN API
-          roll_number: realStudentData?.roll_number || student.rollNumber || student.id,
+          name: jkknStudentName || student.name,
+          email: realStudentEmail || `${student.id}@student.jkkn.ac.in`,
+          roll_number: realStudentData?.roll_number || realStudentData?.register_number || student.rollNumber || student.id,
           department_id: departmentId,
           institution_id: institutionId,
-          year: realStudentData?.year || student.year || null,
+          year: realStudentData?.admission_year ? String(realStudentData.admission_year) : (student.year || null),
           is_active: true,
           updated_at: new Date().toISOString(),
         }, {
@@ -648,21 +671,31 @@ export async function POST(
       .single();
 
     const mentorName = mentorUserData?.full_name || 'Your Mentor';
-    // Use the real email from JKKN API, fallback to Supabase, then request data
-    const studentEmail = realStudentEmail || studentData?.email || student.email || '';
+
+    // Use the real email from JKKN API, fallback to Supabase (only if not placeholder)
+    const supabaseEmail = studentData?.email;
+    const isPlaceholder = (email: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@student\.jkkn\.ac\.in$/i.test(email);
+
+    // Priority: JKKN API email > Supabase email (if real) > request email (if real)
+    const studentEmail = realStudentEmail ||
+      (supabaseEmail && !isPlaceholder(supabaseEmail) ? supabaseEmail : '') ||
+      (student.email && !isPlaceholder(student.email) ? student.email : '') ||
+      '';
 
     console.log('[Counseling API] Email resolution:', {
       realStudentEmail,
-      supabaseEmail: studentData?.email,
+      supabaseEmail,
       requestEmail: student.email,
-      finalEmail: studentEmail
+      finalEmail: studentEmail,
+      isPlaceholder: isPlaceholder(studentEmail || ''),
     });
 
-    // Send session creation notification email (primary notification)
-    // Send emails if we have a valid email address (not empty and not a placeholder)
+    // Send emails only if we have a REAL email address (not empty and not a placeholder)
     const hasValidEmail = studentEmail &&
                          studentEmail.trim() !== '' &&
-                         studentEmail.includes('@');
+                         studentEmail.includes('@') &&
+                         !isPlaceholder(studentEmail);
 
     if (hasValidEmail) {
       console.log('[Counseling API] ✅ Valid email found, sending notifications:', studentEmail);
@@ -700,8 +733,9 @@ export async function POST(
       console.warn(`[Counseling API] ⚠️ Skipping emails - no valid email for student ${student.id}`);
       console.warn(`[Counseling API] Email details:`, {
         studentEmail,
-        isPlaceholder: studentEmail?.includes('@student.jkkn.ac.in'),
+        isPlaceholderEmail: studentEmail ? isPlaceholder(studentEmail) : 'empty',
         realEmailFromJKKN: realStudentEmail,
+        supabaseEmail,
       });
     }
 

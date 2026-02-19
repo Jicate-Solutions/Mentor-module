@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Section, Container, Hero } from '@/components/ui/PageLayout';
@@ -29,112 +29,50 @@ export default function MentorListingPage() {
   const [hasSearched, setHasSearched] = useState(false);
   const [profileAccessLevel, setProfileAccessLevel] = useState<string>('own_only');
 
-  // Filter configuration - Fetch options from JKKN API
-  const filterConfigs: FilterConfig[] = [
-    {
-      key: 'institution',
-      label: 'Institution',
-      type: 'dropdown',
-      options: async () => {
-        try {
-          const response = await fetch('/api/jkkn/institutions', {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-            },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            return (data.data || []).map((inst: any) => ({
-              value: inst.institution_name || inst.name,
-              label: inst.institution_name || inst.name,
-            }));
-          }
-        } catch (error) {
-          console.error('Error loading institutions:', error);
-        }
-        return [];
+  // Derive filter options from the actual loaded mentor data
+  // This guarantees filter values match the data exactly
+  const filterConfigs: FilterConfig[] = useMemo(() => {
+    const uniqueInstitutions = [...new Set(mentors.map(m => m.institution).filter(Boolean))].sort();
+    const uniqueDepartments = [...new Set(mentors.map(m => m.department).filter(Boolean))].sort();
+    const uniqueDesignations = [...new Set(mentors.map(m => m.designation).filter(Boolean))].sort();
+
+    return [
+      {
+        key: 'institution',
+        label: 'Institution',
+        type: 'dropdown' as const,
+        options: uniqueInstitutions.map(inst => ({ value: inst!, label: inst! })),
+        placeholder: 'All institutions',
+        width: 'w-56',
       },
-      placeholder: 'All institutions',
-      width: 'w-56',
-    },
-    {
-      key: 'department',
-      label: 'Department',
-      type: 'dropdown',
-      options: async () => {
-        try {
-          const response = await fetch('/api/jkkn/departments', {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-            },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            return (data.data || []).map((dept: any) => ({
-              value: dept.department_name || dept.name,
-              label: dept.department_name || dept.name,
-            }));
-          }
-        } catch (error) {
-          console.error('Error loading departments:', error);
-        }
-        return [];
+      {
+        key: 'department',
+        label: 'Department',
+        type: 'dropdown' as const,
+        options: uniqueDepartments.map(dept => ({ value: dept, label: dept })),
+        placeholder: 'All departments',
+        width: 'w-56',
       },
-      placeholder: 'All departments',
-      width: 'w-56',
-    },
-    {
-      key: 'program',
-      label: 'Program',
-      type: 'dropdown',
-      options: async () => {
-        try {
-          const response = await fetch('/api/jkkn/programs', {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-            },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            return (data.data || []).map((prog: any) => ({
-              value: prog.program_name || prog.name,
-              label: prog.program_name || prog.name,
-            }));
-          }
-        } catch (error) {
-          console.error('Error loading programs:', error);
-        }
-        return [];
+      {
+        key: 'designation',
+        label: 'Designation',
+        type: 'dropdown' as const,
+        options: uniqueDesignations.map(des => ({ value: des, label: des })),
+        placeholder: 'All designations',
+        width: 'w-56',
       },
-      placeholder: 'All programs',
-      width: 'w-56',
-    },
-    {
-      key: 'designation',
-      label: 'Designation',
-      type: 'dropdown',
-      options: [
-        { value: 'professor', label: 'Professor' },
-        { value: 'associate professor', label: 'Associate Professor' },
-        { value: 'assistant professor', label: 'Assistant Professor' },
-        { value: 'lecturer', label: 'Lecturer' },
-        { value: 'tutor', label: 'Tutor' },
-      ],
-      placeholder: 'All designations',
-      width: 'w-56',
-    },
-  ];
+    ];
+  }, [mentors]);
 
   // Initialize filters hook
   const { filters, setFilter, clearAllFilters, activeFiltersCount } = useFilters({}, true);
 
-  // Auto-load own profile for faculty users
+  // Auto-load mentors so filters populate with real data
   useEffect(() => {
-    if (accessToken && user?.role === 'faculty' && !hasSearched) {
-      // Faculty users should see their own profile automatically
+    if (accessToken && !hasSearched) {
       searchMentors('*');
     }
-  }, [accessToken, user?.role]);
+  }, [accessToken]);
 
   // Fetch mentors from JKKN API based on search query
   const searchMentors = async (query: string) => {
@@ -178,7 +116,6 @@ export default function MentorListingPage() {
 
       const mentorData = data.mentors || [];
       setMentors(mentorData);
-      setFilteredMentors(mentorData);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to search mentors';
       console.error('[MentorPage] Error searching mentors:', errorMessage);
@@ -208,13 +145,6 @@ export default function MentorListingPage() {
       );
     }
 
-    // Apply program filter
-    if (filters.program && filters.program !== '') {
-      filtered = filtered.filter((mentor) =>
-        mentor.program?.toLowerCase().includes((filters.program as string).toLowerCase())
-      );
-    }
-
     // Apply designation filter
     if (filters.designation && filters.designation !== '') {
       filtered = filtered.filter((mentor) =>
@@ -226,176 +156,179 @@ export default function MentorListingPage() {
   }, [filters, mentors]);
 
   // Debounced search - only search after user stops typing for 500ms
-  // Also trigger search when filters change
   useEffect(() => {
-    // If no search query and no active filters, show empty state
-    if (!searchQuery.trim() && activeFiltersCount === 0) {
-      setMentors([]);
-      setHasSearched(false);
+    if (!searchQuery.trim()) {
+      // Don't clear data if filters are active or data is already loaded
+      if (activeFiltersCount === 0 && user?.role !== 'faculty') {
+        setMentors([]);
+        setHasSearched(false);
+      }
       return;
     }
 
-    // If filters are active but no search query, use a wildcard search
-    const queryToSearch = searchQuery.trim() || '*';
-
     const timer = setTimeout(() => {
-      searchMentors(queryToSearch);
+      searchMentors(searchQuery.trim());
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, filters, accessToken]);
+  }, [searchQuery, accessToken]);
+
+  // Load data when filters are applied but no data exists yet
+  useEffect(() => {
+    if (activeFiltersCount > 0 && !hasSearched && accessToken) {
+      searchMentors('*');
+    }
+  }, [activeFiltersCount, hasSearched, accessToken]);
 
   const handleMentorClick = (mentorId: string) => {
     router.push(`/mentor/${mentorId}`);
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
-      {/* Hero Header */}
-      <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
-        <h1 className="text-[22px] font-medium text-brand-green mb-2 tracking-tight">
-          {user?.role === 'faculty' ? 'My Profile' : 'Mentor Directory'}
-        </h1>
-        <p className="text-neutral-600 text-[14px] leading-relaxed">
-          {user?.role === 'faculty'
-            ? 'View and manage your mentor profile, assigned students, and counseling sessions'
-            : 'Connect with faculty mentors to manage student counseling, guidance, and academic progress'}
-        </p>
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-6">
+      {/* Compact Gradient Header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-4 lg:p-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between relative z-10">
+          <div className="flex-1">
+            <h1 className="text-[18px] lg:text-[22px] font-medium text-neutral-900 mb-1 tracking-tight">
+              {user?.role === 'faculty' ? 'My Profile' : 'Mentor Directory'}
+            </h1>
+            <p className="text-neutral-600 text-[13px] lg:text-[14px] leading-relaxed">
+              {user?.role === 'faculty'
+                ? 'View and manage your mentor profile, assigned learners, and counseling sessions'
+                : 'Connect with learning facilitators to manage counseling, guidance, and academic progress'}
+            </p>
+            {user?.role === 'faculty' && (
+              <p className="text-amber-700 text-[12px] lg:text-[13px] mt-2 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                You can only view your own profile. Contact HOD for broader access.
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-brand-yellow/20 rounded-full blur-3xl" />
       </div>
 
-      {/* Faculty Role Information Banner */}
-      {user?.role === 'faculty' && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-sm text-amber-800">
-              <strong>Note:</strong> As faculty, you can only view and manage your own profile. Contact your HOD or administrator if you need access to other faculty profiles.
+      {/* Search, Filters & View Toggle - Combined */}
+      <div className="bg-white rounded-xl border border-neutral-200/50 p-4 lg:p-5 shadow-sm">
+        <div className="flex flex-col gap-3 lg:gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+            <SearchInput
+              placeholder="Search mentors by name, email, department..."
+              value={searchQuery}
+              onChange={setSearchQuery}
+              className="w-full sm:flex-1"
+            />
+
+            {/* View Toggle - Hidden on mobile */}
+            <div className="hidden lg:flex items-center gap-1 rounded-lg border border-neutral-200/50 p-0.5">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`px-3 py-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center gap-1.5 text-sm font-medium ${
+                  viewMode === 'grid'
+                    ? 'bg-accent-100/80 text-brand-green shadow-sm'
+                    : 'text-neutral-500 hover:bg-neutral-100/70'
+                }`}
+                aria-label="Grid view"
+                aria-pressed={viewMode === 'grid'}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Grid
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`px-3 py-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center gap-1.5 text-sm font-medium ${
+                  viewMode === 'table'
+                    ? 'bg-accent-100/80 text-brand-green shadow-sm'
+                    : 'text-neutral-500 hover:bg-neutral-100/70'
+                }`}
+                aria-label="Table view"
+                aria-pressed={viewMode === 'table'}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Table
+              </button>
+            </div>
+          </div>
+
+          <HorizontalFilterBar
+            filters={filterConfigs}
+            filterState={filters}
+            onFilterChange={setFilter}
+            onClearAll={clearAllFilters}
+            activeFiltersCount={activeFiltersCount}
+            loading={loading}
+          />
+        </div>
+      </div>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <ErrorState
+          title="Failed to load mentors"
+          message={error}
+          onRetry={() => window.location.reload()}
+        />
+      )}
+
+      {/* Initial State - No Search (only show for non-faculty users) */}
+      {!hasSearched && !loading && !error && user?.role !== 'faculty' && (
+        <div className="bg-white rounded-xl border border-neutral-200/50 p-10 lg:p-12 text-center shadow-sm">
+          <div className="max-w-md mx-auto">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-neutral-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-semibold text-neutral-800 mb-1.5">
+              Search for Mentors
+            </h3>
+            <p className="text-neutral-600 text-sm">
+              Use the search bar above to find learning facilitators by name, email, or department.
             </p>
           </div>
         </div>
       )}
 
-      <div className="space-y-6">
-        {/* Search Bar and View Toggle */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <SearchInput
-            placeholder="Search mentors by name, email, department..."
-            value={searchQuery}
-            onChange={setSearchQuery}
-            className="w-full sm:max-w-xl"
-          />
-
-          {/* View Toggle - Hidden on mobile */}
-          <div className="hidden lg:flex items-center gap-1 bg-white rounded-xl border border-neutral-200/50 p-1 shadow-sm">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-4 py-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center gap-2 text-sm font-medium ${
-                viewMode === 'grid'
-                  ? 'bg-accent-100/80 text-brand-green shadow-sm'
-                  : 'text-neutral-600 hover:bg-neutral-100/70'
-              }`}
-              aria-label="Grid view"
-              aria-pressed={viewMode === 'grid'}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-              <span className="hidden sm:inline">Grid</span>
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`px-4 py-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center gap-2 text-sm font-medium ${
-                viewMode === 'table'
-                  ? 'bg-accent-100/80 text-brand-green shadow-sm'
-                  : 'text-neutral-600 hover:bg-neutral-100/70'
-              }`}
-              aria-label="Table view"
-              aria-pressed={viewMode === 'table'}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              <span className="hidden sm:inline">Table</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Horizontal Filter Bar - Always visible */}
-        <HorizontalFilterBar
-          filters={filterConfigs}
-          filterState={filters}
-          onFilterChange={setFilter}
-          onClearAll={clearAllFilters}
-          activeFiltersCount={activeFiltersCount}
-          loading={loading}
+      {/* No Results After Search */}
+      {hasSearched && !loading && !error && mentors.length === 0 && (
+        <NoSearchResults
+          searchQuery={searchQuery}
+          onClearSearch={() => setSearchQuery('')}
         />
+      )}
 
-        {/* Loading State */}
-        {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <SkeletonCard key={i} />
-            ))}
+      {/* Mentors Content */}
+      {!loading && !error && filteredMentors.length > 0 && (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-neutral-600">
+              Found <span className="font-semibold text-brand-green">{filteredMentors.length}</span> mentor{filteredMentors.length !== 1 ? 's' : ''}
+              {activeFiltersCount > 0 && (
+                <span className="text-xs ml-2">({mentors.length} total)</span>
+              )}
+            </p>
           </div>
-        )}
 
-        {/* Error State */}
-        {error && (
-          <ErrorState
-            title="Failed to load mentors"
-            message={error}
-            onRetry={() => window.location.reload()}
-          />
-        )}
-
-        {/* Initial State - No Search (only show for non-faculty users) */}
-        {!hasSearched && !loading && !error && user?.role !== 'faculty' && (
-          <div className="bg-white rounded-xl border border-neutral-200/50 p-12 lg:p-16 text-center shadow-sm">
-            <div className="max-w-md mx-auto">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-neutral-100 flex items-center justify-center">
-                <svg className="w-10 h-10 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-neutral-800 mb-2">
-                Search for Mentors
-              </h3>
-              <p className="text-neutral-600 text-sm mb-1">
-                Use the search bar above to find faculty mentors by name, email, department, or designation.
-              </p>
-              <p className="text-xs text-neutral-500">
-                Results will appear from the JKKN database as you type.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* No Results After Search */}
-        {hasSearched && !loading && !error && mentors.length === 0 && (
-          <NoSearchResults
-            searchQuery={searchQuery}
-            onClearSearch={() => setSearchQuery('')}
-          />
-        )}
-
-        {/* Mentors Content */}
-        {!loading && !error && filteredMentors.length > 0 && (
-          <>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-neutral-600">
-                Found <span className="font-semibold text-brand-green">{filteredMentors.length}</span> mentor{filteredMentors.length !== 1 ? 's' : ''}
-                {activeFiltersCount > 0 && (
-                  <span className="text-xs ml-2">({mentors.length} total)</span>
-                )}
-              </p>
-            </div>
-
-            {/* Grid View */}
-            {viewMode === 'grid' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredMentors.map((mentor) => (
+          {/* Grid View */}
+          {viewMode === 'grid' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredMentors.map((mentor) => (
                   <div
                     key={mentor.id}
                     onClick={() => handleMentorClick(mentor.id)}
@@ -589,9 +522,8 @@ export default function MentorListingPage() {
                   hoverable
                 />
               )}
-          </>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }

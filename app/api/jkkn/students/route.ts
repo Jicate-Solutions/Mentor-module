@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
       console.log('[Students API] Fetching ALL students across multiple pages...');
 
       while (hasMore && currentPage <= maxPages) {
-        const url = `${baseUrl}/api-management/learners/profiles?lifecycle_status=active,alumni,exited&page=${currentPage}&limit=${maxLimit}`;
+        const url = `${baseUrl}/api-management/learners/profiles?lifecycle_status=active,alumni,exited,graduated,inactive&page=${currentPage}&limit=${maxLimit}`;
 
         console.log(`[Students API] Fetching page ${currentPage}...`);
 
@@ -269,7 +269,7 @@ export async function GET(request: NextRequest) {
       };
     } else {
       // For small limits, fetch single page
-      const url = `${baseUrl}/api-management/learners/profiles?lifecycle_status=active,alumni,exited&page=1&limit=${requestedLimit}`;
+      const url = `${baseUrl}/api-management/learners/profiles?lifecycle_status=active,alumni,exited,graduated,inactive&page=1&limit=${requestedLimit}`;
 
       const response = await fetch(url, {
         method: 'GET',

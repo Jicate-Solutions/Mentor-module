@@ -25,8 +25,8 @@ export async function GET(
 
     const { id: studentId } = await params;
 
-    // Call JKKN API
-    const url = `${baseUrl}/api-management/students/${studentId}`;
+    // Call JKKN Learners API (correct endpoint for student profiles)
+    const url = `${baseUrl}/api-management/learners/profiles/${studentId}`;
 
     const response = await fetch(url, {
       method: 'GET',

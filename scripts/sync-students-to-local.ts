@@ -26,16 +26,19 @@ interface JKKNStudent {
   last_name?: string;
   lastName?: string;
   email?: string;
-  student_email?: string;
-  college_email?: string;
+  student_email?: string;  // Primary email field from JKKN Learners API
+  college_email?: string;  // Available in detailed profile endpoint
+  student_mobile?: string;
   roll_number?: string;
   rollNumber?: string;
   roll_no?: string;
   register_number?: string;
+  program_id?: string;
   institution_id?: string;
   institution?: { id?: string; institution_id?: string; name?: string };
   department_id?: string;
   department?: { id?: string; department_id?: string; name?: string };
+  semester_id?: string;
   year?: string;
   current_year?: string;
   academic_year?: string;
@@ -43,6 +46,7 @@ interface JKKNStudent {
   section?: string;
   section_id?: string;
   is_active?: boolean;
+  lifecycle_status?: string;
 }
 
 interface LocalStudent {
@@ -96,7 +100,7 @@ function transformStudent(jkknStudent: JKKNStudent): LocalStudent {
 
   const year = jkknStudent.year || jkknStudent.current_year || jkknStudent.academic_year || String(jkknStudent.admission_year || '');
 
-  // Prefer college email, then student email, then email, then fallback
+  // Priority: college_email > student_email (personal) > email > fallback
   const email = jkknStudent.college_email || jkknStudent.student_email || jkknStudent.email || `${jkknStudent.id}@student.jkkn.ac.in`;
 
   return {
@@ -118,12 +122,12 @@ async function fetchAllStudentsFromJKKN(): Promise<JKKNStudent[]> {
 
   let allStudents: JKKNStudent[] = [];
   let currentPage = 1;
-  const maxLimit = 1000;
+  const maxLimit = 200; // JKKN API caps at 200 per page
   let hasMore = true;
   const maxPages = 50; // Increased safety limit as learners API might have more data
 
   while (hasMore && currentPage <= maxPages) {
-    const url = `${BASE_URL}/api-management/learners/profiles?page=${currentPage}&limit=${maxLimit}`;
+    const url = `${BASE_URL}/api-management/learners/profiles?page=${currentPage}&limit=${maxLimit}&lifecycle_status=active,alumni,exited,graduated,inactive`;
 
     try {
       const response = await fetch(url, {

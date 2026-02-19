@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
 
     while (hasMore && currentPage <= maxPages) {
       // Use the correct Learners API endpoint: /api-management/learners/profiles
-      const url = `${baseUrl}/api-management/learners/profiles?page=${currentPage}&limit=${maxLimit}&lifecycle_status=active,alumni,exited`;
+      const url = `${baseUrl}/api-management/learners/profiles?page=${currentPage}&limit=${maxLimit}&lifecycle_status=active,alumni,exited,graduated,inactive`;
 
       console.log(`[Student Search] Fetching page ${currentPage}...`);
 

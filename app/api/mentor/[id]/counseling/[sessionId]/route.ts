@@ -175,9 +175,10 @@ export async function PUT(
 
     if ((dateChanged || timeChanged) && updatedSession.student?.email) {
       const studentEmail = updatedSession.student.email;
+      const isPlaceholder = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@student\.jkkn\.ac\.in$/i.test(studentEmail);
 
-      // Send to all valid emails
-      if (studentEmail && studentEmail.includes('@')) {
+      // Send to valid, non-placeholder emails only
+      if (studentEmail && studentEmail.includes('@') && !isPlaceholder) {
         // Get mentor name for email
         const { data: mentorUserData } = await supabaseAdmin
           .from('users')
@@ -306,7 +307,9 @@ export async function DELETE(
     }
 
     // Send cancellation notification email before deleting (asynchronously, non-blocking)
-    if (existingSession.student?.email && existingSession.student.email.includes('@')) {
+    const cancelStudentEmail = existingSession.student?.email || '';
+    const isCancelPlaceholder = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@student\.jkkn\.ac\.in$/i.test(cancelStudentEmail);
+    if (cancelStudentEmail && cancelStudentEmail.includes('@') && !isCancelPlaceholder) {
       // Get mentor name for email
       const { data: mentorUserData } = await supabaseAdmin
         .from('users')

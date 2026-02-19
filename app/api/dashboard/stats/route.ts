@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     if (apiKey) {
       try {
         // Fetch first page to get metadata with total count
-        const studentsUrl = `${baseUrl}/api-management/students?page=1&limit=1`;
+        const studentsUrl = `${baseUrl}/api-management/learners/profiles?page=1&limit=1`;
         const studentsResponse = await fetch(studentsUrl, {
           method: 'GET',
           headers: {
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
         if (studentsResponse.ok) {
           const studentsData = await studentsResponse.json();
-          totalStudents = studentsData.metadata?.total || 0;
+          totalStudents = studentsData.metadata?.total || studentsData.pagination?.total || 0;
           // Assume all students from JKKN API are active
           activeStudents = totalStudents;
           console.log(`[Dashboard Stats] Fetched student count from JKKN API: ${totalStudents} total students`);

@@ -12,7 +12,6 @@
       "Bash(robocopy:*)",
       "Bash(for dir in students staff institutions departments programs degrees courses reports settings)",
       "Bash(do if [ -d \"C:\\Users\\brabu\\Documents\\GitHub\\Mentor-module\\app$dir\" ])",
-      "Bash(then cp -r \"C:\\Users\\brabu\\Documents\\GitHub\\Mentor-module\\app$dir\" \"C:\\Users\\brabu\\Documents\\GitHub\\Mentor-module\\app\\(dashboard)$dir\")",
       "Bash(fi)",
       "Bash(done)",
       "Read(//c/Users/brabu/Pictures/Screenshots/**)",
@@ -109,7 +108,10 @@
       "Bash(head:*)",
       "Bash(claude update:*)",
       "mcp__fetch__imageFetch",
-      "Bash(if not exist \"C:\\\\Users\\\\Admin\\\\.claude\\\\plans\" mkdir \"C:\\\\Users\\\\Admin\\\\.claude\\\\plans\")"
+      "Bash(if not exist \"C:\\\\Users\\\\Admin\\\\.claude\\\\plans\" mkdir \"C:\\\\Users\\\\Admin\\\\.claude\\\\plans\")",
+      "Bash(grep:*)",
+      "Bash(DOTENV_CONFIG_PATH=.env.local npx tsx:*)",
+      "Bash(tasklist:*)"
     ],
     "deny": [],
     "ask": []

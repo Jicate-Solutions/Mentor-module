@@ -490,64 +490,170 @@ export async function POST(
       }
     }
 
-    // Check if student is already assigned to this mentor
+    // Check if student is already assigned to ANY mentor
     console.log('[Students API] Checking for existing assignment:', {
       mentor_id: mentor!.id,
       student_id: student.id
     });
 
-    const { data: existing, error: checkError } = await supabaseAdmin
+    const { data: existingAssignment, error: checkError } = await supabaseAdmin
       .from('mentor_students')
-      .select('id')
-      .eq('mentor_id', mentor!.id)
+      .select(`
+        id,
+        mentor_id,
+        mentors:mentor_id (
+          id,
+          users:user_id (
+            full_name
+          )
+        )
+      `)
       .eq('student_id', student.id)
-      .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors when no record found
+      .maybeSingle();
 
     console.log('[Students API] Existing assignment check result:', {
-      exists: !!existing,
-      existingId: existing?.id,
+      exists: !!existingAssignment,
+      existingMentorId: existingAssignment?.mentor_id,
       error: checkError?.message
     });
 
-    if (existing) {
-      console.log('[Students API] ❌ Student already assigned - rejecting duplicate assignment');
-      return NextResponse.json(
-        { error: 'Student already assigned to this mentor' },
-        { status: 400 }
-      );
+    if (existingAssignment) {
+      const assignedMentorName = (existingAssignment as any).mentors?.users?.full_name || 'another mentor';
+      const isSameMentor = existingAssignment.mentor_id === mentor!.id;
+
+      if (isSameMentor) {
+        console.log('[Students API] ❌ Student already assigned to this mentor');
+        return NextResponse.json(
+          { error: `${student.name} is already assigned to this mentor` },
+          { status: 409 }
+        );
+      } else {
+        console.log(`[Students API] ❌ Student already assigned to ${assignedMentorName}`);
+        return NextResponse.json(
+          { error: `${student.name} is already assigned to ${assignedMentorName}` },
+          { status: 409 }
+        );
+      }
     }
 
     console.log('[Students API] ✅ No existing assignment found - proceeding with assignment');
 
     // First, upsert student data into students table with required fields
-    console.log('[Students API] Upserting student with values:', {
+    const studentData = {
       id: student.id,
       name: student.name,
+      email: student.email || `${student.id}@student.jkkn.ac.in`,
+      roll_number: (student.rollNumber && student.rollNumber !== 'N/A') ? student.rollNumber : student.id,
       department_id: departmentId,
-      institution_id: institutionId
+      institution_id: institutionId,
+      year: student.year || null,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    };
+
+    console.log('[Students API] Upserting student with values:', {
+      id: studentData.id,
+      name: studentData.name,
+      roll_number: studentData.roll_number,
+      department_id: studentData.department_id,
+      institution_id: studentData.institution_id,
     });
 
-    const { error: studentUpsertError } = await supabaseAdmin
+    let { error: studentUpsertError } = await supabaseAdmin
       .from('students')
-      .upsert({
-        id: student.id,
-        name: student.name,
-        email: student.email || `${student.id}@student.jkkn.ac.in`,
-        roll_number: (student.rollNumber && student.rollNumber !== 'N/A') ? student.rollNumber : student.id,
-        department_id: departmentId,
-        institution_id: institutionId,
-        year: student.year || null,
-        is_active: true,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'id', // If student exists, update their data
-      });
+      .upsert(studentData, { onConflict: 'id' });
+
+    // Handle duplicate roll_number from stale/old student rows
+    if (studentUpsertError?.code === '23505') {
+      console.warn('[Students API] Duplicate key conflict, checking for stale row...');
+      const rollNum = studentData.roll_number;
+
+      // Find the conflicting student
+      const { data: conflicting } = await supabaseAdmin
+        .from('students')
+        .select('id, name, roll_number, email')
+        .eq('roll_number', rollNum)
+        .maybeSingle();
+
+      if (conflicting && conflicting.id !== student.id) {
+        // Different ID = stale row from old bulk import. JKKN API is source of truth.
+        console.log(`[Students API] Stale student row found: id=${conflicting.id}, name=${conflicting.name}, email=${conflicting.email}`);
+        console.log(`[Students API] Replacing with JKKN API student: id=${student.id}, name=${student.name}`);
+
+        // Check if the stale row is assigned to a mentor
+        const { data: staleAssignment } = await supabaseAdmin
+          .from('mentor_students')
+          .select('id, mentor_id')
+          .eq('student_id', conflicting.id);
+
+        if (staleAssignment && staleAssignment.length > 0) {
+          // Clean up stale mentor-student assignments
+          await supabaseAdmin
+            .from('mentor_students')
+            .delete()
+            .eq('student_id', conflicting.id);
+          console.log(`[Students API] Cleaned up ${staleAssignment.length} stale mentor assignment(s) for old student ${conflicting.id}`);
+        }
+
+        // Delete the stale student row
+        const { error: deleteError } = await supabaseAdmin
+          .from('students')
+          .delete()
+          .eq('id', conflicting.id);
+
+        if (deleteError) {
+          console.error('[Students API] Failed to delete stale student row:', deleteError);
+          return NextResponse.json(
+            { error: `Failed to replace stale student record: ${deleteError.message}` },
+            { status: 500 }
+          );
+        }
+        console.log(`[Students API] Deleted stale student row ${conflicting.id}`);
+
+        // Retry the upsert with the real JKKN API data
+        const { error: retryError } = await supabaseAdmin
+          .from('students')
+          .upsert(studentData, { onConflict: 'id' });
+
+        if (retryError) {
+          console.error('[Students API] Retry upsert failed:', retryError);
+          return NextResponse.json(
+            { error: `Failed to save student data after cleanup: ${retryError.message}` },
+            { status: 500 }
+          );
+        }
+
+        console.log(`[Students API] ✅ Successfully replaced stale row and upserted student ${student.id}`);
+        // Clear the error so we proceed to assignment
+        studentUpsertError = null;
+      } else if (conflicting) {
+        // Same roll number, different scenario — check if assigned to another mentor
+        const { data: assignment } = await supabaseAdmin
+          .from('mentor_students')
+          .select(`
+            mentors:mentor_id (
+              users:user_id ( full_name )
+            )
+          `)
+          .eq('student_id', conflicting.id)
+          .maybeSingle();
+
+        const assignedTo = (assignment as any)?.mentors?.users?.full_name;
+        const errorMsg = assignedTo
+          ? `${student.name} (${rollNum}) is already in the system as ${conflicting.name} and assigned to ${assignedTo}`
+          : `${student.name} could not be added — roll number ${rollNum} already belongs to ${conflicting.name}`;
+
+        return NextResponse.json(
+          { error: errorMsg, details: studentUpsertError.message },
+          { status: 409 }
+        );
+      }
+    }
 
     if (studentUpsertError) {
       console.error('[Students API] Error upserting student:', studentUpsertError);
-      console.error('[Students API] Full error:', JSON.stringify(studentUpsertError, null, 2));
       return NextResponse.json(
-        { error: 'Failed to store student data', details: studentUpsertError.message },
+        { error: `Failed to save student data: ${studentUpsertError.message}`, details: studentUpsertError.message },
         { status: 500 }
       );
     }

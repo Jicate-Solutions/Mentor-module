@@ -1,0 +1,851 @@
+import { createAdminClient } from '@/lib/supabase/server';
+import type { CounselingSession } from '@/lib/types/mentor';
+import { resolveMentorByJkknId } from './resolve';
+import { ActivityLogger } from '@/lib/services/activity-logger';
+import { sendSessionCreatedEmail, sendSessionUpdatedEmail, sendSessionCancelledEmail } from '@/lib/email/send-session-notification';
+import { sendFeedbackRequestEmail } from '@/lib/email/send-feedback-request';
+import { randomBytes } from 'crypto';
+
+export interface CreateSessionInput {
+  session_name: string;
+  date: string;
+  time: string;
+  notes?: string;
+  student_ids?: string[];
+}
+
+export interface UpdateSessionInput {
+  session_name?: string;
+  date?: string;
+  time?: string;
+  notes?: string;
+  status?: 'scheduled' | 'completed' | 'cancelled';
+  attachment_url?: string;
+}
+
+export interface FeedbackInput {
+  counselingQueries: string;
+  actionTaken: string;
+  attachmentUrl?: string;
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+const PLACEHOLDER_EMAIL_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@student\.jkkn\.ac\.in$/i;
+
+function isPlaceholderEmail(email: string): boolean {
+  return PLACEHOLDER_EMAIL_RE.test(email);
+}
+
+function isValidStudentEmail(email: string): boolean {
+  return (
+    !!email &&
+    email.trim() !== '' &&
+    email.includes('@') &&
+    !isPlaceholderEmail(email)
+  );
+}
+
+/**
+ * Build a department UUID → name map from the JKKN departments API.
+ */
+async function buildDepartmentMap(apiKey: string, baseUrl: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  try {
+    const res = await fetch(
+      `${baseUrl}/api-management/organizations/departments?page=1&limit=500`,
+      { headers: { 'Authorization': `Bearer ${apiKey}` }, next: { revalidate: 60 } }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      (data.data || []).forEach((dept: any) => {
+        const id = dept.id || dept.department_id;
+        const name = dept.name || dept.department_name || 'Unknown Department';
+        if (id) map.set(id, name);
+      });
+    }
+  } catch (e) {
+    console.warn('[counseling service] Failed to fetch departments:', e);
+  }
+  return map;
+}
+
+/**
+ * Transform a raw Supabase counseling_sessions row (with student + feedback joins)
+ * to the CounselingSession frontend interface.
+ */
+function transformSession(
+  session: any,
+  departmentMap: Map<string, string>,
+  realEmailMap: Map<string, { email: string; year: string }>
+): CounselingSession {
+  const deptId = session.student?.department_id;
+  const departmentName = deptId ? (departmentMap.get(deptId) || deptId) : '';
+
+  let studentEmail = session.student?.email || '';
+  let studentYear = session.student?.year || '';
+
+  if (session.student?.id && realEmailMap.has(session.student.id)) {
+    const resolved = realEmailMap.get(session.student.id)!;
+    if (resolved.email) studentEmail = resolved.email;
+    if (resolved.year && !studentYear) studentYear = resolved.year;
+  }
+  if (isPlaceholderEmail(studentEmail)) studentEmail = '';
+
+  return {
+    id: session.id,
+    mentorId: session.mentor_id,
+    studentId: session.student_id,
+    studentName: session.student?.name || 'Unknown Student',
+    student: session.student
+      ? {
+          id: session.student.id,
+          name: session.student.name,
+          email: studentEmail,
+          rollNumber: session.student.roll_number || '',
+          department: departmentName,
+          year: studentYear,
+          avatar: session.student.avatar_url || undefined,
+          isActive: session.student.is_active ?? true,
+        }
+      : undefined,
+    sessionName: session.session_name,
+    date: session.date,
+    time: session.time,
+    notes: session.notes || undefined,
+    attachment: session.attachment_url || undefined,
+    status: session.status,
+    feedback: (() => {
+      // Supabase can return the related row as an object OR an array depending on
+      // join multiplicity. Normalise to a single object to guard against both shapes.
+      const fb = Array.isArray(session.feedback)
+        ? session.feedback[0]
+        : session.feedback;
+      if (!fb) return undefined;
+      return {
+        counselingQueries: fb.counseling_queries,
+        actionTaken: fb.action_taken,
+        attachmentUrl: fb.attachment_url || undefined,
+        submittedAt: fb.submitted_at,
+        submittedBy: fb.submitted_by || '',
+      };
+    })(),
+    createdAt: session.created_at,
+    updatedAt: session.updated_at,
+  };
+}
+
+// ── getSessionsForMentor ──────────────────────────────────────────────────────
+
+/**
+ * Fetch all counseling sessions for a mentor (identified by JKKN staff ID).
+ * Resolves department UUIDs and placeholder emails from the JKKN Learners API.
+ */
+export async function getSessionsForMentor(mentorJkknId: string): Promise<CounselingSession[]> {
+  const supabaseAdmin = createAdminClient();
+  const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+  const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+  const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
+  if (!resolved) {
+    console.log(`[getSessionsForMentor] No mentor found for JKKN ID ${mentorJkknId}`);
+    return [];
+  }
+
+  const { data: sessions, error } = await supabaseAdmin
+    .from('counseling_sessions')
+    .select(`
+      *,
+      student:students!student_id (
+        id,
+        name,
+        roll_number,
+        email,
+        year,
+        section,
+        department_id,
+        avatar_url,
+        is_active
+      ),
+      feedback:session_feedback!session_id (
+        id,
+        counseling_queries,
+        action_taken,
+        submitted_by,
+        submitted_at
+      )
+    `)
+    .eq('mentor_id', resolved.mentor.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch counseling sessions: ${error.message}`);
+  }
+
+  // Build department map
+  const departmentMap = apiKey
+    ? await buildDepartmentMap(apiKey, baseUrl)
+    : new Map<string, string>();
+
+  // Resolve placeholder student emails from JKKN Learners API
+  const realEmailMap = new Map<string, { email: string; year: string }>();
+  if (apiKey && sessions && sessions.length > 0) {
+    const studentsNeedingEmail = [
+      ...new Set(
+        (sessions as any[])
+          .filter((s: any) => s.student?.email && isPlaceholderEmail(s.student.email))
+          .map((s: any) => s.student.id as string)
+      ),
+    ].slice(0, 20);
+
+    if (studentsNeedingEmail.length > 0) {
+      await Promise.allSettled(
+        studentsNeedingEmail.map(async (studentId: string) => {
+          try {
+            const res = await fetch(
+              `${baseUrl}/api-management/learners/profiles/${studentId}`,
+              { headers: { 'Authorization': `Bearer ${apiKey}` }, cache: 'no-store' }
+            );
+            if (res.ok) {
+              const data = await res.json();
+              const profile = data.data || data;
+              const realEmail = profile?.college_email || profile?.student_email || '';
+              const year = profile?.admission_year ? String(profile.admission_year) : '';
+              if (realEmail || year) realEmailMap.set(studentId, { email: realEmail, year });
+            }
+          } catch {
+            // silently skip
+          }
+        })
+      );
+      console.log(`[getSessionsForMentor] Resolved ${realEmailMap.size}/${studentsNeedingEmail.length} student emails`);
+    }
+  }
+
+  return (sessions as any[]).map(s => transformSession(s, departmentMap, realEmailMap));
+}
+
+// ── createSession ─────────────────────────────────────────────────────────────
+
+/**
+ * Create a new counseling session.
+ *
+ * The `mentorJkknId` is the JKKN staff ID.
+ * `sessionData.student_ids` is expected to have exactly one element (the student's JKKN ID).
+ * `createdBy` is the Supabase user UUID of the authenticated user creating the session.
+ *
+ * This function:
+ *  - Resolves the JKKN mentor ID to a Supabase mentor record
+ *  - Fetches real student email from JKKN Learners API
+ *  - Upserts the student row (creating it if it doesn't exist)
+ *  - Inserts the counseling_sessions row
+ *  - Logs the activity
+ *  - Sends a session-created notification email (non-blocking)
+ */
+export async function createSession(
+  mentorJkknId: string,
+  data: CreateSessionInput & { student: any },
+  createdBy: string
+): Promise<CounselingSession> {
+  const supabaseAdmin = createAdminClient();
+  const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+  const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+  // Resolve JKKN ID → user + mentor
+  const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
+  if (!resolved) {
+    throw new Error('Mentor not found. Please ensure the mentor has been set up correctly.');
+  }
+
+  const { student, session_name: sessionName, date, time, notes } = data as any;
+  const departmentId = resolved.mentor.department_id || '00000000-0000-0000-0000-000000000001';
+  const institutionId = resolved.mentor.institution_id || '00000000-0000-0000-0000-000000000001';
+
+  // ── Fetch real student email from JKKN Learners API ──────────────────────
+  let realStudentEmail = '';
+  let realStudentData: any = null;
+
+  if (apiKey) {
+    try {
+      const jkknResponse = await fetch(
+        `${baseUrl}/api-management/learners/profiles/${student.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store',
+        }
+      );
+      if (jkknResponse.ok) {
+        const jkknData = await jkknResponse.json();
+        realStudentData = jkknData.data || jkknData;
+        realStudentEmail =
+          realStudentData?.college_email || realStudentData?.student_email || '';
+        console.log('[createSession] Got real student email:', realStudentEmail);
+      }
+    } catch (jkknError) {
+      console.error('[createSession] Error fetching student from JKKN Learners API:', jkknError);
+    }
+  }
+
+  // Fallback to request email if it's real (not a placeholder)
+  if (!realStudentEmail && student.email && !student.email.includes('@student.jkkn.ac.in')) {
+    realStudentEmail = student.email;
+  }
+
+  // ── Verify/create student in Supabase ─────────────────────────────────────
+  let { data: studentData, error: studentError } = await supabaseAdmin
+    .from('students')
+    .select('id, name, roll_number, email')
+    .eq('id', student.id)
+    .single();
+
+  // Update placeholder email with real email if available
+  if (studentData && realStudentEmail && studentData.email?.includes('@student.jkkn.ac.in')) {
+    const jkknName = realStudentData
+      ? `${realStudentData.first_name || ''} ${realStudentData.last_name || ''}`.trim()
+      : '';
+    const { data: updatedStudent } = await supabaseAdmin
+      .from('students')
+      .update({
+        email: realStudentEmail,
+        name: jkknName || studentData.name,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', student.id)
+      .select('id, name, roll_number, email')
+      .single();
+    if (updatedStudent) studentData = updatedStudent;
+  }
+
+  // Create student record if not found
+  if (studentError || !studentData) {
+    const jkknStudentName = realStudentData
+      ? `${realStudentData.first_name || ''} ${realStudentData.last_name || ''}`.trim()
+      : '';
+
+    const rollNum = String(
+      realStudentData?.roll_number ||
+      realStudentData?.register_number ||
+      student.rollNumber ||
+      student.id
+    );
+
+    // First check if student already exists by roll_number under a different UUID
+    // (e.g. previously bulk-imported with a locally generated UUID).
+    // Deleting the old record risks FK violations (individual_development_plans etc.),
+    // so we update in-place and use the existing UUID instead.
+    const { data: existingByRoll } = await supabaseAdmin
+      .from('students')
+      .select('id, name, roll_number, email')
+      .eq('roll_number', rollNum)
+      .maybeSingle();
+
+    if (existingByRoll && existingByRoll.id !== student.id) {
+      console.log(`[createSession] Student found by roll_number (id=${existingByRoll.id}), updating in-place`);
+      await supabaseAdmin
+        .from('students')
+        .update({
+          name: jkknStudentName || student.name,
+          email: realStudentEmail || existingByRoll.email,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingByRoll.id);
+      studentData = existingByRoll;
+    } else {
+      const { error: createError } = await supabaseAdmin
+        .from('students')
+        .upsert(
+          {
+            id: student.id,
+            name: jkknStudentName || student.name,
+            email: realStudentEmail || `${student.id}@student.jkkn.ac.in`,
+            roll_number: rollNum,
+            department_id: departmentId,
+            institution_id: institutionId,
+            year: realStudentData?.admission_year
+              ? String(realStudentData.admission_year)
+              : student.year || null,
+            is_active: true,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
+
+      if (createError) {
+        throw new Error(`Failed to store student data: ${createError.message}`);
+      }
+
+      // Re-fetch for name
+      const { data: refetched } = await supabaseAdmin
+        .from('students')
+        .select('id, name, roll_number, email')
+        .eq('id', student.id)
+        .single();
+      studentData = refetched;
+    }
+  }
+
+  // ── Insert counseling session ──────────────────────────────────────────────
+  const { data: newSession, error: insertError } = await supabaseAdmin
+    .from('counseling_sessions')
+    .insert({
+      mentor_id: resolved.mentor.id,
+      student_id: studentData?.id || student.id,
+      session_name: sessionName,
+      date,
+      time,
+      notes: notes || null,
+      attachment_url: (data as any).attachment || null,
+      status: 'scheduled',
+      created_by: createdBy,
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    throw new Error(`Failed to create counseling session: ${insertError.message}`);
+  }
+
+  console.log(`[createSession] Created session ${newSession.id}`);
+
+  // ── Log activity (non-blocking) ───────────────────────────────────────────
+  ActivityLogger.sessionCreated(
+    resolved.mentor.id,
+    newSession.id,
+    sessionName,
+    student.id,
+    createdBy
+  ).catch(e => console.error('[createSession] Activity log failed:', e));
+
+  // ── Send email notification (non-blocking) ────────────────────────────────
+  const { data: mentorUserData } = await supabaseAdmin
+    .from('users')
+    .select('full_name')
+    .eq('id', resolved.user.id)
+    .single();
+  const mentorName = mentorUserData?.full_name || 'Your Mentor';
+
+  const supabaseEmail = studentData?.email;
+  const finalStudentEmail =
+    realStudentEmail ||
+    (supabaseEmail && !isPlaceholderEmail(supabaseEmail) ? supabaseEmail : '') ||
+    (student.email && !isPlaceholderEmail(student.email) ? student.email : '') ||
+    '';
+
+  if (isValidStudentEmail(finalStudentEmail)) {
+    sendSessionCreatedEmail({
+      studentEmail: finalStudentEmail,
+      studentName: studentData?.name || student.name || 'Student',
+      studentId: student.id,
+      mentorName,
+      mentorId: resolved.mentor.id,
+      sessionId: newSession.id,
+      sessionName,
+      sessionDate: date,
+      sessionTime: time,
+      sessionNotes: notes,
+      sessionStatus: 'scheduled',
+    }).catch(e => console.error('[createSession] Session email failed:', e));
+  } else {
+    console.warn(`[createSession] Skipping email — no valid address for student ${student.id}`);
+  }
+
+  // ── Transform and return ──────────────────────────────────────────────────
+  return {
+    id: newSession.id,
+    mentorId: newSession.mentor_id,
+    studentId: newSession.student_id,
+    studentName: studentData?.name || student.name || 'Unknown Student',
+    sessionName: newSession.session_name,
+    date: newSession.date,
+    time: newSession.time,
+    notes: newSession.notes || undefined,
+    attachment: newSession.attachment_url || undefined,
+    status: newSession.status,
+    createdAt: newSession.created_at,
+    updatedAt: newSession.updated_at,
+  };
+}
+
+// ── updateSession ─────────────────────────────────────────────────────────────
+
+/**
+ * Update a counseling session row identified by `sessionId`.
+ *
+ * Only fields present in `data` will be updated.
+ * Sends an email notification when date or time changes (non-blocking).
+ * The `mentorJkknId` is used to resolve the Supabase mentor record and verify
+ * the session belongs to that mentor.
+ */
+export async function updateSession(
+  sessionId: string,
+  mentorJkknId: string,
+  data: UpdateSessionInput
+): Promise<CounselingSession> {
+  const supabaseAdmin = createAdminClient();
+
+  // Resolve JKKN ID → user + mentor
+  const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
+  if (!resolved) {
+    throw new Error('Mentor not found');
+  }
+
+  // Fetch existing session (for email diff and ownership check)
+  const { data: existingSession } = await supabaseAdmin
+    .from('counseling_sessions')
+    .select(`
+      *,
+      student:students!student_id (
+        id,
+        name,
+        email
+      )
+    `)
+    .eq('id', sessionId)
+    .eq('mentor_id', resolved.mentor.id)
+    .single();
+
+  if (!existingSession) {
+    throw new Error('Session not found or access denied');
+  }
+
+  // Build sparse update payload
+  const updateData: Record<string, any> = { updated_at: new Date().toISOString() };
+  if (data.session_name) updateData.session_name = data.session_name;
+  if (data.date) updateData.date = data.date;
+  if (data.time) updateData.time = data.time;
+  if (data.notes !== undefined) updateData.notes = data.notes;
+  if (data.attachment_url !== undefined) updateData.attachment_url = data.attachment_url;
+  if (data.status) updateData.status = data.status;
+
+  const { data: updatedSession, error: updateError } = await supabaseAdmin
+    .from('counseling_sessions')
+    .update(updateData)
+    .eq('id', sessionId)
+    .select(`
+      *,
+      student:students!student_id (
+        id,
+        name,
+        roll_number,
+        email,
+        department_id,
+        year,
+        avatar_url,
+        is_active
+      ),
+      feedback:session_feedback!session_id (
+        id,
+        counseling_queries,
+        action_taken,
+        submitted_at,
+        submitted_by
+      )
+    `)
+    .single();
+
+  if (updateError) {
+    throw new Error(`Failed to update session: ${updateError.message}`);
+  }
+
+  console.log(`[updateSession] Updated session ${sessionId}`);
+
+  // ── Send email when date/time changes (non-blocking) ─────────────────────
+  const dateChanged = data.date && data.date !== existingSession.date;
+  const timeChanged = data.time && data.time !== existingSession.time;
+
+  if ((dateChanged || timeChanged) && updatedSession.student?.email) {
+    const studentEmail = updatedSession.student.email;
+    if (isValidStudentEmail(studentEmail)) {
+      const { data: mentorUserData } = await supabaseAdmin
+        .from('users')
+        .select('full_name')
+        .eq('id', resolved.user.id)
+        .single();
+      const mentorName = mentorUserData?.full_name || 'Your Mentor';
+
+      sendSessionUpdatedEmail({
+        studentEmail,
+        studentName: updatedSession.student.name,
+        studentId: updatedSession.student_id,
+        mentorName,
+        mentorId: resolved.mentor.id,
+        sessionId: updatedSession.id,
+        sessionName: updatedSession.session_name,
+        sessionDate: updatedSession.date,
+        sessionTime: updatedSession.time,
+        sessionNotes: updatedSession.notes || undefined,
+        sessionStatus: 'updated',
+        previousDate: dateChanged ? existingSession.date : undefined,
+        previousTime: timeChanged ? existingSession.time : undefined,
+      }).catch(e => console.error('[updateSession] Email notification failed:', e));
+    }
+  }
+
+  // ── Transform and return ──────────────────────────────────────────────────
+  return {
+    id: updatedSession.id,
+    mentorId: updatedSession.mentor_id,
+    studentId: updatedSession.student_id,
+    studentName: updatedSession.student?.name || 'Unknown Student',
+    sessionName: updatedSession.session_name,
+    date: updatedSession.date,
+    time: updatedSession.time,
+    notes: updatedSession.notes || undefined,
+    attachment: updatedSession.attachment_url || undefined,
+    status: updatedSession.status,
+    feedback: updatedSession.feedback
+      ? {
+          counselingQueries: updatedSession.feedback.counseling_queries,
+          actionTaken: updatedSession.feedback.action_taken,
+          submittedAt: updatedSession.feedback.submitted_at,
+          submittedBy: updatedSession.feedback.submitted_by || '',
+        }
+      : undefined,
+    createdAt: updatedSession.created_at,
+    updatedAt: updatedSession.updated_at,
+  };
+}
+
+// ── deleteSession ─────────────────────────────────────────────────────────────
+
+/**
+ * Delete a counseling session (CASCADE removes session_feedback rows).
+ * Sends a cancellation email to the student before deleting (non-blocking).
+ */
+export async function deleteSession(sessionId: string, mentorJkknId: string): Promise<void> {
+  const supabaseAdmin = createAdminClient();
+
+  const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
+  if (!resolved) {
+    throw new Error('Mentor not found');
+  }
+
+  // Fetch session for email and ownership check
+  const { data: existingSession } = await supabaseAdmin
+    .from('counseling_sessions')
+    .select(`
+      *,
+      student:students!student_id (
+        id,
+        name,
+        email
+      )
+    `)
+    .eq('id', sessionId)
+    .eq('mentor_id', resolved.mentor.id)
+    .single();
+
+  if (!existingSession) {
+    throw new Error('Session not found or access denied');
+  }
+
+  // Send cancellation email (non-blocking, before delete)
+  const cancelStudentEmail = existingSession.student?.email || '';
+  if (isValidStudentEmail(cancelStudentEmail)) {
+    const { data: mentorUserData } = await supabaseAdmin
+      .from('users')
+      .select('full_name')
+      .eq('id', resolved.user.id)
+      .single();
+    const mentorName = mentorUserData?.full_name || 'Your Mentor';
+
+    sendSessionCancelledEmail({
+      studentEmail: existingSession.student.email,
+      studentName: existingSession.student.name,
+      studentId: existingSession.student_id,
+      mentorName,
+      mentorId: resolved.mentor.id,
+      sessionId: existingSession.id,
+      sessionName: existingSession.session_name,
+      sessionDate: existingSession.date,
+      sessionTime: existingSession.time,
+      sessionNotes: existingSession.notes || undefined,
+      sessionStatus: 'cancelled',
+    }).catch(e => console.error('[deleteSession] Cancellation email failed:', e));
+  }
+
+  // Delete the session (CASCADE handles child rows)
+  const { error: deleteError } = await supabaseAdmin
+    .from('counseling_sessions')
+    .delete()
+    .eq('id', sessionId);
+
+  if (deleteError) {
+    throw new Error(`Failed to delete session: ${deleteError.message}`);
+  }
+
+  console.log(`[deleteSession] Deleted session ${sessionId}`);
+}
+
+// ── submitSessionFeedback ─────────────────────────────────────────────────────
+
+/**
+ * Submit mentor feedback for a completed counseling session.
+ *
+ * This function:
+ *  - Verifies the session belongs to the specified mentor (by JKKN ID)
+ *  - Inserts into `session_feedback`
+ *  - Updates session status to 'completed'
+ *  - Creates a student_feedback token row and sends a feedback request email (non-blocking)
+ */
+export async function submitSessionFeedback(
+  sessionId: string,
+  mentorJkknId: string,
+  data: FeedbackInput
+): Promise<void> {
+  const supabaseAdmin = createAdminClient();
+  const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+  const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+  const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
+  if (!resolved) {
+    throw new Error('Mentor not found');
+  }
+
+  // Verify session exists and belongs to this mentor
+  const { data: session, error: sessionError } = await supabaseAdmin
+    .from('counseling_sessions')
+    .select('id, mentor_id, student_id, session_name, date')
+    .eq('id', sessionId)
+    .eq('mentor_id', resolved.mentor.id)
+    .single();
+
+  if (sessionError || !session) {
+    throw new Error('Session not found or access denied');
+  }
+
+  // Build feedback row
+  const feedbackData: Record<string, any> = {
+    session_id: sessionId,
+    counseling_queries: data.counselingQueries,
+    action_taken: data.actionTaken,
+    submitted_by: resolved.user.id,
+  };
+  if (data.attachmentUrl) feedbackData.attachment_url = data.attachmentUrl;
+
+  const { error: feedbackError } = await supabaseAdmin
+    .from('session_feedback')
+    .insert(feedbackData);
+
+  if (feedbackError) {
+    if (feedbackError.code === '23505') {
+      throw new Error('Feedback already submitted for this session');
+    }
+    throw new Error(`Failed to submit feedback: ${feedbackError.message}`);
+  }
+
+  // Mark session as completed
+  const { error: updateError } = await supabaseAdmin
+    .from('counseling_sessions')
+    .update({ status: 'completed' })
+    .eq('id', sessionId);
+
+  if (updateError) {
+    console.error('[submitSessionFeedback] Error updating session status:', updateError);
+    // Don't throw — feedback was saved; status update failure is non-fatal
+  }
+
+  // Log activity (non-blocking)
+  ActivityLogger.feedbackSubmitted(
+    resolved.mentor.id,
+    sessionId,
+    session.session_name,
+    resolved.user.id
+  ).catch(e => console.error('[submitSessionFeedback] Activity log failed:', e));
+
+  // ── Send feedback request email to student (non-blocking) ─────────────────
+  (async () => {
+    try {
+      const { data: mentorUser } = await supabaseAdmin
+        .from('users')
+        .select('full_name')
+        .eq('id', resolved.user.id)
+        .single();
+      const mentorName = mentorUser?.full_name || 'Your Mentor';
+
+      const { data: studentRecord } = await supabaseAdmin
+        .from('students')
+        .select('id, name, email')
+        .eq('id', session.student_id)
+        .single();
+
+      let studentEmail = studentRecord?.email || '';
+      const studentName = studentRecord?.name || 'Student';
+
+      // If placeholder, try JKKN Learners API for real email
+      if ((!studentEmail || isPlaceholderEmail(studentEmail)) && apiKey) {
+        try {
+          const jkknRes = await fetch(
+            `${baseUrl}/api-management/learners/profiles/${session.student_id}`,
+            { headers: { Authorization: `Bearer ${apiKey}` } }
+          );
+          if (jkknRes.ok) {
+            const jkknData = await jkknRes.json();
+            const profile = jkknData.data || jkknData;
+            studentEmail = profile?.college_email || profile?.student_email || studentEmail;
+          }
+        } catch (e) {
+          console.warn('[submitSessionFeedback] Could not fetch student email from JKKN API:', e);
+        }
+      }
+
+      if (!isValidStudentEmail(studentEmail)) {
+        console.warn(`[submitSessionFeedback] Skipping feedback email — no valid email for student ${session.student_id}`);
+        return;
+      }
+
+      // Generate unique token (7-day expiry)
+      const feedbackToken = randomBytes(32).toString('hex');
+      const tokenExpiresAt = new Date();
+      tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 7);
+
+      const { data: studentFeedback, error: sfError } = await supabaseAdmin
+        .from('student_feedback')
+        .insert({
+          session_id: sessionId,
+          student_id: session.student_id,
+          mentor_id: resolved.mentor.id,
+          feedback_token: feedbackToken,
+          token_expires_at: tokenExpiresAt.toISOString(),
+          is_anonymous: false,
+        })
+        .select()
+        .single();
+
+      if (sfError) {
+        if (sfError.code === '23505') {
+          // Duplicate feedback token or session_id constraint — skip silently
+          console.warn('[submitSessionFeedback] student_feedback row already exists for this session, skipping');
+          return;
+        }
+        console.error('[submitSessionFeedback] Failed to create student_feedback record:', sfError);
+      }
+
+      const emailSent = await sendFeedbackRequestEmail({
+        studentEmail,
+        studentName,
+        mentorName,
+        sessionName: session.session_name,
+        sessionDate: session.date,
+        feedbackToken,
+      });
+
+      if (emailSent && studentFeedback?.id) {
+        await supabaseAdmin
+          .from('student_feedback')
+          .update({ email_sent_at: new Date().toISOString() })
+          .eq('id', studentFeedback.id);
+        console.log(`[submitSessionFeedback] Feedback request email sent to ${studentEmail}`);
+      } else if (!emailSent) {
+        console.error(`[submitSessionFeedback] Failed to send feedback email to ${studentEmail}`);
+      }
+    } catch (error) {
+      console.error('[submitSessionFeedback] Error sending feedback email:', error);
+    }
+  })();
+}

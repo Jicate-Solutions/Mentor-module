@@ -18,6 +18,8 @@ export type AccessLevel = 'super_admin' | 'institution_admin' | 'mentor' | 'stud
 
 export interface UserAccess {
   userId: string;
+  jkknUserId: string | null; // JKKN platform user ID (used to match against JKKN API staff records)
+  email: string | null; // User email — the only reliable cross-system key between auth and HR APIs
   role: AccessLevel;
   institutionId: string | null;
   departmentId: string | null;
@@ -58,6 +60,8 @@ export async function getUserAccess(): Promise<UserAccess | null> {
 
     return {
       userId: user.id,
+      jkknUserId: user.jkkn_user_id || null,
+      email: user.email || null,
       role: user.role as AccessLevel,
       institutionId: user.institution_id,
       departmentId: user.department_id,
@@ -421,19 +425,8 @@ export async function canAssignStudents(
     return true;
   }
 
-  // Faculty role: check if they are the target mentor (by profile_id match)
-  if (userAccess.role === 'faculty' || userAccess.role === 'mentor' || userAccess.role === 'hod') {
-    // Also check by profile_id for faculty who may have different user_id mapping
-    const { data: mentorByProfile } = await supabase
-      .from('mentors')
-      .select('id')
-      .eq('profile_id', userAccess.userId)
-      .maybeSingle();
-
-    if (mentorByProfile && mentorByProfile.id === targetMentorId) {
-      return true;
-    }
-  }
+  // Faculty/mentor/HOD: the initial user_id-based check above already covers this case.
+  // The profile_id column does not exist on the mentors table; this check is redundant.
 
   return false;
 }
@@ -607,6 +600,7 @@ export function getMentorListFilter(userAccess: UserAccess): {
   institutionId?: string | null;
   departmentId?: string | null;
   userId?: string;
+  jkknUserId?: string | null;
 } {
   const level = getProfileAccessLevel(userAccess);
 
@@ -633,6 +627,7 @@ export function getMentorListFilter(userAccess: UserAccess): {
       return {
         type: 'own',
         userId: userAccess.userId,
+        jkknUserId: userAccess.jkknUserId,
       };
   }
 }

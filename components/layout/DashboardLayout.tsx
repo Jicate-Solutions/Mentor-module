@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50/30 via-white to-accent-50/20 flex">
+    <div className="min-h-screen bg-neutral-50/60 flex">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}

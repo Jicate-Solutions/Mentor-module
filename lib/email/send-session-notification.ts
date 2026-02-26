@@ -244,6 +244,19 @@ async function sendSessionNotificationEmail(
 }
 
 /**
+ * Escape HTML special characters to prevent broken markup in email templates.
+ */
+function he(str: string | undefined): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * Build HTML email content
  */
 function buildHtmlEmail(
@@ -294,11 +307,11 @@ function buildHtmlEmail(
               </table>
 
               <p style="margin: 20px 0 15px 0; color: #333; font-size: 16px; line-height: 1.5;">
-                Hi ${data.studentName},
+                Hi ${he(data.studentName)},
               </p>
 
               <p style="margin: 0 0 25px 0; color: #333; font-size: 16px; line-height: 1.5;">
-                ${messageIntro}
+                ${he(messageIntro)}
               </p>
 
               <!-- Session Details Card -->
@@ -315,7 +328,7 @@ function buildHtmlEmail(
                           <strong style="color: #666; font-size: 14px;">Session Name:</strong>
                         </td>
                         <td style="padding: 8px 0; text-align: right;">
-                          <span style="color: #333; font-size: 14px;">${data.sessionName}</span>
+                          <span style="color: #333; font-size: 14px;">${he(data.sessionName)}</span>
                         </td>
                       </tr>
                       <tr>
@@ -323,7 +336,7 @@ function buildHtmlEmail(
                           <strong style="color: #666; font-size: 14px;">Mentor:</strong>
                         </td>
                         <td style="padding: 8px 0; text-align: right;">
-                          <span style="color: #333; font-size: 14px;">${data.mentorName}</span>
+                          <span style="color: #333; font-size: 14px;">${he(data.mentorName)}</span>
                         </td>
                       </tr>
                       ${notificationType !== 'session_cancelled' ? `
@@ -332,7 +345,7 @@ function buildHtmlEmail(
                           <strong style="color: #666; font-size: 14px;">Date:</strong>
                         </td>
                         <td style="padding: 8px 0; text-align: right;">
-                          <span style="color: #333; font-size: 14px;">${formattedDate}</span>
+                          <span style="color: #333; font-size: 14px;">${he(formattedDate)}</span>
                         </td>
                       </tr>
                       <tr>
@@ -340,7 +353,7 @@ function buildHtmlEmail(
                           <strong style="color: #666; font-size: 14px;">Time:</strong>
                         </td>
                         <td style="padding: 8px 0; text-align: right;">
-                          <span style="color: #333; font-size: 14px;">${data.sessionTime}</span>
+                          <span style="color: #333; font-size: 14px;">${he(data.sessionTime)}</span>
                         </td>
                       </tr>
                       ` : ''}
@@ -352,7 +365,7 @@ function buildHtmlEmail(
                       </tr>
                       <tr>
                         <td colspan="2" style="padding: 0 0 8px 0;">
-                          <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.5;">${data.sessionNotes}</p>
+                          <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.5;">${he(data.sessionNotes)}</p>
                         </td>
                       </tr>
                       ` : ''}
@@ -364,10 +377,10 @@ function buildHtmlEmail(
                       </tr>
                       <tr>
                         <td style="padding: 5px 0;">
-                          <span style="color: #999; font-size: 13px; text-decoration: line-through;">${formatDate(data.previousDate)}</span>
+                          <span style="color: #999; font-size: 13px; text-decoration: line-through;">${he(formatDate(data.previousDate))}</span>
                         </td>
                         <td style="padding: 5px 0; text-align: right;">
-                          <span style="color: #999; font-size: 13px; text-decoration: line-through;">${data.previousTime}</span>
+                          <span style="color: #999; font-size: 13px; text-decoration: line-through;">${he(data.previousTime)}</span>
                         </td>
                       </tr>
                       ` : ''}
@@ -379,7 +392,7 @@ function buildHtmlEmail(
                       </tr>
                       <tr>
                         <td colspan="2" style="padding: 0 0 8px 0;">
-                          <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.5;">${data.cancellationReason}</p>
+                          <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.5;">${he(data.cancellationReason)}</p>
                         </td>
                       </tr>
                       ` : ''}

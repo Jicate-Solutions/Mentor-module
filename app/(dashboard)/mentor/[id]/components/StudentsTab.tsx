@@ -13,6 +13,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton';
 import BulkImportModal from './BulkImportModal';
 import AddLearnerFilters from './AddLearnerFilters';
 import { useAddLearnerFilters } from '@/hooks/useAddLearnerFilters';
+import { useAssignedStudents } from '@/hooks/mentor/useAssignedStudents';
 import type { Student } from '@/lib/types/mentor';
 
 interface StudentsTabProps {
@@ -24,8 +25,12 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
   const toast = useToast();
   const { ConfirmationDialog, confirm } = useConfirm();
 
-  const [assignedStudents, setAssignedStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    students: assignedStudents,
+    loading,
+    refetch: fetchStudents,
+  } = useAssignedStudents(mentorId);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
 
@@ -45,36 +50,6 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     loading: filterLoading,
     activeFiltersCount,
   } = useAddLearnerFilters();
-
-  // Fetch assigned students (extracted for reuse)
-  const fetchStudents = useCallback(async () => {
-    if (!accessToken) return;
-
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/mentor/${mentorId}/students`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAssignedStudents(data.students || []);
-      } else {
-        toast.error('Failed to load learners', 'Could not fetch assigned learners');
-      }
-    } catch (error) {
-      toast.error('Error loading learners', 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, mentorId, toast]);
-
-  // Fetch assigned students on mount
-  useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
 
   // Search for students (memoized to prevent unnecessary re-renders)
   const handleSearch = useCallback(async (query: string) => {
@@ -148,7 +123,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     } finally {
       setSearching(false);
     }
-  }, [accessToken, toast]);
+  }, [accessToken, toast, assignedStudents]);
 
   // Automatic debounced search (500ms delay, 2 character minimum)
   useEffect(() => {
@@ -369,7 +344,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
       });
 
       if (response.ok) {
-        setAssignedStudents(assignedStudents.filter(s => s.id !== studentId));
+        await fetchStudents();
         toast.success('Learner removed', `${student.name} has been removed from this mentor`);
       } else {
         const errorData = await response.json();

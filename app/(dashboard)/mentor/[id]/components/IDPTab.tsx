@@ -5,19 +5,20 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import IDPForm from './IDPForm';
 import { useAuth } from '@/components/providers/AuthProvider';
+import type { Student, IDPPlan } from '@/lib/types/mentor';
 
 interface IDPTabProps {
   mentorId: string;
-  students: any[];
+  students: Student[];
 }
 
 export default function IDPTab({ mentorId, students }: IDPTabProps) {
   const { accessToken } = useAuth();
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<IDPPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<IDPPlan | null>(null);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
     }
   };
 
-  const handleEdit = (plan: any) => {
+  const handleEdit = (plan: IDPPlan) => {
     setSelectedPlan(plan);
     setShowForm(true);
   };
@@ -231,7 +232,7 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                       </svg>
                       Target: {formatDate(plan.target_date)}
                     </span>
-                    {plan.progress_percentage > 0 && (
+                    {(plan.progress_percentage ?? 0) > 0 && (
                       <>
                         <span className="text-neutral-300">•</span>
                         <span className="flex items-center gap-1.5">
@@ -350,7 +351,7 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
         <IDPForm
           mentorId={mentorId}
           students={students}
-          existingPlan={selectedPlan}
+          existingPlan={selectedPlan ?? undefined}
           onSuccess={handleFormSuccess}
           onCancel={() => {
             setShowForm(false);

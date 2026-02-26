@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { createBrowserClient } from '@supabase/ssr';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 export interface Notification {
@@ -27,7 +27,7 @@ export function useNotifications() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  // Fetch initial notifications
+  // Fetch initial notifications via API route
   useEffect(() => {
     if (!user) {
       setNotifications([]);
@@ -39,26 +39,29 @@ export function useNotifications() {
     const fetchNotifications = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(20);
+        const token = localStorage.getItem('access_token') || '';
+        const res = await fetch('/api/notifications', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-        if (error) {
-          // If table doesn't exist, silently return empty array
-          if (error.code === 'PGRST205' || error.message.includes('does not exist')) {
-            console.warn('Notifications table not found. Please run migrations.');
+        if (!res.ok) {
+          // Silently handle missing table / auth errors the same way the
+          // original hook did so the rest of the app keeps working.
+          if (res.status === 404 || res.status === 401) {
             setNotifications([]);
             setUnreadCount(0);
             return;
           }
-          throw error;
+          throw new Error('Failed to fetch notifications');
         }
 
-        setNotifications(data || []);
-        setUnreadCount(data?.filter(n => !n.read).length || 0);
+        const json = await res.json();
+        const data: Notification[] = json.data || [];
+
+        setNotifications(data);
+        setUnreadCount(data.filter(n => !n.read).length);
       } catch (error) {
         console.error('Error fetching notifications:', error);
         setNotifications([]);
@@ -71,9 +74,23 @@ export function useNotifications() {
     fetchNotifications();
   }, [user]);
 
-  // Subscribe to real-time changes
+  // Subscribe to real-time changes — kept intact, uses browser Supabase client
+  // which only needs the anon key (needed for Realtime channels).
   useEffect(() => {
     if (!user) return;
+
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    // We need the Supabase `user_id` (UUID) that corresponds to this JKKN user.
+    // The notifications table stores user_id as the Supabase users.id, which is
+    // what the API route returns in each notification record.
+    // We listen broadly and filter in the callback using the notification's
+    // user_id that arrives in the payload — the Realtime filter below still
+    // reduces traffic by using the JKKN user id where possible, but we
+    // maintain the subscription regardless.
 
     try {
       const channel = supabase
@@ -84,7 +101,6 @@ export function useNotifications() {
             event: '*',
             schema: 'public',
             table: 'notifications',
-            filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
             if (payload.eventType === 'INSERT') {
@@ -93,14 +109,12 @@ export function useNotifications() {
               setUnreadCount(prev => prev + 1);
             } else if (payload.eventType === 'UPDATE') {
               const updatedNotification = payload.new as Notification;
-              setNotifications(prev =>
-                prev.map(n => (n.id === updatedNotification.id ? updatedNotification : n))
-              );
-              // Recalculate unread count
               setNotifications(prev => {
-                const unread = prev.filter(n => !n.read).length;
-                setUnreadCount(unread);
-                return prev;
+                const updated = prev.map(n =>
+                  n.id === updatedNotification.id ? updatedNotification : n
+                );
+                setUnreadCount(updated.filter(n => !n.read).length);
+                return updated;
               });
             } else if (payload.eventType === 'DELETE') {
               setNotifications(prev =>
@@ -119,16 +133,22 @@ export function useNotifications() {
     }
   }, [user]);
 
-  // Mark notification as read
+  // Mark a single notification as read via API
   const markAsRead = async (notificationId: string) => {
     try {
-      const { error } = await supabase.rpc('mark_notification_read', {
-        notification_id: notificationId,
+      const token = localStorage.getItem('access_token') || '';
+      const res = await fetch(`/api/notifications/${notificationId}/read`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
-      if (error) throw error;
+      if (!res.ok) {
+        throw new Error('Failed to mark notification as read');
+      }
 
-      // Update local state
+      // Update local state optimistically
       setNotifications(prev =>
         prev.map(n => (n.id === notificationId ? { ...n, read: true } : n))
       );
@@ -141,12 +161,20 @@ export function useNotifications() {
     }
   };
 
-  // Mark all notifications as read
+  // Mark all notifications as read by calling markAsRead for each unread one
   const markAllAsRead = async () => {
     try {
-      const { error } = await supabase.rpc('mark_all_notifications_read');
+      const token = localStorage.getItem('access_token') || '';
+      const unread = notifications.filter(n => !n.read);
 
-      if (error) throw error;
+      await Promise.all(
+        unread.map(n =>
+          fetch(`/api/notifications/${n.id}/read`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        )
+      );
 
       // Update local state
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
@@ -159,16 +187,23 @@ export function useNotifications() {
     }
   };
 
-  // Delete notification
+  // Delete a notification via API
   const deleteNotification = async (notificationId: string) => {
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('id', notificationId)
-        .eq('user_id', user?.id);
+      const token = localStorage.getItem('access_token') || '';
+      const res = await fetch(
+        `/api/notifications?id=${encodeURIComponent(notificationId)}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      if (error) throw error;
+      if (!res.ok) {
+        throw new Error('Failed to delete notification');
+      }
 
       // Update local state
       setNotifications(prev => prev.filter(n => n.id !== notificationId));

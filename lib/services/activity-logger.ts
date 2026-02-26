@@ -21,6 +21,8 @@ interface LogActivityParams {
  */
 export async function logMentorActivity(params: LogActivityParams): Promise<boolean> {
   try {
+    // Server-side only. Uses admin client intentionally — activity logs are write-only
+    // from the server. Read access is gated by RLS policies on mentor_activity_log.
     const supabase = createAdminClient();
 
     const { error } = await supabase.from('mentor_activity_log').insert({

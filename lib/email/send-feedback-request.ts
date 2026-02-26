@@ -22,6 +22,17 @@ interface FeedbackEmailData {
   feedbackToken: string;
 }
 
+/** Escape HTML special characters to prevent broken markup in email templates. */
+function he(str: string | undefined): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
  * Send feedback request email to student
  */
@@ -31,8 +42,8 @@ export async function sendFeedbackRequestEmail(data: FeedbackEmailData): Promise
     return false;
   }
 
-  const feedbackUrl = `${APP_BASE_URL}/feedback/${data.feedbackToken}`;
-  
+  const feedbackUrl = `${APP_BASE_URL}/feedback/${encodeURIComponent(data.feedbackToken)}`;
+
   const subject = `Share Your Feedback - ${data.sessionName}`;
   
   const htmlContent = `
@@ -65,12 +76,12 @@ export async function sendFeedbackRequestEmail(data: FeedbackEmailData): Promise
               </h2>
               
               <p style="margin: 0 0 15px 0; color: #333; font-size: 16px; line-height: 1.5;">
-                Hi ${data.studentName},
+                Hi ${he(data.studentName)},
               </p>
-              
+
               <p style="margin: 0 0 15px 0; color: #333; font-size: 16px; line-height: 1.5;">
-                Thank you for attending the counseling session "<strong>${data.sessionName}</strong>" 
-                with ${data.mentorName} on ${data.sessionDate}.
+                Thank you for attending the counseling session "<strong>${he(data.sessionName)}</strong>"
+                with ${he(data.mentorName)} on ${he(data.sessionDate)}.
               </p>
               
               <p style="margin: 0 0 25px 0; color: #333; font-size: 16px; line-height: 1.5;">

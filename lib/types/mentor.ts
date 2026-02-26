@@ -124,3 +124,23 @@ export interface ExamResult {
   grade: string;
   date: string;
 }
+
+export interface IDPPlan {
+  id: string;
+  mentor_id: string;
+  student_id: string;
+  area_of_focus: string;
+  smart_goal_statement: string;
+  target_date: string;
+  knowledge_to_develop?: string;
+  knowledge_development_how?: string;
+  skills_to_gain?: string;
+  skills_development_how?: string;
+  detailed_action_plan: string;
+  status: 'draft' | 'in_progress' | 'completed' | 'archived';
+  progress_percentage?: number;
+  mentor_notes?: string;
+  student?: { name: string; roll_number?: string };
+  created_at: string;
+  updated_at: string;
+}

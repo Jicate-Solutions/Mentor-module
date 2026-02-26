@@ -1,54 +1,14 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/components/providers/AuthProvider';
 import { Star, ThumbsUp, TrendingUp, Users, CheckCircle, Mail, Clock, Eye, ExternalLink } from 'lucide-react';
-import type { StudentFeedback, StudentFeedbackStats } from '@/lib/types/mentor';
+import { useStudentFeedback } from '@/hooks/mentor/useStudentFeedback';
 
 interface StudentFeedbackTabProps {
   mentorId: string;
 }
 
 export default function StudentFeedbackTab({ mentorId }: StudentFeedbackTabProps) {
-  const { accessToken } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [feedback, setFeedback] = useState<StudentFeedback[]>([]);
-  const [stats, setStats] = useState<StudentFeedbackStats | null>(null);
-  const [filter, setFilter] = useState<'all' | 'submitted' | 'pending'>('all');
-
-  useEffect(() => {
-    const fetchFeedback = async () => {
-      try {
-        setLoading(true);
-
-        // Fetch feedback data
-        const response = await fetch(`/api/mentor/${mentorId}/feedback`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch feedback');
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-          setFeedback(data.feedback || []);
-          setStats(data.stats || null);
-        }
-      } catch (error) {
-        console.error('Error fetching feedback:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (accessToken && mentorId) {
-      fetchFeedback();
-    }
-  }, [accessToken, mentorId]);
+  const { feedback, stats, loading, filter, setFilter } = useStudentFeedback(mentorId);
 
   // Filter feedback based on selection
   const filteredFeedback = feedback.filter((item) => {

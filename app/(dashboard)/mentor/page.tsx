@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Section, Container, Hero } from '@/components/ui/PageLayout';
@@ -28,7 +28,8 @@ export default function MentorListingPage() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [hasSearched, setHasSearched] = useState(false);
-  const [profileAccessLevel, setProfileAccessLevel] = useState<string>('own_only');
+  // Track latest request to discard stale responses from in-flight concurrent requests
+  const requestIdRef = useRef<number>(0);
 
   // Derive filter options from the actual loaded mentor data
   // This guarantees filter values match the data exactly
@@ -83,17 +84,24 @@ export default function MentorListingPage() {
       return;
     }
 
+    // Stamp this request so we can discard responses from older concurrent requests
+    const thisRequestId = ++requestIdRef.current;
+
     try {
       console.log('[MentorPage] Searching for mentors with query:', query);
       setLoading(true);
       setError(null);
       setHasSearched(true);
 
+      // maxRetries: 2 gives 3 total attempts — handles transient JKKN token validation failures
       const response = await fetchWithAuthRetry(`/api/mentor/list?search=${encodeURIComponent(query)}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
-      });
+      }, 2);
+
+      // Discard response if a newer request has already started
+      if (requestIdRef.current !== thisRequestId) return;
 
       console.log('[MentorPage] API response status:', response.status);
 
@@ -105,26 +113,25 @@ export default function MentorListingPage() {
 
       const data = await response.json();
       console.log('[MentorPage] Received mentors:', {
-        count: data.mentors?.length,
-        total: data.total,
-        accessLevel: data.accessLevel,
+        count: data.data?.length,
+        total: data.meta?.total,
       });
 
-      // Capture the access level from API response
-      if (data.accessLevel) {
-        setProfileAccessLevel(data.accessLevel);
-      }
-
-      const mentorData = data.mentors || [];
+      const mentorData = data.data || [];
       setMentors(mentorData);
     } catch (err) {
+      // Discard errors from stale requests
+      if (requestIdRef.current !== thisRequestId) return;
+
       const errorMessage = err instanceof Error ? err.message : 'Failed to search mentors';
       console.error('[MentorPage] Error searching mentors:', errorMessage);
       setError(errorMessage);
       setMentors([]);
       setFilteredMentors([]);
     } finally {
-      setLoading(false);
+      if (requestIdRef.current === thisRequestId) {
+        setLoading(false);
+      }
     }
   };
 
@@ -365,11 +372,13 @@ export default function MentorListingPage() {
                     </div>
 
                     {/* Department Badge */}
-                    <div className="mb-4">
-                      <Badge variant="success" size="sm" className="inline-flex">
-                        {mentor.department}
-                      </Badge>
-                    </div>
+                    {mentor.department && (
+                      <div className="mb-4">
+                        <Badge variant="success" size="sm" className="inline-flex">
+                          {mentor.department}
+                        </Badge>
+                      </div>
+                    )}
 
                     {/* Contact Information */}
                     <div className="space-y-2 text-sm text-neutral-700 mb-4">
@@ -494,11 +503,11 @@ export default function MentorListingPage() {
                       key: 'department',
                       label: 'Department',
                       sortable: true,
-                      render: (mentor) => (
+                      render: (mentor) => mentor.department ? (
                         <Badge variant="success" size="sm">
                           {mentor.department}
                         </Badge>
-                      ),
+                      ) : <span className="text-neutral-400">—</span>,
                     },
                     {
                       key: 'email',

@@ -1,0 +1,482 @@
+import { createAdminClient } from '@/lib/supabase/server';
+import { Student } from '@/lib/types/mentor';
+import { resolveMentorByJkknId } from './resolve';
+
+export interface StudentAssignmentInput {
+  studentId?: string;
+  jkknStudentId?: string;
+  name: string;
+  email: string;
+  rollNumber?: string;
+  department?: string;
+  year?: number;
+}
+
+export interface AssignmentResult {
+  assigned: number;
+  skipped: number;
+  errors: string[];
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Build a department-name lookup map from the JKKN departments API.
+ */
+async function buildDepartmentMap(apiKey: string, baseUrl: string): Promise<Map<string, string>> {
+  const departmentMap = new Map<string, string>();
+  try {
+    const deptResponse = await fetch(
+      `${baseUrl}/api-management/organizations/departments?page=1&limit=500`,
+      {
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+        next: { revalidate: 60 },
+      }
+    );
+    if (deptResponse.ok) {
+      const deptData = await deptResponse.json();
+      (deptData.data || []).forEach((dept: any) => {
+        const id = dept.id || dept.department_id;
+        const name = dept.name || dept.department_name || 'Unknown Department';
+        if (id) departmentMap.set(id, name);
+      });
+      console.log(`[students service] Built department map with ${departmentMap.size} entries`);
+    }
+  } catch (e) {
+    console.warn('[students service] Failed to fetch departments:', e);
+  }
+  return departmentMap;
+}
+
+// ── getStudentsForMentor ──────────────────────────────────────────────────────
+
+/**
+ * Returns all students assigned to the mentor identified by their JKKN staff ID.
+ * Resolves department UUIDs to human-readable names via the JKKN departments API.
+ */
+export async function getStudentsForMentor(mentorJkknId: string): Promise<Student[]> {
+  const supabaseAdmin = createAdminClient();
+  const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+  const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+  // Resolve JKKN ID → user → mentor
+  const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
+  if (!resolved) {
+    console.log(`[getStudentsForMentor] No user/mentor found for JKKN ID ${mentorJkknId}`);
+    return [];
+  }
+
+  console.log(`[getStudentsForMentor] Found mentor ${resolved.mentor.id} for JKKN ID ${mentorJkknId}`);
+
+  // Fetch assignments with student details
+  const { data: assignments, error } = await supabaseAdmin
+    .from('mentor_students')
+    .select(`
+      *,
+      student:students!student_id (
+        id,
+        name,
+        email,
+        roll_number,
+        year,
+        department_id
+      )
+    `)
+    .eq('mentor_id', resolved.mentor.id)
+    .order('assigned_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch students: ${error.message}`);
+  }
+
+  // Build department name map
+  const departmentMap = apiKey
+    ? await buildDepartmentMap(apiKey, baseUrl)
+    : new Map<string, string>();
+
+  return (assignments || []).map((assignment: any) => {
+    const deptId = assignment.student?.department_id;
+    const departmentName = deptId
+      ? (departmentMap.get(deptId) || 'Unknown Department')
+      : 'Unknown Department';
+
+    return {
+      id: assignment.student?.id || assignment.student_id,
+      name: assignment.student?.name || 'Unknown Student',
+      email: assignment.student?.email || '',
+      rollNumber: assignment.student?.roll_number || '',
+      department: departmentName,
+      year: assignment.student?.year || '',
+      assignedAt: assignment.assigned_at,
+      notes: assignment.notes || undefined,
+    } as Student & { assignedAt: string; notes?: string };
+  });
+}
+
+// ── assignStudentsToMentor ────────────────────────────────────────────────────
+
+/**
+ * Assign a single student payload to a mentor (identified by their Supabase mentor.id).
+ *
+ * This function handles:
+ *  - Upsert of the student row into `students`
+ *  - Stale-row conflict resolution for duplicate roll_number
+ *  - Duplicate assignment detection (per student, any mentor)
+ *  - Insertion into `mentor_students`
+ *
+ * The `mentorId` parameter here is the **Supabase mentors.id** (not JKKN ID).
+ * Callers are responsible for resolving the JKKN staff ID first.
+ *
+ * Returns an AssignmentResult summarising how many succeeded / were skipped / errored.
+ */
+export async function assignStudentsToMentor(
+  mentorId: string,
+  studentsPayload: StudentAssignmentInput[],
+  assignedBy: string
+): Promise<AssignmentResult> {
+  const supabaseAdmin = createAdminClient();
+
+  const result: AssignmentResult = { assigned: 0, skipped: 0, errors: [] };
+
+  // Fetch the mentor's department/institution for student upsert
+  const { data: mentorRecord } = await supabaseAdmin
+    .from('mentors')
+    .select('id, department_id, institution_id')
+    .eq('id', mentorId)
+    .single();
+
+  if (!mentorRecord) {
+    throw new Error(`Mentor record not found for id ${mentorId}`);
+  }
+
+  const departmentId = mentorRecord.department_id || '00000000-0000-0000-0000-000000000001';
+  const institutionId = mentorRecord.institution_id || '00000000-0000-0000-0000-000000000001';
+
+  for (const studentInput of studentsPayload) {
+    // Derive the canonical student id
+    const studentId =
+      studentInput.studentId ||
+      studentInput.jkknStudentId ||
+      studentInput.email;
+
+    if (!studentId) {
+      result.errors.push(`Skipped student "${studentInput.name}": could not determine ID`);
+      result.skipped++;
+      continue;
+    }
+
+    try {
+      // ── Check for existing assignment (any mentor) ────────────────────────
+      const { data: existingAssignment } = await supabaseAdmin
+        .from('mentor_students')
+        .select(`
+          id,
+          mentor_id,
+          mentors:mentor_id (
+            id,
+            users:user_id (
+              full_name
+            )
+          )
+        `)
+        .eq('student_id', studentId)
+        .maybeSingle();
+
+      if (existingAssignment) {
+        const assignedMentorName =
+          (existingAssignment as any).mentors?.users?.full_name || 'another mentor';
+        const isSameMentor = existingAssignment.mentor_id === mentorId;
+
+        if (isSameMentor) {
+          result.errors.push(`${studentInput.name} is already assigned to this mentor`);
+        } else {
+          result.errors.push(`${studentInput.name} is already assigned to ${assignedMentorName}`);
+        }
+        result.skipped++;
+        continue;
+      }
+
+      // ── Upsert student row ────────────────────────────────────────────────
+      const studentData = {
+        id: studentId,
+        name: studentInput.name,
+        email: studentInput.email || `${studentId}@student.jkkn.ac.in`,
+        roll_number:
+          studentInput.rollNumber && studentInput.rollNumber !== 'N/A'
+            ? studentInput.rollNumber
+            : studentId,
+        department_id: departmentId,
+        institution_id: institutionId,
+        year: studentInput.year || null,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      };
+
+      let studentIdForAssignment = studentId;
+      let { error: studentUpsertError } = await supabaseAdmin
+        .from('students')
+        .upsert(studentData, { onConflict: 'id' });
+
+      // Handle duplicate roll_number (stale row conflict)
+      if (studentUpsertError?.code === '23505') {
+        console.warn('[assignStudentsToMentor] Duplicate key conflict, checking for stale row...');
+        const rollNum = studentData.roll_number;
+
+        const { data: conflicting } = await supabaseAdmin
+          .from('students')
+          .select('id, name, roll_number, email')
+          .eq('roll_number', rollNum)
+          .maybeSingle();
+
+        if (conflicting && conflicting.id !== studentId) {
+          // Safe approach: update existing student record instead of deleting it.
+          // Deleting risks FK violations from tables like individual_development_plans
+          // that reference students(id) without ON DELETE CASCADE.
+          console.log(`[assignStudentsToMentor] Stale row found (id=${conflicting.id}), updating in-place`);
+
+          const { error: updateError } = await supabaseAdmin
+            .from('students')
+            .update({
+              name: studentData.name,
+              email: studentData.email,
+              year: studentData.year,
+              is_active: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', conflicting.id);
+
+          if (updateError) {
+            result.errors.push(
+              `${studentInput.name}: Failed to update student record — ${updateError.message}`
+            );
+            result.skipped++;
+            continue;
+          }
+
+          // Check if already assigned to any mentor under the existing UUID
+          const { data: existingUnderOldId } = await supabaseAdmin
+            .from('mentor_students')
+            .select(`
+              id,
+              mentor_id,
+              mentors:mentor_id (
+                id,
+                users:user_id (
+                  full_name
+                )
+              )
+            `)
+            .eq('student_id', conflicting.id)
+            .maybeSingle();
+
+          if (existingUnderOldId) {
+            const isSameMentor = existingUnderOldId.mentor_id === mentorId;
+            if (isSameMentor) {
+              result.errors.push(`${studentInput.name} is already assigned to this mentor`);
+            } else {
+              const assignedTo = (existingUnderOldId as any).mentors?.users?.full_name || 'another mentor';
+              result.errors.push(`${studentInput.name} is already assigned to ${assignedTo}`);
+            }
+            result.skipped++;
+            continue;
+          }
+
+          // Use the existing UUID for the assignment (not the JKKN UUID)
+          studentIdForAssignment = conflicting.id;
+          studentUpsertError = null;
+        } else if (conflicting) {
+          // Same roll number but different scenario (already legitimately exists)
+          const { data: assignment } = await supabaseAdmin
+            .from('mentor_students')
+            .select(`mentors:mentor_id (users:user_id (full_name))`)
+            .eq('student_id', conflicting.id)
+            .maybeSingle();
+          const assignedTo = (assignment as any)?.mentors?.users?.full_name;
+          const errorMsg = assignedTo
+            ? `${studentInput.name} (${rollNum}) is already assigned to ${assignedTo}`
+            : `${studentInput.name}: roll number ${rollNum} already belongs to ${conflicting.name}`;
+          result.errors.push(errorMsg);
+          result.skipped++;
+          continue;
+        }
+      }
+
+      if (studentUpsertError) {
+        result.errors.push(
+          `${studentInput.name}: Failed to save student data — ${studentUpsertError.message}`
+        );
+        result.skipped++;
+        continue;
+      }
+
+      // ── Create mentor-student relationship ────────────────────────────────
+      const { error: insertError } = await supabaseAdmin
+        .from('mentor_students')
+        .insert({
+          mentor_id: mentorId,
+          student_id: studentIdForAssignment,
+          assigned_by: assignedBy,
+          notes: null,
+        });
+
+      if (insertError) {
+        result.errors.push(
+          `${studentInput.name}: Failed to assign — ${insertError.message}`
+        );
+        result.skipped++;
+        continue;
+      }
+
+      result.assigned++;
+      console.log(`[assignStudentsToMentor] Assigned student ${studentIdForAssignment} to mentor ${mentorId}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      result.errors.push(`${studentInput.name}: Unexpected error — ${msg}`);
+      result.skipped++;
+    }
+  }
+
+  return result;
+}
+
+// ── removeStudentFromMentor ───────────────────────────────────────────────────
+
+/**
+ * Remove the mentor-student assignment row for the given student.
+ * The `mentorJkknId` is the JKKN staff ID; it is resolved to the Supabase mentor.id
+ * before deleting.
+ */
+export async function removeStudentFromMentor(
+  mentorJkknId: string,
+  studentId: string
+): Promise<void> {
+  const supabaseAdmin = createAdminClient();
+
+  const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
+  if (!resolved) {
+    throw new Error(`Mentor not found for JKKN ID ${mentorJkknId}`);
+  }
+
+  const { error: deleteError } = await supabaseAdmin
+    .from('mentor_students')
+    .delete()
+    .eq('mentor_id', resolved.mentor.id)
+    .eq('student_id', studentId);
+
+  if (deleteError) {
+    throw new Error(`Failed to remove student: ${deleteError.message}`);
+  }
+
+  console.log(`[removeStudentFromMentor] Removed student ${studentId} from mentor ${resolved.mentor.id}`);
+}
+
+// ── bulkAssignStudents ────────────────────────────────────────────────────────
+
+export interface BulkStudentInput {
+  id: string;
+  name: string;
+  email: string;
+  rollNumber: string;
+  year?: string;
+}
+
+export interface BulkAssignResult {
+  success: string[];
+  alreadyAssigned: string[];
+  failed: { rollNumber: string; error: string }[];
+}
+
+/**
+ * Bulk-assign multiple students to a mentor identified by their Supabase mentor.id.
+ * Handles student upsert, duplicate-assignment detection, and total_students sync.
+ *
+ * @param mentorId      Supabase mentors.id (NOT JKKN ID — caller must resolve first)
+ * @param students      Array of student payloads to assign
+ * @param assignedBy    Supabase users.id of the person performing the assignment
+ */
+export async function bulkAssignStudents(
+  mentorId: string,
+  students: BulkStudentInput[],
+  assignedBy: string | null
+): Promise<BulkAssignResult> {
+  const supabaseAdmin = createAdminClient();
+
+  const { data: mentorRecord } = await supabaseAdmin
+    .from('mentors')
+    .select('id, department_id, institution_id')
+    .eq('id', mentorId)
+    .single();
+
+  if (!mentorRecord) {
+    throw new Error(`Mentor record not found for id ${mentorId}`);
+  }
+
+  const institutionId = mentorRecord.institution_id || '00000000-0000-0000-0000-000000000001';
+  const departmentId = mentorRecord.department_id || '00000000-0000-0000-0000-000000000001';
+
+  const result: BulkAssignResult = { success: [], alreadyAssigned: [], failed: [] };
+
+  for (const student of students) {
+    try {
+      const { data: studentRecord, error: upsertError } = await supabaseAdmin
+        .from('students')
+        .upsert({
+          id: student.id,
+          roll_number: student.rollNumber,
+          name: student.name,
+          email: student.email || `${student.rollNumber}@student.jkkn.ac.in`,
+          department_id: departmentId,
+          institution_id: institutionId,
+          year: student.year || null,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' })
+        .select('id')
+        .single();
+
+      if (upsertError) {
+        console.error(`[bulkAssignStudents] Failed to upsert student ${student.rollNumber}:`, upsertError);
+        result.failed.push({ rollNumber: student.rollNumber, error: 'Failed to create student record' });
+        continue;
+      }
+
+      const { error: mappingError } = await supabaseAdmin
+        .from('mentor_students')
+        .insert({
+          mentor_id: mentorId,
+          student_id: studentRecord.id,
+          assigned_by: assignedBy,
+          assigned_at: new Date().toISOString(),
+        });
+
+      if (mappingError) {
+        if (mappingError.code === '23505') {
+          result.alreadyAssigned.push(student.rollNumber);
+        } else {
+          console.error(`[bulkAssignStudents] Failed to assign ${student.rollNumber}:`, mappingError);
+          result.failed.push({ rollNumber: student.rollNumber, error: mappingError.message });
+        }
+      } else {
+        result.success.push(student.rollNumber);
+      }
+    } catch (e) {
+      console.error(`[bulkAssignStudents] Unexpected error for ${student.rollNumber}:`, e);
+      result.failed.push({ rollNumber: student.rollNumber, error: 'Unexpected error' });
+    }
+  }
+
+  // Sync mentor's total_students count if any new assignments were made
+  if (result.success.length > 0) {
+    const { count } = await supabaseAdmin
+      .from('mentor_students')
+      .select('*', { count: 'exact', head: true })
+      .eq('mentor_id', mentorId);
+
+    await supabaseAdmin
+      .from('mentors')
+      .update({ total_students: count || 0, updated_at: new Date().toISOString() })
+      .eq('id', mentorId);
+  }
+
+  return result;
+}

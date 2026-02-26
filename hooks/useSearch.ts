@@ -6,7 +6,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 export interface SearchResult {
@@ -35,91 +34,18 @@ export function useSearch(searchTerm: string = '') {
       setLoading(true);
 
       try {
-        const searchResults: SearchResult[] = [];
-        const searchPattern = `%${term}%`;
+        const res = await fetch(
+          '/api/search?q=' + encodeURIComponent(term),
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('access_token') || ''}`,
+            },
+          }
+        );
 
-        // Search students
-        const { data: students } = await supabase
-          .from('students')
-          .select('id, name, register_number, department_id')
-          .or(`name.ilike.${searchPattern},register_number.ilike.${searchPattern}`)
-          .limit(5);
-
-        if (students) {
-          students.forEach(student => {
-            searchResults.push({
-              id: student.id,
-              type: 'student',
-              title: student.name,
-              subtitle: `Register: ${student.register_number}`,
-              link: `/students/${student.id}`,
-              icon: 'student',
-            });
-          });
-        }
-
-        // Search staff/mentors
-        const { data: staff } = await supabase
-          .from('staff')
-          .select('id, name, email, role')
-          .or(`name.ilike.${searchPattern},email.ilike.${searchPattern}`)
-          .limit(5);
-
-        if (staff) {
-          staff.forEach(member => {
-            searchResults.push({
-              id: member.id,
-              type: member.role === 'mentor' ? 'mentor' : 'staff',
-              title: member.name,
-              subtitle: member.email,
-              link: `/staff/${member.id}`,
-              icon: 'staff',
-            });
-          });
-        }
-
-        // Search courses
-        const { data: courses } = await supabase
-          .from('courses')
-          .select('id, course_name, course_code')
-          .or(`course_name.ilike.${searchPattern},course_code.ilike.${searchPattern}`)
-          .limit(5);
-
-        if (courses) {
-          courses.forEach(course => {
-            searchResults.push({
-              id: course.id,
-              type: 'course',
-              title: course.course_name,
-              subtitle: course.course_code,
-              link: `/courses/${course.id}`,
-              icon: 'course',
-            });
-          });
-        }
-
-        // Search counseling sessions (if user has access)
-        const { data: sessions } = await supabase
-          .from('counseling_sessions')
-          .select('id, session_type, session_date, student_id, students(name)')
-          .or(`session_type.ilike.${searchPattern}`)
-          .limit(5);
-
-        if (sessions) {
-          sessions.forEach((session: any) => {
-            const studentName = session.students?.name || 'Unknown';
-            searchResults.push({
-              id: session.id,
-              type: 'session',
-              title: `${session.session_type} Session`,
-              subtitle: `${studentName} - ${new Date(session.session_date).toLocaleDateString()}`,
-              link: `/counseling/${session.id}`,
-              icon: 'session',
-            });
-          });
-        }
-
-        setResults(searchResults);
+        const json = await res.json();
+        const data: SearchResult[] = json.data || [];
+        setResults(data);
       } catch (error) {
         console.error('Search error:', error);
         setResults([]);

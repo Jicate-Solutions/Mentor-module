@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useToast } from '@/components/providers/ToastProvider';
 import Card from '@/components/ui/Card';
@@ -9,6 +9,7 @@ import Input, { TextArea } from '@/components/ui/Input';
 import Modal, { ModalFooter } from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import { useCounselingSessions } from '@/hooks/mentor/useCounselingSessions';
 import type { CounselingSession, Student } from '@/lib/types/mentor';
 
 interface CounselingTabProps {
@@ -19,9 +20,12 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
   const { accessToken, user } = useAuth();
   const toast = useToast();
 
-  const [sessions, setSessions] = useState<CounselingSession[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    sessions,
+    students,
+    loading,
+    refetch: refetchSessions,
+  } = useCounselingSessions(mentorId);
 
   // Create Session Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -106,47 +110,6 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
     return Array.from(grouped.values());
   };
-
-  // Fetch sessions and students
-  useEffect(() => {
-    if (!accessToken) return;
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        // Fetch sessions
-        const sessionsRes = await fetch(`/api/mentor/${mentorId}/counseling`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-        });
-
-        // Fetch assigned students
-        const studentsRes = await fetch(`/api/mentor/${mentorId}/students`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-        });
-
-        if (sessionsRes.ok) {
-          const data = await sessionsRes.json();
-          setSessions(data.sessions || []);
-        } else {
-          toast.error('Failed to load sessions', 'Could not fetch counseling sessions');
-        }
-
-        if (studentsRes.ok) {
-          const data = await studentsRes.json();
-          setStudents(data.students || []);
-        } else {
-          toast.error('Failed to load learners', 'Could not fetch assigned learners');
-        }
-      } catch (error) {
-        toast.error('Error loading data', 'An unexpected error occurred while loading the page');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [accessToken, mentorId]);
 
   // Handle form input changes
   const handleInputChange = (field: string, value: string | File | null) => {
@@ -294,9 +257,9 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         }
       }
 
-      // Update sessions list
+      // Refresh sessions list from server
       if (newSessions.length > 0) {
-        setSessions([...newSessions, ...sessions]);
+        await refetchSessions();
       }
 
       // Show results
@@ -409,10 +372,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
       if (response.ok) {
         const data = await response.json();
-        // Update session in list
-        setSessions(sessions.map(s =>
-          s.id === selectedSession.id ? data.session : s
-        ));
+        // Refresh sessions list from server
+        await refetchSessions();
         setSelectedSession(data.session);
         toast.success('Session log submitted', 'Your session log has been saved successfully');
         // Clear feedback form
@@ -477,11 +438,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        // Update session in list
-        setSessions(sessions.map(s =>
-          s.id === editingSession.id ? data.session : s
-        ));
+        // Refresh sessions list from server
+        await refetchSessions();
         toast.success('Session updated', 'Counseling session has been updated successfully');
         setShowEditModal(false);
         setEditingSession(null);
@@ -517,8 +475,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
       });
 
       if (response.ok) {
-        // Remove session from list
-        setSessions(sessions.filter(s => s.id !== deletingSession.id));
+        // Refresh sessions list from server
+        await refetchSessions();
         toast.success('Session deleted', 'Counseling session has been deleted successfully');
         setShowDeleteModal(false);
         setDeletingSession(null);

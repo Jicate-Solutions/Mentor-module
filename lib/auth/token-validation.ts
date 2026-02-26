@@ -31,8 +31,8 @@ export interface ValidationResponse {
  */
 const validationCache = new Map<string, { result: ValidationResponse; expiresAt: number }>();
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes (increased from 2)
-const FAILED_CACHE_DURATION = 10 * 1000; // 10 seconds for failed validations
-const TIMEOUT_CACHE_DURATION = 30 * 1000; // 30 seconds for timeout/network errors
+const FAILED_CACHE_DURATION = 2 * 1000; // 2 seconds — short so a just-refreshed token gets re-validated quickly
+const TIMEOUT_CACHE_DURATION = 5 * 1000; // 5 seconds for timeout/network errors (was 30s — too long)
 const GRACE_PERIOD = 60 * 1000; // 1 minute grace period for expired cache during timeout
 
 /**

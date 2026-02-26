@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { useAuth } from '@/components/providers/AuthProvider';
+import type { Student, IDPPlan } from '@/lib/types/mentor';
 
 interface IDPFormProps {
   mentorId: string;
-  students: any[];
-  existingPlan?: any;
+  students: Student[];
+  existingPlan?: IDPPlan;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -139,7 +140,7 @@ export default function IDPForm({
                 <option value="">Select learner</option>
                 {students.map((student) => (
                   <option key={student.id} value={student.id}>
-                    {student.name} ({student.roll_number || student.rollNumber || student.id})
+                    {student.name} ({student.rollNumber || student.id})
                   </option>
                 ))}
               </select>

@@ -463,6 +463,31 @@ export async function GET(request: NextRequest) {
     const departmentMap = await fetchDepartmentLookup();
     console.log(`[Student Search] Department lookup map has ${departmentMap.size} entries`);
 
+    // Pre-resolve local UUIDs by roll_number.
+    // Students previously imported via bulk-import have a locally-generated UUID that
+    // differs from the JKKN UUID. If we return the JKKN UUID, every assignment attempt
+    // hits a roll_number UNIQUE conflict. Returning the local UUID avoids this entirely.
+    const jkknRollNumbers = filteredStudents
+      .map((s: any) => String(s.roll_number || s.rollNumber || s.roll_no || s.id || ''))
+      .filter(Boolean);
+
+    const localUUIDMap = new Map<string, string>(); // roll_number → local students.id
+    if (jkknRollNumbers.length > 0) {
+      const supabaseAdmin = createAdminClient();
+      const { data: localStudents } = await supabaseAdmin
+        .from('students')
+        .select('id, roll_number')
+        .in('roll_number', jkknRollNumbers);
+
+      (localStudents || []).forEach((s: any) => {
+        if (s.roll_number) localUUIDMap.set(String(s.roll_number), s.id);
+      });
+
+      if (localUUIDMap.size > 0) {
+        console.log(`[Student Search] Pre-resolved ${localUUIDMap.size} students to local UUIDs`);
+      }
+    }
+
     // Transform to expected format
     const transformedStudents = filteredStudents.map((student: any) => {
       // Extract department name - try multiple sources
@@ -490,10 +515,14 @@ export async function GET(request: NextRequest) {
         departmentName = departmentMap.get(student.department) || 'Unknown Department';
       }
 
+      const rollNumber = String(student.roll_number || student.rollNumber || student.roll_no || student.id || '');
+      // Use local UUID if available — prevents UUID mismatch when student was previously imported
+      const id = localUUIDMap.get(rollNumber) || student.id || student.student_id;
+
       return {
-        id: student.id || student.student_id,
+        id,
         name: `${student.first_name || ''} ${student.last_name || ''}`.trim() || student.email || 'Unknown',
-        rollNumber: student.roll_number || student.rollNumber || student.roll_no || student.id,
+        rollNumber: rollNumber || student.id,
         email: student.email || '',
         department: departmentName,
         year: student.year || student.current_year || student.academic_year || '',

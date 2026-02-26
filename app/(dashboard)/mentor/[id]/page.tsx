@@ -1,9 +1,11 @@
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, User, Users, MessageSquare, Calendar, FileText, Target, Download, ThumbsUp, Award } from 'lucide-react';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useMentorDetails } from '@/hooks/mentor/useMentorDetails';
+import { useAssignedStudents } from '@/hooks/mentor/useAssignedStudents';
+import { useCounselingSessions } from '@/hooks/mentor/useCounselingSessions';
 import CounselingTab from './components/CounselingTab';
 import StudentsTab from './components/StudentsTab';
 import AttendanceTab from './components/AttendanceTab';
@@ -13,132 +15,27 @@ import AchievementTab from './components/AchievementTab';
 import ReportsTab from './components/ReportsTab';
 import StudentFeedbackTab from './components/StudentFeedbackTab';
 
-interface Mentor {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  department: string;
-  designation: string;
-  avatar?: string | null;
-  totalStudents: number;
-  pendingFeedback?: number;
-}
-
 type TabType = 'students' | 'counseling' | 'attendance' | 'examResults' | 'idp' | 'achievement' | 'reports' | 'studentFeedback';
 
 export default function MentorDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, accessToken } = useAuth();
   const mentorId = params.id as string;
 
-  const [mentor, setMentor] = useState<Mentor | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { mentor, loading: mentorLoading, error } = useMentorDetails(mentorId);
+  const { students } = useAssignedStudents(mentorId);
+  const { sessions } = useCounselingSessions(mentorId);
+
   const [activeTab, setActiveTab] = useState<TabType>('students');
-  const [students, setStudents] = useState<any[]>([]);
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
 
-  // Fetch mentor details
-  useEffect(() => {
-    const fetchMentorDetails = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const loading = mentorLoading;
 
-        if (!accessToken) {
-          router.push('/login');
-          return;
-        }
-
-        // Fetch mentor details from dedicated endpoint (includes real student count)
-        const mentorResponse = await fetch(`/api/mentor/${mentorId}`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-
-        if (!mentorResponse.ok) {
-          if (mentorResponse.status === 403) {
-            const errorData = await mentorResponse.json().catch(() => ({}));
-            throw new Error(errorData.error || 'You do not have permission to view this profile');
-          }
-          throw new Error('Failed to fetch mentor details');
-        }
-
-        const mentorData = await mentorResponse.json();
-
-        if (mentorData.success && mentorData.mentor) {
-          // Fetch counseling sessions to calculate pending feedback
-          const counselingResponse = await fetch(`/api/mentor/${mentorId}/counseling`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-            },
-          });
-
-          let pendingFeedback = 0;
-          if (counselingResponse.ok) {
-            const counselingData = await counselingResponse.json();
-            if (counselingData.success && counselingData.sessions) {
-              // Count completed sessions without feedback
-              pendingFeedback = counselingData.sessions.filter(
-                (session: any) => session.status === 'completed' && !session.feedback
-              ).length;
-            }
-          }
-
-          setMentor({
-            ...mentorData.mentor,
-            pendingFeedback,
-          });
-
-          // Fetch students for IDP tab
-          // Fetch ONLY students assigned to THIS mentor
-          console.log('[Mentor Page] Fetching assigned students for mentor:', mentorId);
-          const assignedStudentsResponse = await fetch(`/api/mentor/${mentorId}/students`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-            },
-          });
-
-          let studentsToShow = [];
-
-          if (assignedStudentsResponse.ok) {
-            const assignedStudentsData = await assignedStudentsResponse.json();
-            if (assignedStudentsData.students && Array.isArray(assignedStudentsData.students)) {
-              // Use the students directly from the mentor's assigned students
-              studentsToShow = assignedStudentsData.students.map((student: any) => ({
-                id: student.id,
-                name: student.name || `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unknown',
-                email: student.email || '',
-                rollNumber: student.roll_number || student.rollNumber || '',
-                roll_number: student.roll_number || student.rollNumber || '',
-                department: student.department,
-                year: student.year || '',
-              }));
-              console.log(`[Mentor Page] Loaded ${studentsToShow.length} assigned students for mentor`);
-            }
-          } else {
-            console.warn('[Mentor Page] Failed to fetch assigned students:', assignedStudentsResponse.status);
-          }
-
-          setStudents(studentsToShow);
-        } else {
-          throw new Error('Mentor not found');
-        }
-      } catch (err) {
-        console.error('Error fetching mentor details:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load mentor details');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (mentorId && accessToken) {
-      fetchMentorDetails();
-    }
-  }, [mentorId, accessToken, router]);
+  // Compute pending feedback from sessions
+  const pendingFeedback = useMemo(
+    () => sessions.filter(s => s.status === 'completed' && !s.feedback).length,
+    [sessions]
+  );
 
   // Get mentor initials for avatar
   const getInitials = (name: string) => {
@@ -300,7 +197,7 @@ export default function MentorDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[13px] font-medium text-neutral-600 uppercase tracking-wide mb-2">Pending Feedback</p>
-                <p className="text-[28px] font-medium text-neutral-900 tracking-tight">{mentor.pendingFeedback || 0}</p>
+                <p className="text-[28px] font-medium text-neutral-900 tracking-tight">{pendingFeedback}</p>
               </div>
               <div className="w-12 h-12 bg-brand-yellow/20 rounded-xl flex items-center justify-center">
                 <MessageSquare className="w-6 h-6 text-brand-green" />

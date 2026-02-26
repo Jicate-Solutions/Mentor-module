@@ -70,19 +70,17 @@ export async function POST(request: NextRequest) {
           // User exists - update if needed
           userId = existingUser.id;
 
-          // Update user info if role is not mentor
-          if (existingUser.role !== 'mentor') {
-            await supabase
-              .from('users')
-              .update({
-                role: 'mentor',
-                full_name: fullName,
-                institution_id: institutionId,
-                department_id: departmentId,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', userId);
-          }
+          // Always sync jkkn_user_id and metadata so the faculty profile filter works
+          await supabase
+            .from('users')
+            .update({
+              jkkn_user_id: s.id,
+              full_name: fullName,
+              institution_id: institutionId,
+              department_id: departmentId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', userId);
         } else {
           // Create new user
           const { data: newUser, error: createUserError } = await supabase

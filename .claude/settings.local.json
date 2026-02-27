@@ -111,7 +111,9 @@
       "Bash(if not exist \"C:\\\\Users\\\\Admin\\\\.claude\\\\plans\" mkdir \"C:\\\\Users\\\\Admin\\\\.claude\\\\plans\")",
       "Bash(grep:*)",
       "Bash(DOTENV_CONFIG_PATH=.env.local npx tsx:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Bash(wc:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []

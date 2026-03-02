@@ -27,7 +27,7 @@ export function useCounselingSessions(mentorId: string) {
 
       if (sessionsRes.ok) {
         const data = await sessionsRes.json();
-        setSessions(data.sessions || data.data || []);
+        setSessions(data.data || []);
       } else {
         const data = await sessionsRes.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to fetch counseling sessions');

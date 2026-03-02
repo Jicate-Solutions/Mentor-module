@@ -1,26 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { getUserAccess, canManageMentor } from '@/lib/middleware/access-control';
+import { ok, err } from '@/lib/utils/api-response';
+
+/**
+ * Shared helper: load an IDP plan and its mentor's institution_id.
+ * Returns null if not found.
+ */
+async function loadPlan(id: string) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('individual_development_plans')
+    .select(`
+      id,
+      mentor_id,
+      mentor:mentors!individual_development_plans_mentor_id_fkey (
+        id,
+        user_id,
+        institution_id
+      )
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return null;
+  return { supabase, plan: data };
+}
 
 /**
  * GET /api/idp/[id]
- * Get a single IDP plan by ID
+ * Get a single IDP plan by ID.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userAccess = await getUserAccess();
+  if (!userAccess) {
+    return err('Unauthorized', 401);
+  }
+
+  const { id } = await params;
+  const supabase = createAdminClient();
+
   try {
-    const { id } = await params;
-
-    // Check for Authorization header to ensure request is from authenticated client
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('[IDP API GET by ID] No authorization header found');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const supabase = createAdminClient();
-
     const { data, error } = await supabase
       .from('individual_development_plans')
       .select(`
@@ -45,42 +68,61 @@ export async function GET(
       .eq('id', id)
       .single();
 
-    if (error) {
-      console.error('[IDP API] Error fetching plan:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error || !data) {
+      return err('Plan not found', 404);
     }
 
-    if (!data) {
-      return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true, data });
-  } catch (error: any) {
-    console.error('[IDP API] Unexpected error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return ok(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch IDP plan';
+    return err(message, 500);
   }
 }
 
 /**
  * PUT /api/idp/[id]
- * Update an IDP plan
+ * Update an IDP plan. Only the owning mentor (or an admin) may update.
  */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
+  const userAccess = await getUserAccess();
+  if (!userAccess) {
+    return err('Unauthorized', 401);
+  }
 
-    // Check for Authorization header to ensure request is from authenticated client
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('[IDP API PUT] No authorization header found');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { id } = await params;
+
+  try {
+    const loaded = await loadPlan(id);
+    if (!loaded) {
+      return err('Plan not found', 404);
     }
 
-    const supabase = createAdminClient();
-    const body = await request.json();
+    const { supabase, plan } = loaded;
+    const mentor = plan.mentor as unknown as { id: string; user_id: string; institution_id: string | null } | null;
+
+    if (!mentor) {
+      return err('Plan not found', 404);
+    }
+
+    // Authorization: must be allowed to manage the owning mentor
+    const canManage = await canManageMentor(
+      userAccess,
+      mentor.id,
+      mentor.institution_id || ''
+    );
+    if (!canManage) {
+      return err('Forbidden: You do not have permission to update this IDP plan', 403);
+    }
+
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return err('Invalid JSON body', 400);
+    }
 
     const {
       area_of_focus,
@@ -98,9 +140,7 @@ export async function PUT(
       student_feedback,
     } = body;
 
-    // Note: updated_by will be set to null since we don't have user context
-    // This is acceptable as we're using admin client for the update
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = { updated_by: userAccess.userId };
 
     if (area_of_focus !== undefined) updateData.area_of_focus = area_of_focus;
     if (smart_goal_statement !== undefined) updateData.smart_goal_statement = smart_goal_statement;
@@ -129,36 +169,54 @@ export async function PUT(
       .single();
 
     if (error) {
-      console.error('[IDP API] Error updating plan:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[IDP PUT] Error updating plan:', error);
+      return err(error.message, 500);
     }
 
-    return NextResponse.json({ success: true, data });
-  } catch (error: any) {
-    console.error('[IDP API] Unexpected error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return ok(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update IDP plan';
+    return err(message, 500);
   }
 }
 
 /**
  * DELETE /api/idp/[id]
- * Delete an IDP plan
+ * Delete an IDP plan. Only the owning mentor (or an admin) may delete.
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
+  const userAccess = await getUserAccess();
+  if (!userAccess) {
+    return err('Unauthorized', 401);
+  }
 
-    // Check for Authorization header to ensure request is from authenticated client
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('[IDP API DELETE] No authorization header found');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { id } = await params;
+
+  try {
+    const loaded = await loadPlan(id);
+    if (!loaded) {
+      return err('Plan not found', 404);
     }
 
-    const supabase = createAdminClient();
+    const { supabase, plan } = loaded;
+    const mentor = plan.mentor as unknown as { id: string; user_id: string; institution_id: string | null } | null;
+
+    if (!mentor) {
+      return err('Plan not found', 404);
+    }
+
+    // Authorization: must be allowed to manage the owning mentor
+    const canManage = await canManageMentor(
+      userAccess,
+      mentor.id,
+      mentor.institution_id || ''
+    );
+    if (!canManage) {
+      return err('Forbidden: You do not have permission to delete this IDP plan', 403);
+    }
 
     const { error } = await supabase
       .from('individual_development_plans')
@@ -166,13 +224,13 @@ export async function DELETE(
       .eq('id', id);
 
     if (error) {
-      console.error('[IDP API] Error deleting plan:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[IDP DELETE] Error deleting plan:', error);
+      return err(error.message, 500);
     }
 
-    return NextResponse.json({ success: true, message: 'Plan deleted successfully' });
-  } catch (error: any) {
-    console.error('[IDP API] Unexpected error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return ok({ message: 'Plan deleted successfully' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to delete IDP plan';
+    return err(message, 500);
   }
 }

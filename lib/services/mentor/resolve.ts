@@ -30,6 +30,21 @@ export async function resolveMentorByJkknId(
     .eq('jkkn_user_id', jkknUserId)
     .single();
 
+  // Step 1b: Fallback — try jkknUserId as a Supabase users.id directly.
+  // getMentorList Tier 4/4b uses userAccess.userId (Supabase UUID) as mentor.id,
+  // so the URL param may be a Supabase users.id rather than a JKKN staff UUID.
+  if (!user) {
+    const { data: userById } = await supabase
+      .from('users')
+      .select('id, email, full_name')
+      .eq('id', jkknUserId)
+      .maybeSingle();
+    if (userById) {
+      console.log(`[resolveMentorByJkknId] Found by users.id fallback for: ${jkknUserId}`);
+      user = userById;
+    }
+  }
+
   // Step 2: If not found, try JKKN API + email fallback
   if (!user && apiKey) {
     console.log(`[resolveMentorByJkknId] No user found by jkkn_user_id=${jkknUserId}, trying JKKN API + email lookup...`);

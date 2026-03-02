@@ -32,8 +32,8 @@ export function useStudentFeedback(mentorId: string) {
       }
 
       if (json.success) {
-        setFeedback(json.feedback || json.data || []);
-        setStats(json.stats || null);
+        setFeedback(json.data?.feedback ?? []);
+        setStats(json.data?.stats ?? null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');

@@ -373,16 +373,25 @@ export async function canManageMentor(
     return true;
   }
 
-  // Check if the user is managing their own mentor record
+  // Fetch target mentor's department and owner in a single query
   const supabase = createAdminClient();
-  const { data: mentor } = await supabase
+  const { data: targetMentor } = await supabase
     .from('mentors')
-    .select('id')
-    .eq('user_id', userAccess.userId)
+    .select('user_id, department_id')
+    .eq('id', targetMentorId)
     .maybeSingle();
 
+  // HOD can manage mentors in their department within their institution
+  if (
+    userAccess.role === 'hod' &&
+    userAccess.institutionId === targetMentorInstitutionId &&
+    targetMentor?.department_id === userAccess.departmentId
+  ) {
+    return true;
+  }
+
   // Mentors can manage their own data (sessions, etc.)
-  if (mentor && mentor.id === targetMentorId) {
+  if (targetMentor?.user_id === userAccess.userId) {
     return true;
   }
 
@@ -412,21 +421,27 @@ export async function canAssignStudents(
     return true;
   }
 
-  // Check if the user is trying to assign to themselves (get their mentor record)
+  // Fetch target mentor's department and owner in a single query
   const supabase = createAdminClient();
-  const { data: mentor } = await supabase
+  const { data: targetMentor } = await supabase
     .from('mentors')
-    .select('id')
-    .eq('user_id', userAccess.userId)
+    .select('user_id, department_id')
+    .eq('id', targetMentorId)
     .maybeSingle();
 
-  // Regular mentors and faculty can only assign students to themselves
-  if (mentor && mentor.id === targetMentorId) {
+  // HOD can assign students to mentors in their department within their institution
+  if (
+    userAccess.role === 'hod' &&
+    userAccess.institutionId === targetMentorInstitutionId &&
+    targetMentor?.department_id === userAccess.departmentId
+  ) {
     return true;
   }
 
-  // Faculty/mentor/HOD: the initial user_id-based check above already covers this case.
-  // The profile_id column does not exist on the mentors table; this check is redundant.
+  // Regular mentors and faculty can only assign students to themselves
+  if (targetMentor?.user_id === userAccess.userId) {
+    return true;
+  }
 
   return false;
 }
@@ -527,7 +542,7 @@ export function getProfileAccessLevel(userAccess: UserAccess): ProfileAccessLeve
   }
 
   // Institution-level roles
-  if (['administrator', 'digital_coordinator', 'principal'].includes(userAccess.role)) {
+  if (['administrator', 'institution_admin', 'digital_coordinator', 'principal'].includes(userAccess.role)) {
     return 'institution';
   }
 

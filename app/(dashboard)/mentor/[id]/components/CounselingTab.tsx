@@ -238,7 +238,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
           if (response.ok) {
             const data = await response.json();
-            newSessions.push(data.session);
+            newSessions.push(data.data);
             successCount++;
           } else {
             const errorData = await response.json().catch(() => ({}));
@@ -374,7 +374,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         const data = await response.json();
         // Refresh sessions list from server
         await refetchSessions();
-        setSelectedSession(data.session);
+        setSelectedSession(data.data);
         toast.success('Session log submitted', 'Your session log has been saved successfully');
         // Clear feedback form
         setFeedbackData({

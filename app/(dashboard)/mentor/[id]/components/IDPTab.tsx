@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import IDPForm from './IDPForm';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useIDPPlans } from '@/hooks/mentor/useIDPPlans';
 import type { Student, IDPPlan } from '@/lib/types/mentor';
 
 interface IDPTabProps {
@@ -13,76 +13,17 @@ interface IDPTabProps {
 }
 
 export default function IDPTab({ mentorId, students }: IDPTabProps) {
-  const { accessToken } = useAuth();
-  const [plans, setPlans] = useState<IDPPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { plans, loading, error, refetch, updatePlanStatus, deletePlan } = useIDPPlans(mentorId);
   const [showForm, setShowForm] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<IDPPlan | null>(null);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (accessToken) {
-      fetchPlans();
-    }
-  }, [mentorId, accessToken]);
-
-  const fetchPlans = async () => {
-    if (!accessToken) return;
-
-    try {
-      setLoading(true);
-      console.log('[IDP Tab] Fetching plans for mentor:', mentorId);
-
-      const response = await fetch(`/api/idp?mentor_id=${mentorId}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      console.log('[IDP Tab] Response status:', response.status);
-      const data = await response.json();
-      console.log('[IDP Tab] Response data:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch IDP plans');
-      }
-
-      console.log('[IDP Tab] Setting plans:', data.data?.length || 0, 'plans');
-      setPlans(data.data || []);
-      setError(null);
-    } catch (err: any) {
-      console.error('[IDP Tab] Error fetching plans:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDelete = async (planId: string) => {
-    if (!confirm('Are you sure you want to delete this IDP plan?')) {
-      return;
-    }
-
-    if (!accessToken) return;
-
+    if (!window.confirm('Are you sure you want to delete this IDP plan?')) return;
     try {
-      const response = await fetch(`/api/idp/${planId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete plan');
-      }
-
-      fetchPlans();
+      await deletePlan(planId);
     } catch (err: any) {
-      alert(err.message);
+      console.error('[IDPTab] Delete failed:', err);
     }
   };
 
@@ -92,33 +33,17 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
   };
 
   const handleStatusChange = async (planId: string, newStatus: string) => {
-    if (!accessToken) return;
-
     try {
-      const response = await fetch(`/api/idp/${planId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to update status');
-      }
-
-      fetchPlans();
+      await updatePlanStatus(planId, newStatus as IDPPlan['status']);
     } catch (err: any) {
-      alert(err.message);
+      console.error('[IDPTab] Status update failed:', err);
     }
   };
 
   const handleFormSuccess = () => {
     setShowForm(false);
     setSelectedPlan(null);
-    fetchPlans();
+    refetch();
   };
 
   const getStatusBadge = (status: string) => {

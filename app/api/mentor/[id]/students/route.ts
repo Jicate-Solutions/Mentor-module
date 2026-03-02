@@ -23,6 +23,19 @@ export async function GET(
 
   try {
     const { id: mentorId } = await params;
+
+    // Authorization: must be allowed to manage (or be) this mentor
+    const supabaseAdmin = createAdminClient();
+    const resolved = await resolveMentorByJkknId(mentorId, supabaseAdmin);
+    if (!resolved) return err('Mentor not found', 404);
+
+    const canManage = await canManageMentor(
+      userAccess,
+      resolved.mentor.id,
+      resolved.mentor.institution_id || ''
+    );
+    if (!canManage) return err('Forbidden: You do not have permission to view this mentor\'s students', 403);
+
     const students = await getStudentsForMentor(mentorId);
     return ok(students, { total: students.length });
   } catch (error) {

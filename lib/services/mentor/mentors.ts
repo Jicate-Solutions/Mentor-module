@@ -50,6 +50,37 @@ function getDepartmentName(department: any): string {
   return department?.department_name || department?.name || 'N/A';
 }
 
+/**
+ * Resolves a JKKN department UUID to a human-readable name via the JKKN departments API.
+ * Returns '' if the ID is absent, the API key is missing, or the call fails.
+ */
+async function resolveDepartmentName(
+  departmentId: string | null | undefined,
+  apiKey: string,
+  baseUrl: string
+): Promise<string> {
+  if (!departmentId || !apiKey) return '';
+  try {
+    const res = await fetch(
+      `${baseUrl}/api-management/organizations/departments/${departmentId}`,
+      { headers: { Authorization: `Bearer ${apiKey}` } }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      return (
+        data.data?.name ||
+        data.data?.department_name ||
+        data.name ||
+        data.department_name ||
+        ''
+      );
+    }
+  } catch (e) {
+    console.error('[resolveDepartmentName] JKKN API failed for', departmentId, e);
+  }
+  return '';
+}
+
 function getInstitutionName(institution: any): string {
   if (typeof institution === 'string') return institution;
   return institution?.institution_name || institution?.name || 'N/A';
@@ -78,21 +109,97 @@ export async function getMentorById(mentorJkknId: string): Promise<Mentor | null
     throw new Error('MyJKKN API key not configured');
   }
 
-  // Fetch staff member from JKKN API
-  const apiResponse = await fetch(`${baseUrl}/api-management/staff/${mentorJkknId}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-  });
+  // Try multiple JKKN staff detail endpoint formats — same fallback strategy as getMentorList
+  const possibleDetailEndpoints = [
+    `${baseUrl}/api-management/staff/${mentorJkknId}`,
+    `${baseUrl}/api-management/organizations/employees/${mentorJkknId}`,
+    `${baseUrl}/api/staff/${mentorJkknId}`,
+    `${baseUrl}/staff/${mentorJkknId}`,
+  ];
 
-  if (!apiResponse.ok) {
-    console.error(`[getMentorById] JKKN API error: ${apiResponse.status}`);
-    return null;
+  let apiData: any = null;
+  for (const endpoint of possibleDetailEndpoints) {
+    try {
+      const apiResponse = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (apiResponse.ok) {
+        apiData = await apiResponse.json();
+        console.log(`[getMentorById] SUCCESS via ${endpoint}`);
+        break;
+      }
+      console.log(`[getMentorById] ${endpoint} returned ${apiResponse.status}, trying next...`);
+    } catch (e) {
+      console.error(`[getMentorById] Fetch error for ${endpoint}:`, e);
+    }
   }
 
-  const apiData = await apiResponse.json();
+  if (!apiData) {
+    console.error(`[getMentorById] All JKKN endpoints failed for ID: ${mentorJkknId}`);
+
+    // Supabase fallback — for mentors present in Supabase but not in JKKN HR API.
+    // getMentorList Tier 4 uses userAccess.userId (Supabase users.id) as mentor.id,
+    // so the URL param arriving here may be a Supabase UUID, not a JKKN staff UUID.
+    const supabaseAdmin = createAdminClient();
+    const { data: mentorWithUser } = await supabaseAdmin
+      .from('mentors')
+      .select('id, designation, department_id, users!inner(id, email, full_name, department_id, institution_id)')
+      .eq('user_id', mentorJkknId)
+      .maybeSingle();
+
+    if (!mentorWithUser) {
+      console.error(`[getMentorById] Not found in Supabase either for ID: ${mentorJkknId}`);
+      return null;
+    }
+
+    const sbUser = mentorWithUser.users as unknown as {
+      id: string;
+      email: string;
+      full_name: string | null;
+      department_id: string | null;
+      institution_id: string | null;
+    };
+    const { count } = await supabaseAdmin
+      .from('mentor_students')
+      .select('*', { count: 'exact', head: true })
+      .eq('mentor_id', mentorWithUser.id);
+
+    // Use mentors.department_id first; fall back to users.department_id when the
+    // mentors row was created with an empty string (e.g. accounts not in JKKN HR API).
+    const effectiveDeptId = mentorWithUser.department_id || sbUser.department_id;
+
+    // Self-heal: if mentors row had empty dept but users row has the UUID, backfill it
+    // so subsequent requests don't need this fallback (fire-and-forget).
+    if (!mentorWithUser.department_id && sbUser.department_id) {
+      void (async () => {
+        const { error } = await supabaseAdmin
+          .from('mentors')
+          .update({
+            department_id: sbUser.department_id,
+            ...(sbUser.institution_id ? { institution_id: sbUser.institution_id } : {}),
+          })
+          .eq('id', mentorWithUser.id);
+        if (error) console.error('[getMentorById] Self-heal update failed:', error);
+        else console.log(`[getMentorById] Self-healed mentors.department_id for mentor ${mentorWithUser.id}`);
+      })();
+    }
+
+    const department = await resolveDepartmentName(effectiveDeptId, apiKey ?? '', baseUrl);
+    console.log(`[getMentorById] Returning Supabase-only mentor for user_id=${mentorJkknId}`);
+    return {
+      id: mentorJkknId,
+      name: sbUser.full_name || sbUser.email?.split('@')[0] || 'Unknown',
+      email: sbUser.email || '',
+      department,
+      designation: mentorWithUser.designation || 'Faculty',
+      totalStudents: count || 0,
+    };
+  }
+
   // JKKN API shape varies — try all known wrappers before giving up
   const staff = apiData?.data || apiData?.result || apiData?.staff || apiData?.member || apiData;
 
@@ -451,6 +558,7 @@ export async function getMentorList(
     );
   } else if (
     userAccess.role === 'principal' ||
+    userAccess.role === 'institution_admin' ||
     userAccess.role === 'admin' ||
     userAccess.isMentorIncharge
   ) {
@@ -577,7 +685,9 @@ export async function getMentorList(
               id,
               email,
               full_name,
-              phone_number
+              phone_number,
+              department_id,
+              institution_id
             )
           `)
           .eq('user_id', userAccess.userId)
@@ -589,6 +699,8 @@ export async function getMentorList(
             email: string;
             full_name: string | null;
             phone_number: string | null;
+            department_id: string | null;
+            institution_id: string | null;
           };
           // Resolve human-readable names from already-loaded HR API data.
           // mentors table only stores UUID IDs; names live in the HR API objects.
@@ -598,14 +710,20 @@ export async function getMentorList(
           const instStaff4 = staffMembers.find(
             (s: any) => getInstitutionId(s.institution) === supabaseMentor.institution_id
           );
+          // Fall back to users.department_id when mentors row has empty string
+          const effectiveDeptId4 = supabaseMentor.department_id || sbUser.department_id;
+          const effectiveInstId4 = supabaseMentor.institution_id || sbUser.institution_id;
+          const tier4Department = deptStaff4
+            ? getDepartmentName(deptStaff4.department)
+            : await resolveDepartmentName(effectiveDeptId4, apiKey ?? '', baseUrl);
           mentors = [{
             id: userAccess.userId,
             name: sbUser.full_name || sbUser.email?.split('@')[0] || 'Unknown',
             email: sbUser.email,
-            department: deptStaff4 ? getDepartmentName(deptStaff4.department) : '',
-            department_id: supabaseMentor.department_id || '',
+            department: tier4Department,
+            department_id: effectiveDeptId4 || '',
             institution: instStaff4 ? getInstitutionName(instStaff4.institution) : '',
-            institution_id: supabaseMentor.institution_id || '',
+            institution_id: effectiveInstId4 || '',
             designation: supabaseMentor.designation || 'Faculty',
             phone: sbUser.phone_number || '',
             avatar: (supabaseMentor.avatar_url as string | null) ?? undefined,
@@ -636,11 +754,14 @@ export async function getMentorList(
           const instStaff4b = staffMembers.find(
             (s: any) => getInstitutionId(s.institution) === userRecord.institution_id
           );
+          const tier4bDepartment = deptStaff4b
+            ? getDepartmentName(deptStaff4b.department)
+            : await resolveDepartmentName(userRecord.department_id, apiKey ?? '', baseUrl);
           mentors = [{
             id: userAccess.userId,
             name: userRecord.full_name || userRecord.email?.split('@')[0] || 'Unknown',
             email: userRecord.email,
-            department: deptStaff4b ? getDepartmentName(deptStaff4b.department) : '',
+            department: tier4bDepartment,
             department_id: userRecord.department_id || '',
             institution: instStaff4b ? getInstitutionName(instStaff4b.institution) : '',
             institution_id: userRecord.institution_id || '',

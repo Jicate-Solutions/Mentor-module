@@ -116,14 +116,35 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       return null;
     }
 
+    // Prefer institution_id / department_id from the live auth token — they match
+    // the same UUID namespace the JKKN HR API uses for staff filtering.
+    // Fall back to the stored DB value when the token omits them.
+    const resolvedInstitutionId = validation.user.institution_id || user.institution_id;
+    const resolvedDepartmentId  = validation.user.department_id  || user.department_id;
+
+    // Persist back to DB if the token gave us fresher values (fire-and-forget).
+    if (
+      (resolvedInstitutionId && resolvedInstitutionId !== user.institution_id) ||
+      (resolvedDepartmentId  && resolvedDepartmentId  !== user.department_id)
+    ) {
+      void (async () => {
+        const { error } = await supabaseAdmin
+          .from('users')
+          .update({ institution_id: resolvedInstitutionId, department_id: resolvedDepartmentId })
+          .eq('id', user.id);
+        if (error) console.error('[Auth] Failed to sync institution/department:', error);
+        else console.log(`[Auth] Synced institution/department for user ${user.id}`);
+      })();
+    }
+
     return {
       id: user.id,
       jkkn_user_id: user.jkkn_user_id,
       email: user.email,
       full_name: user.full_name,
       role: user.role,
-      institution_id: user.institution_id,
-      department_id: user.department_id,
+      institution_id: resolvedInstitutionId,
+      department_id: resolvedDepartmentId,
       is_super_admin: user.is_super_admin || false,
     };
   } catch (error) {

@@ -62,17 +62,10 @@ export async function POST(
       return err('Permission denied', 403);
     }
 
-    // Look up assigning user's Supabase UUID
-    const { data: assigningUser } = await supabase
-      .from('users')
-      .select('id')
-      .eq('jkkn_user_id', userAccess.userId)
-      .single();
-
     const results = await bulkAssignStudents(
       resolved.mentor.id,
       students,
-      assigningUser?.id ?? null
+      userAccess.userId
     );
 
     console.log('[Bulk Assignment] Completed:', {

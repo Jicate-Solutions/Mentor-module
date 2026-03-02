@@ -61,19 +61,21 @@ export async function POST(
     const supabase = createAdminClient();
     const resolved = await resolveMentorByJkknId(mentorId, supabase);
 
-    if (resolved) {
-      const canManage = await canManageMentor(
-        userAccess,
-        resolved.mentor.id,
-        resolved.mentor.institution_id || ''
-      );
+    if (!resolved) {
+      return err('Mentor not found', 404);
+    }
 
-      if (!canManage) {
-        return err(
-          'Forbidden: You do not have permission to create counseling sessions for this mentor',
-          403
-        );
-      }
+    const canManage = await canManageMentor(
+      userAccess,
+      resolved.mentor.id,
+      resolved.mentor.institution_id || ''
+    );
+
+    if (!canManage) {
+      return err(
+        'Forbidden: You do not have permission to create counseling sessions for this mentor',
+        403
+      );
     }
 
     const session = await createSession(

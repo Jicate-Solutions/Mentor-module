@@ -40,6 +40,12 @@ export async function createClient() {
  * Use this for admin operations that bypass RLS
  */
 export function createAdminClient() {
+  if (!supabaseServiceKey) {
+    console.error(
+      '[createAdminClient] SUPABASE_SERVICE_ROLE_KEY is not set. ' +
+      'Database writes via admin client will fail RLS checks.'
+    );
+  }
   return createSupabaseClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,

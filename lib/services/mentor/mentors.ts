@@ -600,75 +600,9 @@ export async function getMentorList(
     } else {
       let resolved = false;
 
-      // Tier 1 — Word-intersection name match in mentors (post-designation filter) ← NAME FIRST
-      // Handles "K ROJA" / "ROJA DEVI" surname-first formats.
-      if (!resolved && ownWords.length > 0) {
-        const nameMatched = mentors.filter((m: any) => {
-          const staffWords = m.name.toLowerCase().trim().split(/\s+/);
-          return ownWords.some((w: string) => staffWords.includes(w));
-        });
-        if (nameMatched.length > 0) {
-          mentors = nameMatched;
-          resolved = true;
-          console.log(`[getMentorList] Tier 1 (name): '${ownName}' → ${mentors.length} result(s)`);
-        }
-      }
-
-      // Tier 2 — Email exact match in mentors (post-designation filter) ← EMAIL SECOND
-      if (!resolved && ownEmail) {
-        const emailMatched = mentors.filter(
-          (m: any) => (m.email || '').toLowerCase() === ownEmail
-        );
-        if (emailMatched.length > 0) {
-          mentors = emailMatched;
-          resolved = true;
-          console.log(`[getMentorList] Tier 2 (email): '${ownEmail}' → ${mentors.length} result(s)`);
-        }
-      }
-
-      // Tier 3 — Name-OR-email in ALL staffMembers (bypasses designation filter)
-      // FIXED: guard is (ownEmail || ownWords.length > 0) — reachable even when ownWords is empty.
-      // Catches faculty whose designation is non-standard AND excluded by isMentorDesignation().
-      if (!resolved && (ownEmail || ownWords.length > 0)) {
-        const fallbackStaff = staffMembers.find((s: any) => {
-          // Name checked first within this tier too
-          if (ownWords.length > 0) {
-            const sName = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase().trim();
-            const sWords = sName.split(/\s+/);
-            if (ownWords.some((w: string) => sWords.includes(w))) return true;
-          }
-          const sEmail = (s.email || s.institution_email || '').toLowerCase();
-          if (ownEmail && sEmail === ownEmail) return true;
-          return false;
-        });
-
-        if (fallbackStaff) {
-          const fn = fallbackStaff.first_name || '';
-          const ln = fallbackStaff.last_name || '';
-          let userId = jkknToUserMap.get(fallbackStaff.id);
-          if (!userId && ownEmail) userId = emailToUserMap.get(ownEmail);
-          const mentorDbId = userId ? userToMentorMap.get(userId) : undefined;
-          mentors = [{
-            id: fallbackStaff.id,
-            name: `${fn} ${ln}`.trim() || ownEmail?.split('@')[0] || 'Unknown',
-            email: fallbackStaff.email || fallbackStaff.institution_email,
-            department: getDepartmentName(fallbackStaff.department),
-            department_id: typeof fallbackStaff.department === 'object'
-              ? (fallbackStaff.department?.id || fallbackStaff.department?.department_id || '') : '',
-            institution: getInstitutionName(fallbackStaff.institution),
-            institution_id: getInstitutionId(fallbackStaff.institution),
-            designation: fallbackStaff.designation,
-            phone: fallbackStaff.phone || '',
-            avatar: undefined,
-            totalStudents: mentorDbId ? (mentorStudentCountMap.get(mentorDbId) || 0) : 0,
-          }];
-          resolved = true;
-          console.log(
-            `[getMentorList] Tier 3 (staff bypass): found in all staff ` +
-            `(designation: ${fallbackStaff.designation}) → 1 result`
-          );
-        }
-      }
+      // Tiers 1–3 removed: name word-intersection ("mr." matches ALL male mentors → 57 false
+      // positives) and all-staff fallback (searches cross-institution JKKN API data without
+      // institution scoping). Tier 4/4b use exact user_id lookups and are inherently safe.
 
       // Tier 4 (NEW) — Supabase direct: query mentors JOIN users by user_id
       // Handles test accounts and any user not present in the JKKN HR API at all.

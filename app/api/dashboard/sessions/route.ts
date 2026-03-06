@@ -14,6 +14,17 @@ export async function GET(request: NextRequest) {
     const institutionFilter = getInstitutionFilter(userAccess);
     const mentorIds = await getMentorIdsForInstitution(institutionFilter);
 
+    // For regular mentors: scope to own sessions only
+    let effectiveMentorIds = mentorIds;
+    if (userAccess.role === 'mentor') {
+      const { data: mentorRecord } = await supabase
+        .from('mentors')
+        .select('id')
+        .eq('user_id', userAccess.userId)
+        .maybeSingle();
+      effectiveMentorIds = mentorRecord ? [mentorRecord.id] : [];
+    }
+
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '10');
 
@@ -47,8 +58,8 @@ export async function GET(request: NextRequest) {
       .order('date', { ascending: true })
       .limit(limit);
 
-    if (mentorIds) {
-      sessionsQuery = sessionsQuery.in('mentor_id', mentorIds);
+    if (effectiveMentorIds) {
+      sessionsQuery = sessionsQuery.in('mentor_id', effectiveMentorIds);
     }
 
     const { data: sessions, error } = await sessionsQuery;

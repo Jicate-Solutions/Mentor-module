@@ -22,6 +22,19 @@ export async function GET(
   const { id: mentorId } = await params;
 
   try {
+    const supabase = createAdminClient();
+    const resolved = await resolveMentorByJkknId(mentorId, supabase);
+    if (!resolved) {
+      return err('Mentor not found', 404);
+    }
+    const canAccess = await canManageMentor(
+      userAccess,
+      resolved.mentor.id,
+      resolved.mentor.institution_id || ''
+    );
+    if (!canAccess) {
+      return err('Forbidden', 403);
+    }
     const sessions = await getSessionsForMentor(mentorId);
     return ok(sessions);
   } catch (error) {

@@ -80,6 +80,17 @@ export async function GET(request: NextRequest) {
     // Get real-time session statistics from Supabase
     const supabase = createAdminClient();
 
+    // For regular mentors: scope to own sessions only
+    let mentorIdFilter: string | null = null;
+    if (userAccess.role === 'mentor') {
+      const { data: mentorRecord } = await supabase
+        .from('mentors')
+        .select('id')
+        .eq('user_id', userAccess.userId)
+        .maybeSingle();
+      mentorIdFilter = mentorRecord?.id || null;
+    }
+
     // Fetch ALL students from JKKN API with pagination (max 200 per page)
     // This ensures we get complete student counts including those not yet synced
     let students: any[] = [];
@@ -150,8 +161,8 @@ export async function GET(request: NextRequest) {
       students = supabaseStudents || [];
     }
 
-    // Fetch all counseling sessions with mentor info
-    const { data: sessions, error: sessionsError } = await supabase
+    // Fetch counseling sessions with mentor info (scoped to own sessions for mentor role)
+    let sessionsQuery = supabase
       .from('counseling_sessions')
       .select(`
         id,
@@ -164,6 +175,10 @@ export async function GET(request: NextRequest) {
           institution_id
         )
       `);
+    if (mentorIdFilter) {
+      sessionsQuery = sessionsQuery.eq('mentor_id', mentorIdFilter);
+    }
+    const { data: sessions, error: sessionsError } = await sessionsQuery;
 
     if (sessionsError) {
       console.error('Error fetching sessions:', sessionsError);

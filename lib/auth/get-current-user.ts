@@ -119,10 +119,26 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     // Prefer institution_id / department_id from the live auth token — they match
     // the same UUID namespace the JKKN HR API uses for staff filtering.
     // Fall back to the stored DB value when the token omits them.
-    const resolvedInstitutionId = validation.user.institution_id || user.institution_id;
-    const resolvedDepartmentId  = validation.user.department_id  || user.department_id;
+    let resolvedInstitutionId = validation.user.institution_id || user.institution_id;
+    let resolvedDepartmentId  = validation.user.department_id  || user.department_id;
 
-    // Persist back to DB if the token gave us fresher values (fire-and-forget).
+    // Fallback: if institution/department still null, check mentors table.
+    // Some roles (e.g. HOD) have JKKN tokens that omit these fields, but their
+    // mentors record (created via admin sync) carries the correct IDs.
+    if (!resolvedInstitutionId || !resolvedDepartmentId) {
+      const { data: mentorRecord } = await supabaseAdmin
+        .from('mentors')
+        .select('institution_id, department_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (mentorRecord) {
+        resolvedInstitutionId = resolvedInstitutionId || mentorRecord.institution_id;
+        resolvedDepartmentId  = resolvedDepartmentId  || mentorRecord.department_id;
+      }
+    }
+
+    // Persist back to DB if we resolved fresher values (fire-and-forget).
     if (
       (resolvedInstitutionId && resolvedInstitutionId !== user.institution_id) ||
       (resolvedDepartmentId  && resolvedDepartmentId  !== user.department_id)

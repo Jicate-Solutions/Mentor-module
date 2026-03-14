@@ -166,9 +166,8 @@ export default function MentorListingPage() {
   // Debounced search - only search after user stops typing for 500ms
   useEffect(() => {
     if (!searchQuery.trim()) {
-      // Don't clear data if filters are active or data is already loaded
-      if (activeFiltersCount === 0 && user?.role !== 'faculty') {
-        setMentors([]);
+      // Only reset if user explicitly cleared the search and no auto-loaded data exists
+      if (activeFiltersCount === 0 && user?.role !== 'faculty' && !loading) {
         setHasSearched(false);
       }
       return;
@@ -179,7 +178,7 @@ export default function MentorListingPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, accessToken]);
+  }, [searchQuery]);
 
   // Load data when filters are applied but no data exists yet
   useEffect(() => {
@@ -294,8 +293,8 @@ export default function MentorListingPage() {
         />
       )}
 
-      {/* Initial State - No Search (only show for non-faculty users) */}
-      {!hasSearched && !loading && !error && user?.role !== 'faculty' && (
+      {/* Initial State - No Search (only show for non-faculty users when no data loaded) */}
+      {!hasSearched && !loading && !error && mentors.length === 0 && user?.role !== 'faculty' && (
         <div className="bg-white rounded-xl p-10 lg:p-12 text-center shadow-sm">
           <div className="max-w-md mx-auto">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-neutral-100 flex items-center justify-center">

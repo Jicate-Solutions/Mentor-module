@@ -38,6 +38,13 @@ const MENTOR_DESIGNATIONS = [
   'teaching faculty',
   'associate dean',
   'assistant dean',
+  // Nursing college designations (common in Indian nursing institutions)
+  'tutor',
+  'nursing tutor',
+  'clinical instructor',
+  'clinical tutor',
+  'nurse educator',
+  'clinical faculty',
 ];
 
 function isMentorDesignation(designation: string): boolean {
@@ -548,14 +555,38 @@ export async function getMentorList(
   });
 
   // ── Role-based access control filtering ───────────────────────────────────
-  if (userAccess.isSuperAdmin) {
-    // no filter
+  if (userAccess.isSuperAdmin || userAccess.role === 'administrator') {
+    // no filter — also handles legacy DB records where role='administrator' was not yet remapped to 'super_admin'
   } else if (userAccess.role === 'hod') {
-    mentors = mentors.filter(
-      (m: any) =>
-        m.institution_id === userAccess.institutionId &&
-        m.department_id === userAccess.departmentId
-    );
+    let hodInstId = userAccess.institutionId;
+    let hodDeptId = userAccess.departmentId;
+
+    // Resolve from mentors table when users table has null institution/department
+    if (!hodInstId || !hodDeptId) {
+      if (userAccess.userId) {
+        const { data: mentorRecord } = await supabaseAdmin
+          .from('mentors')
+          .select('institution_id, department_id')
+          .eq('user_id', userAccess.userId)
+          .maybeSingle();
+        if (mentorRecord) {
+          hodInstId = hodInstId || mentorRecord.institution_id;
+          hodDeptId = hodDeptId || mentorRecord.department_id;
+        }
+      }
+    }
+
+    if (hodInstId && hodDeptId) {
+      mentors = mentors.filter(
+        (m: any) =>
+          m.institution_id === hodInstId &&
+          m.department_id === hodDeptId
+      );
+    } else {
+      // Still no scoping data — return empty to prevent data leak
+      console.warn(`[getMentorList] HOD user ${userAccess.userId} has no institution/department — returning empty list`);
+      mentors = [];
+    }
   } else if (
     userAccess.role === 'principal' ||
     userAccess.role === 'institution_admin' ||
@@ -745,7 +776,8 @@ export async function getMentorList(
         m.name.toLowerCase().includes(query) ||
         (m.email || '').toLowerCase().includes(query) ||
         m.department.toLowerCase().includes(query) ||
-        m.designation.toLowerCase().includes(query)
+        m.designation.toLowerCase().includes(query) ||
+        (m.institution || '').toLowerCase().includes(query)
     );
   }
 

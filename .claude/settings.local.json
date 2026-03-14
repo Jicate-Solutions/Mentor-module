@@ -113,7 +113,9 @@
       "Bash(DOTENV_CONFIG_PATH=.env.local npx tsx:*)",
       "Bash(tasklist:*)",
       "Bash(wc:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(find /c/Users/Admin/Documents/GitHub/Mentor-module -type f \\\\\\( -name \"*search*\" -o -name \"*Search*\" \\\\\\) 2>/dev/null | head -20)",
+      "Bash(find /c/Users/Admin/Documents/GitHub/Mentor-module/components -type f \\\\\\( -name \"*search*\" -o -name \"*Search*\" \\\\\\) 2>/dev/null | grep -v node_modules)"
     ],
     "deny": [],
     "ask": []

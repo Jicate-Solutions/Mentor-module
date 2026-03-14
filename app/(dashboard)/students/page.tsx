@@ -11,11 +11,11 @@ import PageHeader from '@/components/ui/PageHeader';
 import { useFilters } from '@/hooks/useFilters';
 import type { FilterConfig } from '@/lib/types/filters';
 import {
-  fetchStudents,
   checkApiStatus,
   type Student,
   type ApiError,
 } from '@/lib/api/jkkn-api';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 
 export default function StudentsPage() {
   // API status
@@ -44,9 +44,7 @@ export default function StudentsPage() {
       options: async () => {
         // Fetch ALL institutions from API, not just from current students page
         try {
-          const response = await fetch('/api/jkkn/institutions?page=1&limit=100', {
-            credentials: 'include',
-          });
+          const response = await fetchWithAuthRetry('/api/jkkn/institutions?page=1&limit=100');
 
           if (!response.ok) {
             console.error('Failed to fetch institutions for filter');
@@ -78,9 +76,7 @@ export default function StudentsPage() {
       options: async () => {
         // Fetch ALL departments from API
         try {
-          const response = await fetch('/api/jkkn/departments?page=1&limit=500', {
-            credentials: 'include',
-          });
+          const response = await fetchWithAuthRetry('/api/jkkn/departments?page=1&limit=500');
 
           if (!response.ok) {
             console.error('Failed to fetch departments for filter');
@@ -113,9 +109,7 @@ export default function StudentsPage() {
       options: async () => {
         // Fetch ALL programs from API
         try {
-          const response = await fetch('/api/jkkn/programs?page=1&limit=1000', {
-            credentials: 'include',
-          });
+          const response = await fetchWithAuthRetry('/api/jkkn/programs?page=1&limit=1000');
 
           if (!response.ok) {
             console.error('Failed to fetch programs for filter');
@@ -292,18 +286,37 @@ export default function StudentsPage() {
       // Load ALL students (10000) for filtering to work properly
       // Using page=1, limit=10000 to get complete dataset
       console.log('[Students Page] Fetching students with limit=10000...');
-      const response = await fetchStudents(1, 10000);
+      const response = await fetchWithAuthRetry('/api/jkkn/students?page=1&limit=10000');
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw {
+          message: errorData.error || `API Error: ${response.statusText}`,
+          status: response.status,
+        } as ApiError;
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw {
+          message: result.error || 'Failed to fetch students',
+          status: 0,
+        } as ApiError;
+      }
+
+      const studentData = result.data || [];
 
       console.log('[Students Page] Received students:', {
-        count: response.data.length,
-        metadata: response.metadata,
-        firstStudent: response.data[0],
-        lastStudent: response.data[response.data.length - 1]
+        count: studentData.length,
+        metadata: result.metadata,
+        firstStudent: studentData[0],
+        lastStudent: studentData[studentData.length - 1]
       });
 
       // Debug: Check unique institutions in loaded data
       const uniqueInstitutions = new Map();
-      response.data.forEach((student: any) => {
+      studentData.forEach((student: any) => {
         const inst = student.institution;
         if (typeof inst === 'object' && inst.id && inst.name) {
           uniqueInstitutions.set(inst.id, inst.name);
@@ -313,11 +326,11 @@ export default function StudentsPage() {
         Array.from(uniqueInstitutions.entries()).map(([id, name]) => ({ id, name }))
       );
 
-      setStudents(response.data);
-      setFilteredStudents(response.data);
+      setStudents(studentData);
+      setFilteredStudents(studentData);
       setCurrentPage(1); // Always page 1 since we load all data
       setTotalPages(1); // Single page with all data
-      setTotal(response.data.length); // Total = actual data length
+      setTotal(studentData.length); // Total = actual data length
     } catch (err: any) {
       const apiError = err as ApiError;
       console.error('[Students Page] Error loading students:', apiError);

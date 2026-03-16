@@ -1,10 +1,18 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { readCache, writeCache, clearCache } from '@/lib/utils/session-cache';
+import { readCache, writeCache, clearCache, clearCacheByPrefix } from '@/lib/utils/session-cache';
 import type { Student } from '@/lib/types/mentor';
 
 const CACHE_TTL = 5 * 60 * 1000;
+
+/** Clear all caches that depend on the student list for this mentor */
+function invalidateStudentCaches(mentorId: string, ownCacheKey: string) {
+  clearCache(ownCacheKey);
+  // CounselingTab's useCounselingSessions also fetches students; clear its cache
+  // so it doesn't serve stale data showing zero students.
+  clearCache(`counseling_${mentorId}`);
+}
 
 export function useAssignedStudents(mentorId: string) {
   const cacheKey = `assigned_students_${mentorId}`;
@@ -81,7 +89,7 @@ export function useAssignedStudents(mentorId: string) {
           return { success: false, error: json.error || 'Failed to assign student' };
         }
 
-        clearCache(cacheKey);
+        invalidateStudentCaches(mentorId, cacheKey);
         await fetchStudents();
         return { success: true };
       } catch (e) {
@@ -113,7 +121,7 @@ export function useAssignedStudents(mentorId: string) {
           return { success: false, error: json.error || 'Failed to remove student' };
         }
 
-        clearCache(cacheKey);
+        invalidateStudentCaches(mentorId, cacheKey);
         await fetchStudents();
         return { success: true };
       } catch (e) {

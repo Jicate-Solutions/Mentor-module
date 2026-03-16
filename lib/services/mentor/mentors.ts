@@ -709,33 +709,31 @@ export async function getMentorList(
   if (userAccess.isSuperAdmin || userAccess.role === 'administrator') {
     // no filter — also handles legacy DB records where role='administrator' was not yet remapped to 'super_admin'
   } else if (userAccess.role === 'hod') {
+    // HOD sees all mentors in their institution (institution-wide scope).
+    // HODs often oversee multiple sub-departments (e.g. "Department of Pharmacy UG"
+    // is the parent of Pharmacy Practice, Pharmaceutical Analysis, etc.), so
+    // department-level filtering would hide mentors in sibling departments.
     let hodInstId = userAccess.institutionId;
-    let hodDeptId = userAccess.departmentId;
 
-    // Resolve from mentors table when users table has null institution/department
-    if (!hodInstId || !hodDeptId) {
+    // Resolve from mentors table when users table has null institution
+    if (!hodInstId) {
       if (userAccess.userId) {
         const { data: mentorRecord } = await supabaseAdmin
           .from('mentors')
-          .select('institution_id, department_id')
+          .select('institution_id')
           .eq('user_id', userAccess.userId)
           .maybeSingle();
         if (mentorRecord) {
-          hodInstId = hodInstId || mentorRecord.institution_id;
-          hodDeptId = hodDeptId || mentorRecord.department_id;
+          hodInstId = mentorRecord.institution_id;
         }
       }
     }
 
-    if (hodInstId && hodDeptId) {
-      mentors = mentors.filter(
-        (m: any) =>
-          m.institution_id === hodInstId &&
-          m.department_id === hodDeptId
-      );
+    if (hodInstId) {
+      mentors = mentors.filter((m: any) => m.institution_id === hodInstId);
     } else {
       // Still no scoping data — return empty to prevent data leak
-      console.warn(`[getMentorList] HOD user ${userAccess.userId} has no institution/department — returning empty list`);
+      console.warn(`[getMentorList] HOD user ${userAccess.userId} has no institution — returning empty list`);
       mentors = [];
     }
   } else if (

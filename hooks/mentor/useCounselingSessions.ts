@@ -40,19 +40,12 @@ export function useCounselingSessions(mentorId: string) {
 
       let sessionsData: CounselingSession[] = [];
       let studentsData: Student[] = [];
+      const errors: string[] = [];
 
-      if (sessionsRes.ok) {
-        const data = await sessionsRes.json();
-        sessionsData = data.data || [];
-        setSessions(sessionsData);
-      } else {
-        const data = await sessionsRes.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to fetch counseling sessions');
-      }
-
+      // Process students FIRST — a sessions failure must never block the
+      // student list, because that gates the "Create Session" button.
       if (studentsRes.ok) {
         const data = await studentsRes.json();
-        // Normalise the student shape to match the Student type
         studentsData = (data.data ?? data.students ?? []).map((s: any) => ({
           id: s.id,
           name: s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Unknown',
@@ -66,7 +59,20 @@ export function useCounselingSessions(mentorId: string) {
         setStudents(studentsData);
       } else {
         const data = await studentsRes.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to fetch assigned students');
+        errors.push(data.error || 'Failed to fetch assigned students');
+      }
+
+      if (sessionsRes.ok) {
+        const data = await sessionsRes.json();
+        sessionsData = data.data || [];
+        setSessions(sessionsData);
+      } else {
+        const data = await sessionsRes.json().catch(() => ({}));
+        errors.push(data.error || 'Failed to fetch counseling sessions');
+      }
+
+      if (errors.length > 0) {
+        throw new Error(errors.join('; '));
       }
 
       writeCache(cacheKey, { sessions: sessionsData, students: studentsData });

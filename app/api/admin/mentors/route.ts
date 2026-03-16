@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
           institution_id
         )
       `)
+      .eq('is_active', true)
       .order('created_at', { ascending: false });
 
     if (error) {

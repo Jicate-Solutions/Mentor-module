@@ -86,7 +86,7 @@ export default function DocumentViewerPage() {
           </button>
 
           <div className="bg-white rounded-lg border border-neutral-200 p-6">
-            <h1 className="text-2xl font-medium text-neutral-900 mb-2">{document.title}</h1>
+            <h1 className="text-[22px] font-medium text-neutral-900 mb-2 tracking-tight">{document.title}</h1>
             {document.description && (
               <p className="text-sm text-neutral-600 mb-4">{document.description}</p>
             )}

@@ -119,7 +119,7 @@ export default function DegreesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
       {/* Hero Header */}
       <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
         <div className="flex items-start justify-between">

@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CounselingSession } from '@/lib/types/mentor';
 import { resolveMentorByJkknId } from './resolve';
+import { getDepartmentMap } from '@/lib/services/jkkn-sync';
 import { ActivityLogger } from '@/lib/services/activity-logger';
 import { sendSessionCreatedEmail, sendSessionUpdatedEmail, sendSessionCancelledEmail } from '@/lib/email/send-session-notification';
 import { sendFeedbackRequestEmail } from '@/lib/email/send-feedback-request';
@@ -45,30 +46,6 @@ function isValidStudentEmail(email: string): boolean {
     email.includes('@') &&
     !isPlaceholderEmail(email)
   );
-}
-
-/**
- * Build a department UUID → name map from the JKKN departments API.
- */
-async function buildDepartmentMap(apiKey: string, baseUrl: string): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  try {
-    const res = await fetch(
-      `${baseUrl}/api-management/organizations/departments?page=1&limit=500`,
-      { headers: { 'Authorization': `Bearer ${apiKey}` }, next: { revalidate: 60 } }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      (data.data || []).forEach((dept: any) => {
-        const id = dept.id || dept.department_id;
-        const name = dept.name || dept.department_name || 'Unknown Department';
-        if (id) map.set(id, name);
-      });
-    }
-  } catch (e) {
-    console.warn('[counseling service] Failed to fetch departments:', e);
-  }
-  return map;
 }
 
 /**
@@ -183,10 +160,8 @@ export async function getSessionsForMentor(mentorJkknId: string): Promise<Counse
     throw new Error(`Failed to fetch counseling sessions: ${error.message}`);
   }
 
-  // Build department map
-  const departmentMap = apiKey
-    ? await buildDepartmentMap(apiKey, baseUrl)
-    : new Map<string, string>();
+  // Build department map (cache-first via getDepartmentMap)
+  const departmentMap = await getDepartmentMap();
 
   // Resolve placeholder student emails from JKKN Learners API
   const realEmailMap = new Map<string, { email: string; year: string }>();

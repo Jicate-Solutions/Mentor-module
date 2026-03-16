@@ -10,7 +10,7 @@ interface PageContainerProps {
  */
 export default function PageContainer({ children, className = '' }: PageContainerProps) {
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-neutral-50 via-brand-cream/20 to-neutral-50 p-4 lg:p-8 space-y-6 ${className}`}>
+    <div className={`min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5 ${className}`}>
       {children}
       {/* Bottom Spacer for Mobile Nav */}
       <div className="h-4 lg:hidden" />

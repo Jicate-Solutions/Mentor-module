@@ -504,7 +504,7 @@ export async function getMentorList(
 
   const { data: mentorRecords } = await supabaseAdmin
     .from('mentors')
-    .select('id, user_id')
+    .select('id, user_id, institution_id, department_id')
     .in('user_id', userIds);
 
   const mentorIds = mentorRecords?.map(m => m.id) || [];
@@ -514,6 +514,12 @@ export async function getMentorList(
     .in('mentor_id', mentorIds);
 
   const userToMentorMap = new Map(mentorRecords?.map(m => [m.user_id, m.id]) || []);
+  // Map mentor_id → local institution/department UUIDs for role-based filtering.
+  // The JKKN HR API may return institution/department as strings or objects with
+  // different IDs than our Supabase UUIDs, causing role-based filters to miss mentors.
+  const mentorLocalIdsMap = new Map(
+    mentorRecords?.map(m => [m.id, { institution_id: m.institution_id, department_id: m.department_id }]) || []
+  );
   const jkknToUserMap = new Map(users.map(u => [u.jkkn_user_id, u.id]));
   const mentorStudentCountMap = new Map<string, number>();
   studentCounts?.forEach(record => {
@@ -535,24 +541,81 @@ export async function getMentorList(
     const mentorId = userId ? userToMentorMap.get(userId) : undefined;
     const totalStudents = mentorId ? (mentorStudentCountMap.get(mentorId) || 0) : 0;
 
-    const deptId = typeof staff.department === 'object' && staff.department !== null
+    const apiDeptId = typeof staff.department === 'object' && staff.department !== null
       ? (staff.department.id || staff.department.department_id || '')
       : '';
+    const apiInstId = getInstitutionId(staff.institution);
+
+    // Prefer local Supabase UUIDs over API-derived IDs for role-based filtering.
+    // The JKKN HR API may return institution/department in formats (strings, different
+    // UUIDs) that don't match the Supabase IDs used by HOD/admin/mentor-incharge filters.
+    const localIds = mentorId ? mentorLocalIdsMap.get(mentorId) : undefined;
 
     return {
       id: staff.id,
       name: finalName,
       email: staff.email || staff.institution_email,
       department: getDepartmentName(staff.department),
-      department_id: deptId,
+      department_id: localIds?.department_id || apiDeptId,
       institution: getInstitutionName(staff.institution),
-      institution_id: getInstitutionId(staff.institution),
+      institution_id: localIds?.institution_id || apiInstId,
       designation: staff.designation,
       phone: staff.phone || '',
       avatar: undefined,
       totalStudents,
     };
   });
+
+  // ── Supabase fallback: include locally-registered mentors not in JKKN API ─
+  // The JKKN HR API may not return all mentors (e.g. newly added staff,
+  // designation mismatches, API data gaps). Augment with mentors that exist
+  // in the local `mentors` table but are absent from the API results.
+  {
+    const apiEmails = new Set(
+      mentors.map((m: any) => (m.email || '').toLowerCase()).filter(Boolean)
+    );
+
+    const { data: localMentors } = await supabaseAdmin
+      .from('mentors')
+      .select('id, user_id, institution_id, department_id, users!inner(id, email, full_name, role)')
+      .not('user_id', 'is', null);
+
+    if (localMentors && localMentors.length > 0) {
+      let addedCount = 0;
+      for (const lm of localMentors) {
+        const userRecord = lm.users as any;
+        if (!userRecord?.email) continue;
+        const email = userRecord.email.toLowerCase();
+        if (apiEmails.has(email)) continue; // already in API results
+
+        // Resolve department name from JKKN API if possible
+        let departmentName = '';
+        if (lm.department_id && apiKey) {
+          departmentName = await resolveDepartmentName(lm.department_id, apiKey, baseUrl);
+        }
+
+        const totalStudents = mentorStudentCountMap.get(lm.id) || 0;
+
+        mentors.push({
+          id: userRecord.id, // use Supabase users.id for Tier 4/4b resolution
+          name: userRecord.full_name || email.split('@')[0] || 'Unknown',
+          email: userRecord.email,
+          department: departmentName || 'N/A',
+          department_id: lm.department_id || '',
+          institution: '',
+          institution_id: lm.institution_id || '',
+          designation: userRecord.role || 'Faculty',
+          phone: '',
+          avatar: undefined,
+          totalStudents,
+        });
+        addedCount++;
+      }
+      if (addedCount > 0) {
+        console.log(`[getMentorList] Added ${addedCount} locally-registered mentors not found in JKKN API`);
+      }
+    }
+  }
 
   // ── Role-based access control filtering ───────────────────────────────────
   if (userAccess.isSuperAdmin || userAccess.role === 'administrator') {

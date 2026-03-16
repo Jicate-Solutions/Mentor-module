@@ -2,6 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserAccess, getInstitutionFilter } from '@/lib/middleware/access-control';
 import { createAdminClient } from '@/lib/supabase/server';
 
+// ── Cache-first helper ─────────────────────────────────────────────────────────
+async function fetchDepartmentsFromCache(institutionFilter: string | null) {
+  const supabase = createAdminClient();
+  const { count } = await supabase
+    .from('jkkn_departments')
+    .select('*', { count: 'exact', head: true });
+  if (!count || count === 0) return null;
+
+  let q = supabase.from('jkkn_departments').select('*').eq('is_active', true);
+  if (institutionFilter) q = q.eq('institution_id', institutionFilter);
+  const { data } = await q;
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    code: r.code || 'N/A',
+    institution_id: r.institution_id || '',
+    is_active: r.is_active,
+    created_at: r.synced_at,
+    updated_at: r.synced_at,
+  }));
+}
+
 /**
  * Fetch departments from local Supabase database as fallback
  * Extracts unique department IDs from students table since no dedicated departments table exists
@@ -113,6 +135,22 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '500', 10); // Increased default limit
     const institutionIdParam = searchParams.get('institutionId');
 
+    // Declared once — reused by both cache path and JKKN fallback path
+    const institutionFilter = institutionIdParam || getInstitutionFilter(userAccess);
+
+    // ── Cache-first path ────────────────────────────────────────────────────────
+    const cached = await fetchDepartmentsFromCache(institutionFilter);
+    if (cached) {
+      return NextResponse.json({
+        success: true,
+        data: cached,
+        metadata: { page: 1, totalPages: 1, total: cached.length },
+        source: 'cache',
+        accessLevel: userAccess.role,
+      });
+    }
+    // ── End cache path ──────────────────────────────────────────────────────────
+
     // Call JKKN API
     const url = `${baseUrl}/api-management/organizations/departments?page=${page}&limit=${limit}`;
 
@@ -181,9 +219,7 @@ export async function GET(request: NextRequest) {
 
     console.log('Transformed department data:', JSON.stringify(transformedData.data[0], null, 2));
 
-    // Apply filtering: use institutionId param if provided, otherwise use access control
-    let institutionFilter = institutionIdParam || getInstitutionFilter(userAccess);
-
+    // Apply filtering (institutionFilter declared above)
     // Filter by institution
     if (institutionFilter !== null) {
       transformedData.data = transformedData.data.filter(

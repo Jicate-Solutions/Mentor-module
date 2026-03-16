@@ -36,7 +36,7 @@ export async function GET(
     );
     if (!canManage) return err('Forbidden: You do not have permission to view this mentor\'s students', 403);
 
-    const students = await getStudentsForMentor(mentorId);
+    const students = await getStudentsForMentor(mentorId, resolved.mentor.id);
     return ok(students, { total: students.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to fetch students';

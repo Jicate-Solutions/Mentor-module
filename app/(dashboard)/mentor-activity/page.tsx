@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Activity } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -11,6 +11,7 @@ import ActivityFilters, { type FilterState } from './components/ActivityFilters'
 import ActivityTimeline from './components/ActivityTimeline';
 import MentorPerformanceTable from './components/MentorPerformanceTable';
 import PageHeader from '@/components/ui/PageHeader';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 
 export default function MentorActivityPage() {
   const { user, loading: authLoading, accessToken } = useAuth();
@@ -82,15 +83,10 @@ export default function MentorActivityPage() {
 
     async function fetchMentorId() {
       try {
-        const response = await fetch('/api/mentor/current', {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          credentials: 'include',
-        });
+        const response = await fetchWithAuthRetry('/api/mentor/current');
         if (response.ok) {
           const data = await response.json();
-          setMentorId(data.mentorId);
+          setMentorId(data.data?.mentorId || data.mentorId);
         }
         // Don't log 404 - it's expected for admin/non-mentor users
       } catch (error) {
@@ -136,10 +132,7 @@ export default function MentorActivityPage() {
       params.append('limit', pagination.limit.toString());
       params.append('offset', currentOffset.toString());
 
-      const response = await fetch(`/api/mentor-activity?${params.toString()}`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` },
-        credentials: 'include',
-      });
+      const response = await fetchWithAuthRetry(`/api/mentor-activity?${params.toString()}`);
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -188,10 +181,7 @@ export default function MentorActivityPage() {
         url = `/api/mentor-activity/stats?mentorId=${mentorId}`;
       }
 
-      const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${accessToken}` },
-        credentials: 'include',
-      });
+      const response = await fetchWithAuthRetry(url);
 
       if (!response.ok) {
         throw new Error('Failed to fetch stats');
@@ -216,69 +206,39 @@ export default function MentorActivityPage() {
     fetchStats();
   }, [mentorId, isAdmin, filterKey, accessToken, authLoading, accessLoading, fetchActivities, fetchStats]);
 
-  // Set up Supabase Realtime subscriptions for live updates
+  // Debounced realtime refresh — batch all table changes into a single refresh
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedRefresh = useCallback(() => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => {
+      fetchActivities();
+      fetchStats();
+    }, 1000); // 1s debounce — batches rapid changes
+  }, [fetchActivities, fetchStats]);
+
+  // Set up Supabase Realtime — single channel for all tables
   useEffect(() => {
-    const activityLogChannel = supabase
-      .channel('mentor-activity-log')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mentor_activity_log' }, () => {
-        console.log('[MentorActivity] Realtime: mentor_activity_log changed, refreshing...');
-        fetchActivities();
-        fetchStats();
-      })
-      .subscribe();
+    const tables = [
+      'mentor_activity_log',
+      'counseling_sessions',
+      'mentor_students',
+      'individual_development_plans',
+      'session_feedback',
+      'email_notifications',
+    ];
 
-    const sessionsChannel = supabase
-      .channel('mentor-activity-sessions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'counseling_sessions' }, () => {
-        console.log('[MentorActivity] Realtime: counseling_sessions changed, refreshing...');
-        fetchActivities();
-        fetchStats();
-      })
-      .subscribe();
-
-    const assignmentsChannel = supabase
-      .channel('mentor-activity-assignments')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mentor_students' }, () => {
-        console.log('[MentorActivity] Realtime: mentor_students changed, refreshing...');
-        fetchActivities();
-        fetchStats();
-      })
-      .subscribe();
-
-    const idpsChannel = supabase
-      .channel('mentor-activity-idps')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'individual_development_plans' }, () => {
-        console.log('[MentorActivity] Realtime: individual_development_plans changed, refreshing...');
-        fetchStats();
-      })
-      .subscribe();
-
-    const feedbackChannel = supabase
-      .channel('mentor-activity-feedback')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'session_feedback' }, () => {
-        console.log('[MentorActivity] Realtime: session_feedback changed, refreshing...');
-        fetchActivities();
-        fetchStats();
-      })
-      .subscribe();
-
-    const emailsChannel = supabase
-      .channel('mentor-activity-emails')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'email_notifications' }, () => {
-        console.log('[MentorActivity] Realtime: email_notifications changed, refreshing...');
-        fetchStats();
-      })
-      .subscribe();
+    const channels = tables.map((table) =>
+      supabase
+        .channel(`mentor-activity-${table}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table }, debouncedRefresh)
+        .subscribe()
+    );
 
     return () => {
-      supabase.removeChannel(activityLogChannel);
-      supabase.removeChannel(sessionsChannel);
-      supabase.removeChannel(assignmentsChannel);
-      supabase.removeChannel(idpsChannel);
-      supabase.removeChannel(feedbackChannel);
-      supabase.removeChannel(emailsChannel);
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      channels.forEach((ch) => supabase.removeChannel(ch));
     };
-  }, [fetchActivities, fetchStats]);
+  }, [debouncedRefresh]);
 
   function handleFilterChange(newFilters: FilterState) {
     setFilters(newFilters);
@@ -298,8 +258,7 @@ export default function MentorActivityPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
         {/* Page Header */}
         <PageHeader
           variant="gradient"
@@ -356,7 +315,6 @@ export default function MentorActivityPage() {
           onLoadMore={handleLoadMore}
           hasMore={pagination.hasMore}
         />
-      </div>
     </div>
   );
 }

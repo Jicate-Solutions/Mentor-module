@@ -5,6 +5,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { useToast } from '@/components/providers/ToastProvider';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
 import Badge from '@/components/ui/Badge';
 import SearchInput from '@/components/ui/SearchInput';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -243,18 +244,12 @@ export default function MentorInchargePage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-6">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-4 lg:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between relative z-10">
-          <div className="flex-1">
-            <h1 className="text-[18px] lg:text-[22px] font-medium text-neutral-900 mb-1.5 lg:mb-2 tracking-tight">
-              Mentor Incharge Management
-            </h1>
-            <p className="text-neutral-600 text-[13px] lg:text-[14px] leading-relaxed">
-              Assign mentors to supervise other mentors in their department or institution
-            </p>
-          </div>
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
+      <PageHeader
+        variant="gradient"
+        title="Mentor Incharge Management"
+        description="Assign mentors to supervise other mentors in their department or institution"
+        actions={
           <Button
             variant="primary"
             onClick={() => setShowAssignModal(true)}
@@ -265,9 +260,8 @@ export default function MentorInchargePage() {
             </svg>
             Assign Incharge
           </Button>
-        </div>
-        <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-brand-yellow/20 rounded-full blur-3xl" />
-      </div>
+        }
+      />
 
       {/* Search and Filters - Always visible */}
       <div className="space-y-3 lg:space-y-4">

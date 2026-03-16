@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserAccess, getInstitutionFilter } from '@/lib/middleware/access-control';
 import { createAdminClient } from '@/lib/supabase/server';
 
+// ── Cache-first helper ─────────────────────────────────────────────────────────
+async function fetchInstitutionsFromCache(filterById: string | null) {
+  const supabase = createAdminClient();
+  const { count } = await supabase
+    .from('jkkn_institutions')
+    .select('*', { count: 'exact', head: true });
+  if (!count || count === 0) return null;
+
+  let q = supabase.from('jkkn_institutions').select('*').eq('is_active', true);
+  if (filterById) q = q.eq('id', filterById);
+  const { data } = await q;
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    counselling_code: r.counselling_code || 'N/A',
+    category: r.category || 'Uncategorized',
+    institution_type: r.institution_type || 'Not Specified',
+    is_active: r.is_active,
+    created_at: r.synced_at,
+    updated_at: r.synced_at,
+  }));
+}
+
 /**
  * Fetch institutions from local Supabase database as fallback
  * Extracts unique institution IDs from students table since no dedicated institutions table exists
@@ -97,6 +120,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Declared once here — reused by both the cache path and the JKKN fallback path below
+    const institutionFilter = getInstitutionFilter(userAccess);
+
+    // ── Cache-first path ────────────────────────────────────────────────────────
+    const cached = await fetchInstitutionsFromCache(institutionFilter);
+    if (cached) {
+      return NextResponse.json({
+        success: true,
+        data: cached,
+        metadata: { page: 1, totalPages: 1, total: cached.length },
+        source: 'cache',
+        accessLevel: userAccess.role,
+      });
+    }
+    // ── End cache path ──────────────────────────────────────────────────────────
+
     // Get pagination params from query
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -171,9 +210,7 @@ export async function GET(request: NextRequest) {
 
     console.log('Transformed institution data:', JSON.stringify(transformedData.data[0], null, 2));
 
-    // Apply access control filtering
-    const institutionFilter = getInstitutionFilter(userAccess);
-
+    // Apply access control filtering (institutionFilter declared above)
     if (institutionFilter !== null) {
       // Filter institutions based on user's access level
       transformedData.data = transformedData.data.filter(

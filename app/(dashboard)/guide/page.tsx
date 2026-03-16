@@ -175,8 +175,8 @@ export default function GuideDocumentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
+      <div>
         {/* Header */}
         <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 relative z-10">

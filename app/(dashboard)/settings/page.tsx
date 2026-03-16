@@ -4,8 +4,10 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import Tabs from '@/components/ui/Tabs';
+import PageHeader from '@/components/ui/PageHeader';
 import ApiManagementTab from './components/ApiManagementTab';
 import GeneralSettingsTab from './components/GeneralSettingsTab';
+import DataSyncTab from './components/DataSyncTab';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -47,19 +49,21 @@ export default function SettingsPage() {
       icon: '⚙️',
       content: <GeneralSettingsTab />,
     },
+    {
+      id: 'data-sync',
+      label: 'Data Sync',
+      icon: '🔄',
+      content: <DataSyncTab />,
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-6">
-      {/* Hero Header */}
-      <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">
-        <h1 className="text-2xl lg:text-3xl font-medium text-brand-green mb-2">
-          Settings
-        </h1>
-        <p className="text-neutral-600 text-sm lg:text-base">
-          Manage your application settings and API integrations
-        </p>
-      </div>
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
+      <PageHeader
+        variant="default"
+        title="Settings"
+        description="Manage your application settings and API integrations"
+      />
 
       {/* Tabs Content */}
       <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">

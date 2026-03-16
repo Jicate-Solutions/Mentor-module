@@ -124,8 +124,8 @@ export default function MentorDetailPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
+      <div>
         {/* Header with Back Button */}
         <div className="mb-4 lg:mb-6">
           <button

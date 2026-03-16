@@ -15,6 +15,7 @@ import {
   Building2,
   Filter,
 } from 'lucide-react';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 
 interface MentorStat {
   mentorId: string;
@@ -53,6 +54,7 @@ interface Department {
 }
 
 const periodOptions = [
+  { value: 'all', label: 'All Time' },
   { value: 'week', label: 'This Week' },
   { value: 'month', label: 'This Month' },
   { value: 'last_month', label: 'Last Month' },
@@ -65,7 +67,7 @@ export default function MentorPerformanceTable() {
   const [mentors, setMentors] = useState<MentorStat[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('month');
+  const [period, setPeriod] = useState('all');
   const [sortField, setSortField] = useState<SortField>('sessionCount');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -99,10 +101,7 @@ export default function MentorPerformanceTable() {
 
   async function fetchInstitutions() {
     try {
-      const response = await fetch('/api/jkkn/institutions', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        credentials: 'include',
-      });
+      const response = await fetchWithAuthRetry('/api/jkkn/institutions');
       if (response.ok) {
         const data = await response.json();
         setInstitutions(data.data || []);
@@ -118,10 +117,7 @@ export default function MentorPerformanceTable() {
       const url = instId
         ? `/api/jkkn/departments?institutionId=${instId}`
         : '/api/jkkn/departments';
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        credentials: 'include',
-      });
+      const response = await fetchWithAuthRetry(url);
       if (response.ok) {
         const data = await response.json();
         setDepartments(data.data || []);
@@ -140,12 +136,7 @@ export default function MentorPerformanceTable() {
       if (selectedInstitution) params.append('institutionId', selectedInstitution);
       if (selectedDepartment) params.append('departmentId', selectedDepartment);
 
-      const response = await fetch(`/api/mentor-activity/institution-stats?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
+      const response = await fetchWithAuthRetry(`/api/mentor-activity/institution-stats?${params.toString()}`);
 
       if (response.ok) {
         const data = await response.json();

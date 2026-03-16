@@ -6,6 +6,7 @@ import { CounselingSession } from '@/lib/types/mentor';
 import { supabase } from '@/lib/supabase/client';
 import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
 import HorizontalFilterBar from '@/components/filters/HorizontalFilterBar';
 import { useFilters } from '@/hooks/useFilters';
 import type { FilterConfig } from '@/lib/types/filters';
@@ -580,37 +581,27 @@ export default function CounselingSessionsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-6">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 border border-brand-green/10 rounded-xl p-4 lg:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between relative z-10">
-          <div className="flex-1">
-            <h1 className="text-[18px] lg:text-[22px] font-medium text-neutral-900 mb-1.5 lg:mb-2 tracking-tight">
-              Counseling Sessions
-            </h1>
-            <p className="text-neutral-600 text-[13px] lg:text-[14px] leading-relaxed">
-              {isAdmin
-                ? 'View and monitor all counseling sessions across the institution'
-                : 'Manage and track your counseling sessions'}
-            </p>
-          </div>
-          {/* Only show New Session button for mentors, not admins */}
-          {mentorId && !isAdmin && (
-            <Button
-              onClick={openCreateModal}
-              variant="primary"
-              size="md"
-              className="w-full lg:w-auto flex items-center justify-center min-h-[44px] lg:min-h-0"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Session
-            </Button>
-          )}
-        </div>
-        <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-brand-yellow/20 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
+      <PageHeader
+        variant="gradient"
+        title="Counseling Sessions"
+        description={isAdmin
+          ? 'View and monitor all counseling sessions across the institution'
+          : 'Manage and track your counseling sessions'}
+        actions={mentorId && !isAdmin ? (
+          <Button
+            onClick={openCreateModal}
+            variant="primary"
+            size="md"
+            className="w-full lg:w-auto flex items-center justify-center min-h-[44px] lg:min-h-0"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Session
+          </Button>
+        ) : undefined}
+      />
 
       {/* Filters & Search */}
       <div className="bg-white rounded-xl border border-neutral-200/50 p-4 lg:p-5 shadow-sm">
@@ -823,7 +814,7 @@ export default function CounselingSessionsPage() {
             {/* Modal Header */}
             <div className="border-b border-neutral-200 p-6 sticky top-0 bg-white rounded-t-xl">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-medium text-neutral-800">
+                <h2 className="text-[18px] font-medium text-neutral-800">
                   {editingSession ? 'Edit Session' : 'New Counseling Session'}
                 </h2>
                 <button

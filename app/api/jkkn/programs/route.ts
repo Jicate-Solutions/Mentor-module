@@ -1,5 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserAccess, getInstitutionFilter } from '@/lib/middleware/access-control';
+import { createAdminClient } from '@/lib/supabase/server';
+
+// ── Cache-first helper ─────────────────────────────────────────────────────────
+async function fetchProgramsFromCache(
+  institutionFilter: string | null,
+  departmentFilter: string | null
+) {
+  const supabase = createAdminClient();
+  const { count } = await supabase
+    .from('jkkn_programs')
+    .select('*', { count: 'exact', head: true });
+  if (!count || count === 0) return null;
+
+  let q = supabase.from('jkkn_programs').select('*').eq('is_active', true);
+  if (institutionFilter) q = q.eq('institution_id', institutionFilter);
+  if (departmentFilter) q = q.eq('department_id', departmentFilter);
+  const { data } = await q;
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    code: r.code || 'N/A',
+    department_id: r.department_id || '',
+    degree_id: r.degree_id || '',
+    institution_id: r.institution_id || '',
+    is_active: r.is_active,
+    created_at: r.synced_at,
+    updated_at: r.synced_at,
+  }));
+}
 
 /**
  * Transform MyJKKN API program response to match our interface
@@ -91,6 +120,22 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '500', 10); // Increased default limit
     const institutionIdParam = searchParams.get('institutionId');
     const departmentIdParam = searchParams.get('departmentId');
+
+    // Declared once — reused by both cache path and JKKN fallback path
+    const institutionFilter = institutionIdParam || getInstitutionFilter(userAccess);
+
+    // ── Cache-first path ────────────────────────────────────────────────────────
+    const cachedPrograms = await fetchProgramsFromCache(institutionFilter, departmentIdParam);
+    if (cachedPrograms) {
+      return NextResponse.json({
+        success: true,
+        data: cachedPrograms,
+        metadata: { page: 1, totalPages: 1, total: cachedPrograms.length },
+        source: 'cache',
+        accessLevel: userAccess.role,
+      });
+    }
+    // ── End cache path ──────────────────────────────────────────────────────────
 
     // Call JKKN API
     const url = `${baseUrl}/api-management/organizations/programs?page=${page}&limit=${limit}`;
@@ -193,11 +238,8 @@ export async function GET(request: NextRequest) {
     console.log('Transformed program data (first item):', JSON.stringify(transformedPrograms[0], null, 2));
     console.log('Final Metadata:', JSON.stringify(metadata, null, 2));
 
-    // Apply filtering: use query params if provided, otherwise use access control
+    // Apply filtering (institutionFilter declared above)
     let filteredPrograms = transformedPrograms;
-
-    // Institution-based filtering
-    let institutionFilter = institutionIdParam || getInstitutionFilter(userAccess);
 
     if (institutionFilter !== null) {
       filteredPrograms = filteredPrograms.filter(

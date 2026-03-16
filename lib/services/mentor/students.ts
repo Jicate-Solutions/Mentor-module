@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { Student } from '@/lib/types/mentor';
 import { resolveMentorByJkknId } from './resolve';
+import { getDepartmentMap } from '@/lib/services/jkkn-sync';
 
 export interface StudentAssignmentInput {
   studentId?: string;
@@ -18,55 +19,31 @@ export interface AssignmentResult {
   errors: string[];
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Build a department-name lookup map from the JKKN departments API.
- */
-async function buildDepartmentMap(apiKey: string, baseUrl: string): Promise<Map<string, string>> {
-  const departmentMap = new Map<string, string>();
-  try {
-    const deptResponse = await fetch(
-      `${baseUrl}/api-management/organizations/departments?page=1&limit=500`,
-      {
-        headers: { 'Authorization': `Bearer ${apiKey}` },
-        next: { revalidate: 60 },
-      }
-    );
-    if (deptResponse.ok) {
-      const deptData = await deptResponse.json();
-      (deptData.data || []).forEach((dept: any) => {
-        const id = dept.id || dept.department_id;
-        const name = dept.name || dept.department_name || 'Unknown Department';
-        if (id) departmentMap.set(id, name);
-      });
-      console.log(`[students service] Built department map with ${departmentMap.size} entries`);
-    }
-  } catch (e) {
-    console.warn('[students service] Failed to fetch departments:', e);
-  }
-  return departmentMap;
-}
-
 // ── getStudentsForMentor ──────────────────────────────────────────────────────
 
 /**
  * Returns all students assigned to the mentor identified by their JKKN staff ID.
  * Resolves department UUIDs to human-readable names via the JKKN departments API.
  */
-export async function getStudentsForMentor(mentorJkknId: string): Promise<Student[]> {
+export async function getStudentsForMentor(
+  mentorJkknId: string,
+  preResolvedMentorId?: string
+): Promise<Student[]> {
   const supabaseAdmin = createAdminClient();
-  const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
-  const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
 
-  // Resolve JKKN ID → user → mentor
-  const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
-  if (!resolved) {
-    console.log(`[getStudentsForMentor] No user/mentor found for JKKN ID ${mentorJkknId}`);
-    return [];
+  let mentorDbId = preResolvedMentorId;
+
+  if (!mentorDbId) {
+    // Resolve JKKN ID → user → mentor (skipped if caller already resolved)
+    const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
+    if (!resolved) {
+      console.log(`[getStudentsForMentor] No user/mentor found for JKKN ID ${mentorJkknId}`);
+      return [];
+    }
+    mentorDbId = resolved.mentor.id;
   }
 
-  console.log(`[getStudentsForMentor] Found mentor ${resolved.mentor.id} for JKKN ID ${mentorJkknId}`);
+  console.log(`[getStudentsForMentor] Found mentor ${mentorDbId} for JKKN ID ${mentorJkknId}`);
 
   // Fetch assignments with student details
   const { data: assignments, error } = await supabaseAdmin
@@ -82,17 +59,15 @@ export async function getStudentsForMentor(mentorJkknId: string): Promise<Studen
         department_id
       )
     `)
-    .eq('mentor_id', resolved.mentor.id)
+    .eq('mentor_id', mentorDbId)
     .order('assigned_at', { ascending: false });
 
   if (error) {
     throw new Error(`Failed to fetch students: ${error.message}`);
   }
 
-  // Build department name map
-  const departmentMap = apiKey
-    ? await buildDepartmentMap(apiKey, baseUrl)
-    : new Map<string, string>();
+  // Build department name map (cache-first via getDepartmentMap)
+  const departmentMap = await getDepartmentMap();
 
   return (assignments || []).map((assignment: any) => {
     const deptId = assignment.student?.department_id;
@@ -416,7 +391,8 @@ export async function bulkAssignStudents(
 
   const result: BulkAssignResult = { success: [], alreadyAssigned: [], failed: [] };
 
-  for (const student of students) {
+  // Process all students in parallel — upsert+insert are independent across students
+  const assignments = await Promise.all(students.map(async (student) => {
     try {
       const { data: studentRecord, error: upsertError } = await supabaseAdmin
         .from('students')
@@ -436,8 +412,7 @@ export async function bulkAssignStudents(
 
       if (upsertError) {
         console.error(`[bulkAssignStudents] Failed to upsert student ${student.rollNumber}:`, upsertError);
-        result.failed.push({ rollNumber: student.rollNumber, error: 'Failed to create student record' });
-        continue;
+        return { type: 'failed' as const, rollNumber: student.rollNumber, error: 'Failed to create student record' };
       }
 
       const { error: mappingError } = await supabaseAdmin
@@ -451,18 +426,23 @@ export async function bulkAssignStudents(
 
       if (mappingError) {
         if (mappingError.code === '23505') {
-          result.alreadyAssigned.push(student.rollNumber);
-        } else {
-          console.error(`[bulkAssignStudents] Failed to assign ${student.rollNumber}:`, mappingError);
-          result.failed.push({ rollNumber: student.rollNumber, error: mappingError.message });
+          return { type: 'alreadyAssigned' as const, rollNumber: student.rollNumber };
         }
-      } else {
-        result.success.push(student.rollNumber);
+        console.error(`[bulkAssignStudents] Failed to assign ${student.rollNumber}:`, mappingError);
+        return { type: 'failed' as const, rollNumber: student.rollNumber, error: mappingError.message };
       }
+
+      return { type: 'success' as const, rollNumber: student.rollNumber };
     } catch (e) {
       console.error(`[bulkAssignStudents] Unexpected error for ${student.rollNumber}:`, e);
-      result.failed.push({ rollNumber: student.rollNumber, error: 'Unexpected error' });
+      return { type: 'failed' as const, rollNumber: student.rollNumber, error: 'Unexpected error' };
     }
+  }));
+
+  for (const a of assignments) {
+    if (a.type === 'success') result.success.push(a.rollNumber);
+    else if (a.type === 'alreadyAssigned') result.alreadyAssigned.push(a.rollNumber);
+    else result.failed.push({ rollNumber: a.rollNumber, error: (a as { type: 'failed'; rollNumber: string; error: string }).error });
   }
 
   // Sync mentor's total_students count if any new assignments were made

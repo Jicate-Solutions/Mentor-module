@@ -33,100 +33,16 @@ export async function GET(request: NextRequest) {
       activeMentorQuery = activeMentorQuery.eq('department_id', departmentId);
     }
 
-    // --- Student counts (always from JKKN API, filtered client-side) ---
-    let totalStudents = 0;
-    let activeStudents = 0;
-
-    const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
-    const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
-
-    if (apiKey) {
-      // Fetch ALL students from JKKN API with pagination (same pattern as department-sessions)
-      let allStudents: { id: string; institution_id: string }[] = [];
-      let studentPage = 1;
-      let hasMoreStudents = true;
-      const studentPageLimit = 200;
-      const maxStudentPages = 75; // Safety limit (75 × 200 = 15,000)
-      let jkknApiFailed = false;
-
-      while (hasMoreStudents && studentPage <= maxStudentPages) {
-        const studentsUrl = `${baseUrl}/api-management/learners/profiles?lifecycle_status=active,alumni,exited,graduated,inactive&page=${studentPage}&limit=${studentPageLimit}`;
-
-        try {
-          const studentsResponse = await fetch(studentsUrl, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            next: { revalidate: 60 },
-          });
-
-          if (!studentsResponse.ok) {
-            console.warn(`[Dashboard Stats] JKKN API returned ${studentsResponse.status} on page ${studentPage}`);
-            jkknApiFailed = true;
-            break;
-          }
-
-          const studentsData = await studentsResponse.json();
-          const pageStudents = studentsData.data || [];
-
-          const mapped = pageStudents.map((s: any) => ({
-            id: s.id,
-            institution_id: s.institution?.id || s.institution_id || s.institution || '',
-          }));
-
-          allStudents = [...allStudents, ...mapped];
-
-          // Check if more pages exist
-          hasMoreStudents = pageStudents.length === studentPageLimit;
-          const paginationInfo = studentsData.pagination || studentsData.metadata;
-          if (paginationInfo?.totalPages && studentPage >= paginationInfo.totalPages) {
-            hasMoreStudents = false;
-          }
-
-          studentPage++;
-        } catch (fetchError) {
-          console.error(`[Dashboard Stats] Error fetching students page ${studentPage}:`, fetchError);
-          jkknApiFailed = true;
-          break;
-        }
-      }
-
-      if (!jkknApiFailed || allStudents.length > 0) {
-        // Filter by institution if non-super-admin
-        const filtered = institutionFilter !== null
-          ? allStudents.filter(s => s.institution_id === institutionFilter)
-          : allStudents;
-
-        totalStudents = filtered.length;
-        activeStudents = filtered.length;
-        console.log(`[Dashboard Stats] JKKN API student count: ${totalStudents} (fetched ${allStudents.length} total, institution filter: ${institutionFilter ?? 'none'})`);
-      } else {
-        // Fallback to Supabase only if JKKN API completely failed
-        console.warn('[Dashboard Stats] JKKN API failed, falling back to Supabase');
-        let localQuery = supabase.from('students').select('id', { count: 'exact', head: true });
-        let localActiveQuery = supabase.from('students').select('id', { count: 'exact', head: true }).eq('is_active', true);
-        if (institutionFilter) {
-          localQuery = localQuery.eq('institution_id', institutionFilter);
-          localActiveQuery = localActiveQuery.eq('institution_id', institutionFilter);
-        }
-        const [localResult, localActive] = await Promise.all([localQuery, localActiveQuery]);
-        totalStudents = localResult.count || 0;
-        activeStudents = localActive.count || 0;
-      }
-    } else {
-      // No API key — fallback to Supabase
-      let localQuery = supabase.from('students').select('id', { count: 'exact', head: true });
-      let localActiveQuery = supabase.from('students').select('id', { count: 'exact', head: true }).eq('is_active', true);
-      if (institutionFilter) {
-        localQuery = localQuery.eq('institution_id', institutionFilter);
-        localActiveQuery = localActiveQuery.eq('institution_id', institutionFilter);
-      }
-      const [localResult, localActive] = await Promise.all([localQuery, localActiveQuery]);
-      totalStudents = localResult.count || 0;
-      activeStudents = localActive.count || 0;
+    // --- Student counts (from local Supabase — fast count query) ---
+    let totalStudentQuery = supabase.from('students').select('id', { count: 'exact', head: true });
+    let activeStudentQuery = supabase.from('students').select('id', { count: 'exact', head: true }).eq('is_active', true);
+    if (institutionFilter) {
+      totalStudentQuery = totalStudentQuery.eq('institution_id', institutionFilter);
+      activeStudentQuery = activeStudentQuery.eq('institution_id', institutionFilter);
     }
+    const [totalStudentResult, activeStudentResult] = await Promise.all([totalStudentQuery, activeStudentQuery]);
+    const totalStudents = totalStudentResult.count || 0;
+    const activeStudents = activeStudentResult.count || 0;
 
     // --- Session queries (filtered by mentor IDs when non-super-admin) ---
     let sessionQuery = supabase.from('counseling_sessions').select('id, status', { count: 'exact' });

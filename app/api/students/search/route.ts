@@ -171,6 +171,68 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // ── Cache-first path ────────────────────────────────────────────────────────
+    {
+      const supabaseAdmin = createAdminClient();
+      const { count: cacheCount } = await supabaseAdmin
+        .from('jkkn_students')
+        .select('*', { count: 'exact', head: true });
+
+      if (cacheCount && cacheCount > 0) {
+        let dbQuery = supabaseAdmin
+          .from('jkkn_students')
+          .select('id, roll_number, name, email, department_id, institution_id, year')
+          .eq('is_active', true)
+          .or(`name.ilike.%${query}%,roll_number.ilike.%${query}%,email.ilike.%${query}%`)
+          .order('name')
+          .limit(200);
+
+        if (!isAdmin) {
+          if (isMentorIncharge && mentorInchargeInstitutionId) {
+            dbQuery = dbQuery.eq('institution_id', mentorInchargeInstitutionId);
+          } else if (userInstitutionId) {
+            dbQuery = dbQuery.eq('institution_id', userInstitutionId);
+          }
+        }
+
+        const { data: cachedStudents } = await dbQuery;
+
+        // Batch-resolve department names (1 query for all dept IDs)
+        const deptIds = [...new Set((cachedStudents || []).map((s: any) => s.department_id).filter(Boolean))];
+        const deptMap = new Map<string, string>();
+        if (deptIds.length > 0) {
+          const { data: depts } = await supabaseAdmin
+            .from('jkkn_departments')
+            .select('id, name')
+            .in('id', deptIds);
+          (depts || []).forEach((d: any) => deptMap.set(d.id, d.name));
+        }
+
+        // Resolve local UUIDs for already-imported students
+        const rollNumbers = (cachedStudents || []).map((s: any) => s.roll_number).filter(Boolean);
+        const localUUIDMap = new Map<string, string>();
+        if (rollNumbers.length > 0) {
+          const { data: local } = await supabaseAdmin
+            .from('students')
+            .select('id, roll_number')
+            .in('roll_number', rollNumbers);
+          (local || []).forEach((s: any) => { if (s.roll_number) localUUIDMap.set(String(s.roll_number), s.id); });
+        }
+
+        const transformedStudents = (cachedStudents || []).map((s: any) => ({
+          id: localUUIDMap.get(s.roll_number) || s.id,
+          name: s.name,
+          rollNumber: s.roll_number,
+          email: s.email || '',
+          department: deptMap.get(s.department_id || '') || 'Unknown Department',
+          year: s.year || '',
+        }));
+
+        return NextResponse.json({ success: true, students: transformedStudents, source: 'cache' });
+      }
+    }
+    // ── End cache path — fallback to JKKN API pagination below ─────────────────
+
     // Get API key from environment (server-side only)
     const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
     const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';

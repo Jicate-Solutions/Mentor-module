@@ -108,11 +108,11 @@ export default function GuideSectionPage() {
         <div className="flex items-start gap-4">
           <div className="text-4xl">{section.icon || '📖'}</div>
           <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-medium text-zinc-900 dark:text-zinc-100 mb-2">
+            <h1 className="text-[22px] md:text-[24px] font-medium text-zinc-900 dark:text-zinc-100 mb-2 tracking-tight">
               {section.title}
             </h1>
             {section.description && (
-              <p className="text-sm md:text-base text-zinc-600 dark:text-zinc-400">
+              <p className="text-[13px] md:text-[14px] text-zinc-600 dark:text-zinc-400">
                 {section.description}
               </p>
             )}
@@ -253,7 +253,7 @@ function ContentBlock({ content }: { content: GuideContent }) {
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0">{getIcon()}</div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-3">
+          <h2 className="text-[16px] font-medium text-zinc-900 dark:text-zinc-100 mb-3">
             {content.title}
           </h2>
 

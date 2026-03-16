@@ -1,4 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/server';
+
+// ── Cache-first helper ─────────────────────────────────────────────────────────
+async function fetchDegreesFromCache() {
+  const supabase = createAdminClient();
+  const { count } = await supabase
+    .from('jkkn_degrees')
+    .select('*', { count: 'exact', head: true });
+  if (!count || count === 0) return null;
+
+  const { data } = await supabase.from('jkkn_degrees').select('*');
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    abbreviation: r.id,
+    level: r.degree_type || 'Not Specified',
+    is_active: true,
+    created_at: r.synced_at,
+    updated_at: r.synced_at,
+  }));
+}
 
 /**
  * Transform MyJKKN API degree response to match our interface
@@ -63,6 +84,18 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // ── Cache-first path ────────────────────────────────────────────────────────
+    const cached = await fetchDegreesFromCache();
+    if (cached) {
+      return NextResponse.json({
+        success: true,
+        data: cached,
+        metadata: { page: 1, totalPages: 1, total: cached.length },
+        source: 'cache',
+      });
+    }
+    // ── End cache path ──────────────────────────────────────────────────────────
 
     // Get pagination params from query
     const searchParams = request.nextUrl.searchParams;

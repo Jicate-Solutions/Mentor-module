@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { Section, Container, Hero } from '@/components/ui/PageLayout';
+import PageHeader from '@/components/ui/PageHeader';
 import Card from '@/components/ui/Card';
 import SearchInput from '@/components/ui/SearchInput';
 import Badge from '@/components/ui/Badge';
@@ -192,31 +192,22 @@ export default function MentorListingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-6">
-      {/* Compact Gradient Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-green/5 to-brand-yellow/5 rounded-xl p-4 lg:p-6">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between relative z-10">
-          <div className="flex-1">
-            <h1 className="text-[18px] lg:text-[22px] font-medium text-neutral-900 mb-1 tracking-tight">
-              {user?.role === 'faculty' ? 'My Profile' : 'Mentor Directory'}
-            </h1>
-            <p className="text-neutral-600 text-[13px] lg:text-[14px] leading-relaxed">
-              {user?.role === 'faculty'
-                ? 'View and manage your mentor profile, assigned learners, and counseling sessions'
-                : 'Connect with learning facilitators to manage counseling, guidance, and academic progress'}
-            </p>
-            {user?.role === 'faculty' && (
-              <p className="text-amber-700 text-[12px] lg:text-[13px] mt-2 flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                You can only view your own profile. Contact HOD for broader access.
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-brand-yellow/20 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
+      <PageHeader
+        variant="gradient"
+        title={user?.role === 'faculty' ? 'My Profile' : 'Mentor Directory'}
+        description={user?.role === 'faculty'
+          ? 'View and manage your mentor profile, assigned learners, and counseling sessions'
+          : 'Connect with learning facilitators to manage counseling, guidance, and academic progress'}
+      />
+      {user?.role === 'faculty' && (
+        <p className="text-amber-700 text-[12px] lg:text-[13px] flex items-center gap-1.5 -mt-2">
+          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          You can only view your own profile. Contact HOD for broader access.
+        </p>
+      )}
 
       {/* Search, Filters & View Toggle - Combined */}
       <div className="bg-white rounded-xl p-4 lg:p-5 shadow-sm">

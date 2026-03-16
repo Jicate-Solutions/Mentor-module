@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { WelcomeHero } from './components/WelcomeHero';
@@ -96,71 +96,37 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [accessToken]);
 
+  // Debounced realtime refresh — batch rapid changes into a single data fetch
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedRefresh = useCallback(() => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => {
+      fetchDashboardData();
+    }, 2000); // 2s debounce for dashboard (heavier API call)
+  }, []);
+
   // Set up real-time subscriptions for live dashboard updates
   useEffect(() => {
-    // Subscribe to counseling sessions changes
-    const sessionsChannel = supabase
-      .channel('dashboard-sessions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'counseling_sessions' }, () => {
-        console.log('[Dashboard] Realtime: counseling_sessions changed, refreshing...');
-        fetchDashboardData();
-      })
-      .subscribe((status) => {
-        console.log('[Dashboard] Sessions channel status:', status);
-      });
+    const tables = [
+      'counseling_sessions',
+      'mentor_students',
+      'session_feedback',
+      'mentors',
+      'students',
+    ];
 
-    // Subscribe to mentor-student assignments changes
-    const assignmentsChannel = supabase
-      .channel('dashboard-assignments')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mentor_students' }, () => {
-        console.log('[Dashboard] Realtime: mentor_students changed, refreshing...');
-        fetchDashboardData();
-      })
-      .subscribe((status) => {
-        console.log('[Dashboard] Assignments channel status:', status);
-      });
-
-    // Subscribe to feedback changes
-    const feedbackChannel = supabase
-      .channel('dashboard-feedback')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'session_feedback' }, () => {
-        console.log('[Dashboard] Realtime: session_feedback changed, refreshing...');
-        fetchDashboardData();
-      })
-      .subscribe((status) => {
-        console.log('[Dashboard] Feedback channel status:', status);
-      });
-
-    // Subscribe to mentor changes (new mentors added/removed)
-    const mentorsChannel = supabase
-      .channel('dashboard-mentors')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mentors' }, () => {
-        console.log('[Dashboard] Realtime: mentors changed, refreshing...');
-        fetchDashboardData();
-      })
-      .subscribe((status) => {
-        console.log('[Dashboard] Mentors channel status:', status);
-      });
-
-    // Subscribe to student changes
-    const studentsChannel = supabase
-      .channel('dashboard-students')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
-        console.log('[Dashboard] Realtime: students changed, refreshing...');
-        fetchDashboardData();
-      })
-      .subscribe((status) => {
-        console.log('[Dashboard] Students channel status:', status);
-      });
+    const channels = tables.map((table) =>
+      supabase
+        .channel(`dashboard-${table}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table }, debouncedRefresh)
+        .subscribe()
+    );
 
     return () => {
-      supabase.removeChannel(sessionsChannel);
-      supabase.removeChannel(assignmentsChannel);
-      supabase.removeChannel(feedbackChannel);
-      supabase.removeChannel(mentorsChannel);
-      supabase.removeChannel(studentsChannel);
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      channels.forEach((ch) => supabase.removeChannel(ch));
     };
-  }, []);
+  }, [debouncedRefresh]);
 
   const fetchDashboardData = async () => {
     if (!accessToken) return;
@@ -232,7 +198,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-brand-cream/20 to-neutral-50 p-4 lg:p-8 space-y-8">
+    <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
       {/* Welcome Hero - Full Width with Modern Gradient */}
       <div className="animate-fadeIn">
         <WelcomeHero />

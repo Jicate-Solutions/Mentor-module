@@ -239,74 +239,54 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     });
   };
 
-  // Assign students to mentor
+  // Assign students to mentor via a single bulk request
   const handleAssignStudents = async () => {
     if (selectedStudents.length === 0 || !accessToken) return;
 
     try {
       setAssigning(true);
 
-      // Assign each student
-      let successCount = 0;
-      let failCount = 0;
-      const errorMessages: string[] = [];
+      const response = await fetch(`/api/mentor/${mentorId}/students/bulk`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ students: selectedStudents }),
+      });
 
-      for (const student of selectedStudents) {
-        try {
-          const response = await fetch(`/api/mentor/${mentorId}/students`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ student }),
-          });
+      const json = await response.json();
 
-          if (response.ok) {
-            successCount++;
-          } else {
-            failCount++;
-            try {
-              const errorData = await response.json();
-              // Use the actual API error message (e.g. "KAVIPRIYA M is already assigned to Dr. Radhika")
-              errorMessages.push(errorData.error || `Could not assign ${student.name}`);
-            } catch {
-              errorMessages.push(`Could not assign ${student.name}`);
-            }
-          }
-        } catch (error) {
-          failCount++;
-          errorMessages.push(`Could not assign ${student.name}`);
-          console.error(`Error assigning ${student.name}:`, error);
-        }
+      if (!response.ok) {
+        toast.error('Assignment failed', json.error || 'Could not assign learners');
+        return;
       }
 
-      // Refetch assigned students list to sync with backend
-      if (successCount > 0) {
+      const { summary, results } = json.data;
+
+      if (summary.assigned > 0) {
         await fetchStudents();
       }
 
-      // Show results with actual error messages from the API
-      if (successCount > 0 && failCount === 0) {
+      if (summary.assigned > 0 && summary.failed === 0 && summary.alreadyAssigned === 0) {
         toast.success(
           'Learners assigned',
-          `Successfully assigned ${successCount} learner${successCount > 1 ? 's' : ''}`
+          `Successfully assigned ${summary.assigned} learner${summary.assigned > 1 ? 's' : ''}`
         );
-      } else if (successCount > 0 && failCount > 0) {
-        toast.warning(
-          'Partial success',
-          `Assigned ${successCount}. ${errorMessages.join('. ')}`
-        );
+      } else if (summary.assigned > 0) {
+        const parts: string[] = [`Assigned ${summary.assigned}`];
+        if (summary.alreadyAssigned > 0) parts.push(`${summary.alreadyAssigned} already assigned`);
+        if (summary.failed > 0) parts.push(`${summary.failed} failed`);
+        toast.warning('Partial success', parts.join('. '));
+      } else if (summary.alreadyAssigned > 0 && summary.failed === 0) {
+        toast.warning('Already assigned', 'All selected learners are already assigned to this mentor');
       } else {
-        toast.error(
-          'Assignment failed',
-          errorMessages.length > 0
-            ? errorMessages.join('. ')
-            : 'Could not assign any learners'
-        );
+        const failMessages = results.failed
+          .map((f: { rollNumber: string; error: string }) => f.error)
+          .join('. ');
+        toast.error('Assignment failed', failMessages || 'Could not assign any learners');
       }
 
-      // Close modal and reset
       setShowAddModal(false);
       setSearchQuery('');
       setSearchResults([]);

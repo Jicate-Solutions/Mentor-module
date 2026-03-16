@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -12,6 +12,11 @@ export default function AuthenticatedLayout({
 }) {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -20,13 +25,13 @@ export default function AuthenticatedLayout({
     }
   }, [user, loading, router]);
 
-  // Show nothing while redirecting
-  if (!loading && !user) {
+  // Show nothing while redirecting (only after mount to avoid SSR mismatch)
+  if (mounted && !loading && !user) {
     return null;
   }
 
-  // Show loading state while checking authentication
-  if (loading) {
+  // Show loading state during SSR, hydration, or while checking auth
+  if (!mounted || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-neutral-50/50">
         <div className="text-center">

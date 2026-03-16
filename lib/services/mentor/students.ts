@@ -69,7 +69,16 @@ export async function getStudentsForMentor(
   // Build department name map (cache-first via getDepartmentMap)
   const departmentMap = await getDepartmentMap();
 
-  return (assignments || []).map((assignment: any) => {
+  // Defensive dedup by student id (DB has UNIQUE constraint, but guard against edge cases)
+  const seen = new Set<string>();
+  const unique = (assignments || []).filter((a: any) => {
+    const sid = a.student?.id || a.student_id;
+    if (seen.has(sid)) return false;
+    seen.add(sid);
+    return true;
+  });
+
+  return unique.map((assignment: any) => {
     const deptId = assignment.student?.department_id;
     const departmentName = deptId
       ? (departmentMap.get(deptId) || 'Unknown Department')

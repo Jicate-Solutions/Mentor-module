@@ -1,18 +1,26 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { readCache, writeCache } from '@/lib/utils/session-cache';
 import type { IDPPlan } from '@/lib/types/mentor';
 
+const CACHE_TTL = 5 * 60 * 1000;
+
 export function useIDPPlans(mentorId: string) {
-  const [plans, setPlans] = useState<IDPPlan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = `idp_plans_${mentorId}`;
+  const cachedData = useRef(readCache<IDPPlan[]>(cacheKey, CACHE_TTL));
+
+  const [plans, setPlans] = useState<IDPPlan[]>(cachedData.current ?? []);
+  const [loading, setLoading] = useState(!cachedData.current);
   const [error, setError] = useState<string | null>(null);
 
   /** GET /api/idp?mentor_id={mentorId} */
   const fetchPlans = useCallback(async () => {
     if (!mentorId) return;
 
-    setLoading(true);
+    if (!cachedData.current) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -30,13 +38,16 @@ export function useIDPPlans(mentorId: string) {
         throw new Error(json.error || 'Failed to fetch IDP plans');
       }
 
-      setPlans(json.data || []);
+      const plansData = json.data || [];
+      setPlans(plansData);
+      writeCache(cacheKey, plansData);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
       setLoading(false);
+      cachedData.current = null;
     }
-  }, [mentorId]);
+  }, [mentorId, cacheKey]);
 
   /**
    * PATCH /api/idp/{planId}
@@ -60,11 +71,13 @@ export function useIDPPlans(mentorId: string) {
       }
 
       // Reflect the status change locally so the UI updates immediately
-      setPlans(prev =>
-        prev.map(p => (p.id === planId ? { ...p, status } : p))
-      );
+      setPlans(prev => {
+        const updated = prev.map(p => (p.id === planId ? { ...p, status } : p));
+        writeCache(cacheKey, updated);
+        return updated;
+      });
     },
-    []
+    [cacheKey]
   );
 
   /**
@@ -86,9 +99,13 @@ export function useIDPPlans(mentorId: string) {
         throw new Error(json.error || 'Failed to delete IDP plan');
       }
 
-      setPlans(prev => prev.filter(p => p.id !== planId));
+      setPlans(prev => {
+        const updated = prev.filter(p => p.id !== planId);
+        writeCache(cacheKey, updated);
+        return updated;
+      });
     },
-    []
+    [cacheKey]
   );
 
   useEffect(() => {

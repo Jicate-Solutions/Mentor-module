@@ -259,7 +259,12 @@ export async function syncStudents(): Promise<SyncResult> {
         is_active: r.is_active ?? r.isActive ?? true,
         synced_at: new Date().toISOString(),
       };
-    }).filter((r: any) => r.id && r.roll_number);
+    }).filter((r: any) => {
+      if (!r.id || !r.roll_number) return false;
+      // Skip records where JKKN API returned a UUID as roll_number instead of a proper one
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}/.test(String(r.roll_number))) return false;
+      return true;
+    });
 
     // Upsert in chunks of 500 to avoid payload limits
     const supabase = createAdminClient();
@@ -270,6 +275,51 @@ export async function syncStudents(): Promise<SyncResult> {
         .from('jkkn_students')
         .upsert(chunk, { onConflict: 'roll_number' });
       if (error) throw new Error(`Chunk ${i / chunkSize + 1} failed: ${error.message}`);
+    }
+
+    // ── Reconcile local `students` table with synced JKKN data ──────────────
+    // Deactivate local students whose roll_number does NOT appear in jkkn_students
+    // with lifecycle_status = 'active'. This handles students deactivated in MyJKKN.
+    const activeRolls = new Set(
+      rows
+        .filter(r => r.lifecycle_status === 'active')
+        .map(r => r.roll_number)
+    );
+
+    if (activeRolls.size > 0) {
+      // Fetch all active local students
+      const { data: localStudents } = await supabase
+        .from('students')
+        .select('id, roll_number')
+        .eq('is_active', true);
+
+      const staleIds = (localStudents || [])
+        .filter(s => s.roll_number && !activeRolls.has(s.roll_number))
+        .map(s => s.id);
+
+      if (staleIds.length > 0) {
+        // Only deactivate if they have no mentor assignments (safety)
+        const { data: assignedIds } = await supabase
+          .from('mentor_students')
+          .select('student_id')
+          .in('student_id', staleIds);
+        const assignedSet = new Set((assignedIds || []).map(a => a.student_id));
+
+        const safeToDeactivate = staleIds.filter(id => !assignedSet.has(id));
+        if (safeToDeactivate.length > 0) {
+          for (let i = 0; i < safeToDeactivate.length; i += chunkSize) {
+            const chunk = safeToDeactivate.slice(i, i + chunkSize);
+            await supabase
+              .from('students')
+              .update({ is_active: false, updated_at: new Date().toISOString() })
+              .in('id', chunk);
+          }
+          console.log(`[syncStudents] Reconciled: deactivated ${safeToDeactivate.length} stale local students`);
+        }
+        if (assignedSet.size > 0) {
+          console.log(`[syncStudents] Skipped ${assignedSet.size} stale students with mentor assignments`);
+        }
+      }
     }
 
     await logSyncEnd(logId, rows.length);

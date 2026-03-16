@@ -322,10 +322,29 @@ export async function GET(request: NextRequest) {
     console.log('Transformed student data:', JSON.stringify(transformedData.data[0], null, 2));
 
     // Add institution_id and department_id to each student for filtering
-    const studentsWithIds = transformedData.data.map((student: any) => ({
+    const studentsWithIdsRaw = transformedData.data.map((student: any) => ({
       ...student,
       ...extractInstitutionDepartmentIds(student)
     }));
+
+    // Deduplicate: same name + institution → keep jkkn.ac.in email version, skip gmail.com duplicates
+    const deduped = new Map<string, any>();
+    for (const student of studentsWithIdsRaw) {
+      const name = `${student.first_name || ''} ${student.last_name || ''}`.toUpperCase().trim();
+      const key = `${name}::${student.institution_id || ''}`;
+      const existing = deduped.get(key);
+      if (!existing) {
+        deduped.set(key, student);
+      } else {
+        // Prefer jkkn.ac.in email over gmail.com
+        const existingIsOfficial = (existing.email || '').includes('@jkkn.ac.in');
+        const newIsOfficial = (student.email || '').includes('@jkkn.ac.in');
+        if (newIsOfficial && !existingIsOfficial) {
+          deduped.set(key, student);
+        }
+      }
+    }
+    const studentsWithIds = Array.from(deduped.values());
 
     console.log(`[BEFORE Access Control] Total students: ${studentsWithIds.length}`);
     console.log(`[User Access] Role: ${userAccess.role}, InstitutionID: ${userAccess.institutionId}, IsSuperAdmin: ${userAccess.isSuperAdmin}`);

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { JKKNUser, isTokenExpired, calculateExpiryTime } from '@/lib/auth/token-validation';
+import { clearCache, clearCacheByPrefix } from '@/lib/utils/session-cache';
 
 interface AuthContextType {
   user: JKKNUser | null;
@@ -15,33 +16,71 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<JKKNUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [tokenExpiresAt, setTokenExpiresAt] = useState<number>(0);
+  const [accessToken, setAccessToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('access_token');
+      const expiresAt = localStorage.getItem('token_expires_at');
+      if (token && expiresAt && !isTokenExpired(parseInt(expiresAt, 10))) {
+        return token;
+      }
+    }
+    return null;
+  });
 
-  // Check for existing session on mount
+  const [user, setUser] = useState<JKKNUser | null>(() => {
+    if (typeof window !== 'undefined') {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          return JSON.parse(userStr) as JKKNUser;
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
+
+  const [tokenExpiresAt, setTokenExpiresAt] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const expiresAt = localStorage.getItem('token_expires_at');
+      if (expiresAt) {
+        const expiryTime = parseInt(expiresAt, 10);
+        if (!isTokenExpired(expiryTime)) {
+          return expiryTime;
+        }
+      }
+    }
+    return 0;
+  });
+
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('access_token');
+      const userStr = localStorage.getItem('user');
+      const expiresAt = localStorage.getItem('token_expires_at');
+      if (token && userStr && expiresAt && !isTokenExpired(parseInt(expiresAt, 10))) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Handle edge cases lazy init didn't cover (expired token needs refresh)
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     const refreshTokenValue = localStorage.getItem('refresh_token');
-    const userStr = localStorage.getItem('user');
     const expiresAt = localStorage.getItem('token_expires_at');
 
-    if (token && userStr && expiresAt) {
+    if (token && expiresAt) {
       const expiryTime = parseInt(expiresAt, 10);
-
-      // Check if token is expired
       if (isTokenExpired(expiryTime) && refreshTokenValue) {
-        // Token expired, try to refresh
         refreshAccessToken();
-      } else if (!isTokenExpired(expiryTime)) {
-        // Token still valid
-        setAccessToken(token);
-        setUser(JSON.parse(userStr));
-        setTokenExpiresAt(expiryTime);
+        return;
       }
     }
 
+    // If lazy init already set loading=false, this is a no-op
     setLoading(false);
   }, []);
 
@@ -138,6 +177,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('token_expires_at');
     localStorage.removeItem('session_id');
     localStorage.removeItem('oauth_state');
+
+    // Clear all session caches on logout
+    clearCache('dashboard_cache');
+    clearCache('mentor_directory');
+    clearCacheByPrefix('mentor_detail_');
+    clearCacheByPrefix('assigned_students_');
+    clearCacheByPrefix('counseling_');
+    clearCacheByPrefix('idp_plans_');
+    clearCacheByPrefix('feedback_');
+    clearCacheByPrefix('student_search_');
 
     setAccessToken(null);
     setUser(null);

@@ -1,19 +1,32 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { readCache, writeCache, clearCache } from '@/lib/utils/session-cache';
 import type { CounselingSession, Student } from '@/lib/types/mentor';
 
+const CACHE_TTL = 5 * 60 * 1000;
+
+interface CounselingCacheShape {
+  sessions: CounselingSession[];
+  students: Student[];
+}
+
 export function useCounselingSessions(mentorId: string) {
-  const [sessions, setSessions] = useState<CounselingSession[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = `counseling_${mentorId}`;
+  const cachedData = useRef(readCache<CounselingCacheShape>(cacheKey, CACHE_TTL));
+
+  const [sessions, setSessions] = useState<CounselingSession[]>(cachedData.current?.sessions ?? []);
+  const [students, setStudents] = useState<Student[]>(cachedData.current?.students ?? []);
+  const [loading, setLoading] = useState(!cachedData.current);
   const [error, setError] = useState<string | null>(null);
 
   /** Fetch both sessions and assigned students for this mentor. */
   const fetchData = useCallback(async () => {
     if (!mentorId) return;
 
-    setLoading(true);
+    if (!cachedData.current) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -25,9 +38,13 @@ export function useCounselingSessions(mentorId: string) {
         fetch(`/api/mentor/${mentorId}/students`, { headers }),
       ]);
 
+      let sessionsData: CounselingSession[] = [];
+      let studentsData: Student[] = [];
+
       if (sessionsRes.ok) {
         const data = await sessionsRes.json();
-        setSessions(data.data || []);
+        sessionsData = data.data || [];
+        setSessions(sessionsData);
       } else {
         const data = await sessionsRes.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to fetch counseling sessions');
@@ -36,7 +53,7 @@ export function useCounselingSessions(mentorId: string) {
       if (studentsRes.ok) {
         const data = await studentsRes.json();
         // Normalise the student shape to match the Student type
-        const list: Student[] = (data.data ?? data.students ?? []).map((s: any) => ({
+        studentsData = (data.data ?? data.students ?? []).map((s: any) => ({
           id: s.id,
           name: s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Unknown',
           email: s.email || '',
@@ -46,17 +63,20 @@ export function useCounselingSessions(mentorId: string) {
           avatar: s.avatar || s.avatar_url || undefined,
           isActive: s.is_active !== false,
         }));
-        setStudents(list);
+        setStudents(studentsData);
       } else {
         const data = await studentsRes.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to fetch assigned students');
       }
+
+      writeCache(cacheKey, { sessions: sessionsData, students: studentsData });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
       setLoading(false);
+      cachedData.current = null;
     }
-  }, [mentorId]);
+  }, [mentorId, cacheKey]);
 
   /**
    * POST /api/mentor/{mentorId}/counseling
@@ -90,9 +110,10 @@ export function useCounselingSessions(mentorId: string) {
 
       const newSession: CounselingSession = json.session ?? json.data ?? json;
       setSessions(prev => [newSession, ...prev]);
+      clearCache(cacheKey);
       return newSession;
     },
-    [mentorId]
+    [mentorId, cacheKey]
   );
 
   /**
@@ -129,9 +150,10 @@ export function useCounselingSessions(mentorId: string) {
 
       const updated: CounselingSession = json.session ?? json.data ?? json;
       setSessions(prev => prev.map(s => (s.id === sessionId ? updated : s)));
+      clearCache(cacheKey);
       return updated;
     },
-    [mentorId]
+    [mentorId, cacheKey]
   );
 
   /**
@@ -154,8 +176,9 @@ export function useCounselingSessions(mentorId: string) {
       }
 
       setSessions(prev => prev.filter(s => s.id !== sessionId));
+      clearCache(cacheKey);
     },
-    [mentorId]
+    [mentorId, cacheKey]
   );
 
   /**
@@ -189,9 +212,10 @@ export function useCounselingSessions(mentorId: string) {
 
       const updated: CounselingSession = json.session ?? json.data ?? json;
       setSessions(prev => prev.map(s => (s.id === sessionId ? updated : s)));
+      clearCache(cacheKey);
       return updated;
     },
-    [mentorId]
+    [mentorId, cacheKey]
   );
 
   useEffect(() => {

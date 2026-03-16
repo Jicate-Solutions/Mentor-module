@@ -144,3 +144,78 @@ export interface IDPPlan {
   created_at: string;
   updated_at: string;
 }
+
+// ============ Activity & Engagement Types ============
+
+export interface LoginHistoryEntry {
+  id: string;
+  userId: string;
+  mentorId: string;
+  loginAt: string;
+  ipAddress?: string;
+  userAgent?: string;
+  sessionDurationMinutes?: number;
+  logoutAt?: string;
+}
+
+export interface SessionStats {
+  totalSessions: number;
+  completedSessions: number;
+  upcomingSessions: number;
+  cancelledSessions: number;
+  overdueSessions: number;
+  completionRate: number;
+  sessionsThisMonth: number;
+  lastSessionDate?: string;
+}
+
+export interface SessionAttendanceRecord {
+  id: string;
+  sessionId: string;
+  studentId: string;
+  studentName?: string;
+  studentEmail?: string;
+  status: SessionAttendanceStatus;
+  markedBy?: string;
+  markedAt?: string;
+  notes?: string;
+}
+
+export type SessionAttendanceStatus = 'invited' | 'present' | 'absent' | 'excused';
+
+export interface StudentAttendanceStats {
+  totalInvited: number;
+  attended: number;
+  absent: number;
+  excused: number;
+  attendanceRate: number;
+}
+
+export interface MentorEngagement {
+  mentorId: string;
+  mentorName: string;
+  departmentId?: string;
+  institutionId?: string;
+  totalSessions: number;
+  completedSessions: number;
+  upcomingSessions: number;
+  cancelledSessions: number;
+  overdueSessions: number;
+  assignedStudents: number;
+  sessionsThisMonth: number;
+  totalLogins: number;
+  loginsThisMonth: number;
+  lastLoginAt?: string;
+  lastActivityAt?: string;
+  engagementLevel: EngagementLevel;
+}
+
+export type EngagementLevel = 'active' | 'low' | 'inactive' | 'no_sessions';
+
+export interface NotAttendedStudent {
+  studentId: string;
+  studentName: string;
+  sessionName: string;
+  sessionDate: string;
+  sessionId: string;
+}

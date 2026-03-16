@@ -171,6 +171,141 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const isBulkLoad = query === '*';
+
+    // ── Fast DB-only path for assignment bulk-load ─────────────────────────
+    // No JKKN API HTTP calls here — data must already exist in jkkn_students
+    // (populated by /api/jkkn/sync or initial import). This keeps the route fast.
+    if (isBulkLoad && forAssignment) {
+      const supabaseAdmin = createAdminClient();
+
+      // 1. Query jkkn_students cache (DB only)
+      // Paginate in batches of 1000 — Supabase caps rows per request at 1000
+      const PAGE_SIZE = 1000;
+      let allCached: any[] = [];
+      let pageFrom = 0;
+      let cacheError: any = null;
+
+      while (true) {
+        let pageQuery = supabaseAdmin
+          .from('jkkn_students')
+          .select('id, roll_number, name, email, department_id, institution_id, year')
+          .eq('is_active', true)
+          .order('name')
+          .range(pageFrom, pageFrom + PAGE_SIZE - 1);
+
+        if (!isAdmin) {
+          if (isMentorIncharge && mentorInchargeInstitutionId) {
+            pageQuery = pageQuery.eq('institution_id', mentorInchargeInstitutionId);
+          } else if (userInstitutionId) {
+            pageQuery = pageQuery.eq('institution_id', userInstitutionId);
+          }
+        }
+
+        const { data, error } = await pageQuery;
+        if (error) {
+          console.error('[Student Search] jkkn_students page query failed:', error.message);
+          cacheError = error;
+          break;
+        }
+        if (!data || data.length === 0) break;
+        allCached = allCached.concat(data);
+        if (data.length < PAGE_SIZE) break; // Last page
+        pageFrom += PAGE_SIZE;
+      }
+
+      const cachedStudents = allCached.length > 0 ? allCached : null;
+
+      console.log(`[Student Search] Bulk-load: ${cachedStudents?.length ?? 0} students from jkkn_students`);
+
+      // 2. Fallback to local students table if jkkn_students is empty (also DB-only)
+      if (!cachedStudents || cachedStudents.length === 0) {
+        // Paginate fallback in batches of 1000
+        let allLocal: any[] = [];
+        let fbFrom = 0;
+
+        while (true) {
+          let fbPage = supabaseAdmin
+            .from('students')
+            .select('id, name, roll_number, email, department_id, institution_id, year')
+            .eq('is_active', true)
+            .order('name')
+            .range(fbFrom, fbFrom + PAGE_SIZE - 1);
+
+          if (!isAdmin) {
+            if (isMentorIncharge && mentorInchargeInstitutionId) {
+              fbPage = fbPage.eq('institution_id', mentorInchargeInstitutionId);
+            } else if (userInstitutionId) {
+              fbPage = fbPage.eq('institution_id', userInstitutionId);
+            }
+          }
+
+          const { data } = await fbPage;
+          if (!data || data.length === 0) break;
+          allLocal = allLocal.concat(data);
+          if (data.length < PAGE_SIZE) break;
+          fbFrom += PAGE_SIZE;
+        }
+
+        const localStudents = allLocal;
+
+        // Resolve dept names from jkkn_departments (DB only)
+        const fallbackDeptIds = [...new Set((localStudents || []).map((s: any) => s.department_id).filter(Boolean))];
+        const fallbackDeptMap = new Map<string, string>();
+        if (fallbackDeptIds.length > 0) {
+          const { data: depts } = await supabaseAdmin
+            .from('jkkn_departments')
+            .select('id, name')
+            .in('id', fallbackDeptIds);
+          (depts || []).forEach((d: any) => fallbackDeptMap.set(d.id, d.name));
+        }
+
+        const transformed = (localStudents || []).map((s: any) => ({
+          id: s.id,
+          name: s.name || 'Unknown',
+          rollNumber: s.roll_number || s.id,
+          email: s.email || '',
+          department: fallbackDeptMap.get(s.department_id) || 'Unknown Department',
+          year: s.year || '',
+        }));
+
+        console.log(`[Student Search] Bulk-load fallback: ${transformed.length} students from local table`);
+        return NextResponse.json({ success: true, students: transformed, source: 'local_fallback' });
+      }
+
+      // 3. Resolve department names from jkkn_departments (DB only — no HTTP fallback)
+      const deptIds = [...new Set(cachedStudents.map((s: any) => s.department_id).filter(Boolean))];
+      const deptMap = new Map<string, string>();
+      if (deptIds.length > 0) {
+        const { data: depts } = await supabaseAdmin
+          .from('jkkn_departments')
+          .select('id, name')
+          .in('id', deptIds);
+        (depts || []).forEach((d: any) => deptMap.set(d.id, d.name));
+      }
+
+      // 4. Transform — use JKKN UUIDs directly (assignment handles UUID conflicts via stale-row resolution)
+      const transformed = cachedStudents.map((s: any) => ({
+        id: s.id,
+        name: s.name || 'Unknown',
+        rollNumber: s.roll_number || s.id,
+        email: s.email || '',
+        department: deptMap.get(s.department_id) || 'Unknown Department',
+        year: s.year || '',
+      }));
+
+      // 5. Dedup by id
+      const seenIds = new Set<string>();
+      const unique = transformed.filter((s: any) => {
+        if (seenIds.has(s.id)) return false;
+        seenIds.add(s.id);
+        return true;
+      });
+
+      console.log(`[Student Search] Bulk-load complete: ${unique.length} unique students`);
+      return NextResponse.json({ success: true, students: unique, source: 'jkkn_cache' });
+    }
+
     // ── Cache-first path ────────────────────────────────────────────────────────
     {
       const supabaseAdmin = createAdminClient();
@@ -179,23 +314,59 @@ export async function GET(request: NextRequest) {
         .select('*', { count: 'exact', head: true });
 
       if (cacheCount && cacheCount > 0) {
-        let dbQuery = supabaseAdmin
-          .from('jkkn_students')
-          .select('id, roll_number, name, email, department_id, institution_id, year')
-          .eq('is_active', true)
-          .or(`name.ilike.%${query}%,roll_number.ilike.%${query}%,email.ilike.%${query}%`)
-          .order('name')
-          .limit(200);
+        let cachedStudents: any[] | null = null;
 
-        if (!isAdmin) {
-          if (isMentorIncharge && mentorInchargeInstitutionId) {
-            dbQuery = dbQuery.eq('institution_id', mentorInchargeInstitutionId);
-          } else if (userInstitutionId) {
-            dbQuery = dbQuery.eq('institution_id', userInstitutionId);
+        if (isBulkLoad) {
+          // Paginate bulk-load in batches of 1000
+          let cfAll: any[] = [];
+          let cfFrom = 0;
+          const CF_PAGE = 1000;
+
+          while (true) {
+            let cfPage = supabaseAdmin
+              .from('jkkn_students')
+              .select('id, roll_number, name, email, department_id, institution_id, year')
+              .eq('is_active', true)
+              .order('name')
+              .range(cfFrom, cfFrom + CF_PAGE - 1);
+
+            if (!isAdmin) {
+              if (isMentorIncharge && mentorInchargeInstitutionId) {
+                cfPage = cfPage.eq('institution_id', mentorInchargeInstitutionId);
+              } else if (userInstitutionId) {
+                cfPage = cfPage.eq('institution_id', userInstitutionId);
+              }
+            }
+
+            const { data } = await cfPage;
+            if (!data || data.length === 0) break;
+            cfAll = cfAll.concat(data);
+            if (data.length < CF_PAGE) break;
+            cfFrom += CF_PAGE;
           }
-        }
 
-        const { data: cachedStudents } = await dbQuery;
+          cachedStudents = cfAll.length > 0 ? cfAll : null;
+        } else {
+          // Normal text search — .limit(200) is safe (under 1000 cap)
+          let dbQuery = supabaseAdmin
+            .from('jkkn_students')
+            .select('id, roll_number, name, email, department_id, institution_id, year')
+            .eq('is_active', true)
+            .or(`name.ilike.%${query}%,roll_number.ilike.%${query}%,email.ilike.%${query}%`)
+            .order('name')
+            .limit(200);
+
+          if (!isAdmin) {
+            if (isMentorIncharge && mentorInchargeInstitutionId) {
+              dbQuery = dbQuery.eq('institution_id', mentorInchargeInstitutionId);
+            } else if (userInstitutionId) {
+              dbQuery = dbQuery.eq('institution_id', userInstitutionId);
+            }
+          }
+
+          const { data } = await dbQuery;
+          cachedStudents = data;
+        }
 
         // Batch-resolve department names (1 query for all dept IDs)
         const deptIds = [...new Set((cachedStudents || []).map((s: any) => s.department_id).filter(Boolean))];
@@ -219,7 +390,19 @@ export async function GET(request: NextRequest) {
           (local || []).forEach((s: any) => { if (s.roll_number) localUUIDMap.set(String(s.roll_number), s.id); });
         }
 
-        const transformedStudents = (cachedStudents || []).map((s: any) => ({
+        // Deduplicate by name+institution: keep jkkn.ac.in email, skip gmail.com duplicates
+        const dedupMap = new Map<string, any>();
+        for (const s of (cachedStudents || [])) {
+          const key = `${(s.name || '').toUpperCase().trim()}::${s.institution_id || ''}`;
+          const existing = dedupMap.get(key);
+          if (!existing) {
+            dedupMap.set(key, s);
+          } else if ((s.email || '').includes('@jkkn.ac.in') && !(existing.email || '').includes('@jkkn.ac.in')) {
+            dedupMap.set(key, s);
+          }
+        }
+
+        const transformedStudents = Array.from(dedupMap.values()).map((s: any) => ({
           id: localUUIDMap.get(s.roll_number) || s.id,
           name: s.name,
           rollNumber: s.roll_number,
@@ -228,10 +411,23 @@ export async function GET(request: NextRequest) {
           year: s.year || '',
         }));
 
-        return NextResponse.json({ success: true, students: transformedStudents, source: 'cache' });
+        // Deduplicate by resolved id (localUUIDMap can map different rows to the same id)
+        const seenIds = new Set<string>();
+        const uniqueStudents = transformedStudents.filter(s => {
+          if (seenIds.has(s.id)) return false;
+          seenIds.add(s.id);
+          return true;
+        });
+
+        return NextResponse.json({ success: true, students: uniqueStudents, source: 'cache' });
       }
     }
     // ── End cache path — fallback to JKKN API pagination below ─────────────────
+
+    // For bulk load (q=*), don't fall through to slow JKKN API pagination
+    if (isBulkLoad) {
+      return NextResponse.json({ success: true, students: [], source: 'empty_cache' });
+    }
 
     // Get API key from environment (server-side only)
     const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
@@ -550,8 +746,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Deduplicate by name+institution: keep jkkn.ac.in email, skip gmail.com duplicates
+    const apiDedupMap = new Map<string, any>();
+    for (const student of filteredStudents) {
+      const name = `${student.first_name || ''} ${student.last_name || ''}`.toUpperCase().trim();
+      const instId = typeof student.institution === 'object' ? (student.institution?.id || '') : (student.institution_id || '');
+      const key = `${name}::${instId}`;
+      const existing = apiDedupMap.get(key);
+      if (!existing) {
+        apiDedupMap.set(key, student);
+      } else if ((student.email || '').includes('@jkkn.ac.in') && !(existing.email || '').includes('@jkkn.ac.in')) {
+        apiDedupMap.set(key, student);
+      }
+    }
+    const dedupedStudents = Array.from(apiDedupMap.values());
+
     // Transform to expected format
-    const transformedStudents = filteredStudents.map((student: any) => {
+    const transformedStudents = dedupedStudents.map((student: any) => {
       // Extract department name - try multiple sources
       let departmentName = 'Unknown Department';
 
@@ -591,9 +802,17 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Deduplicate by resolved id (localUUIDMap can map different rows to the same id)
+    const seenIds = new Set<string>();
+    const uniqueStudents = transformedStudents.filter(s => {
+      if (seenIds.has(s.id)) return false;
+      seenIds.add(s.id);
+      return true;
+    });
+
     return NextResponse.json({
       success: true,
-      students: transformedStudents,
+      students: uniqueStudents,
     });
   } catch (error) {
     console.error('[Student Search] Error:', error);

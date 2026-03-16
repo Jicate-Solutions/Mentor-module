@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import PageHeader from '@/components/ui/PageHeader';
@@ -13,30 +13,22 @@ import { SkeletonCard } from '@/components/ui/Skeleton';
 import { ErrorState, NoSearchResults } from '@/components/ui/EmptyState';
 import HorizontalFilterBar from '@/components/filters/HorizontalFilterBar';
 import { useFilters } from '@/hooks/useFilters';
-import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
+import { useMentorDirectory } from '@/hooks/mentor/useMentorDirectory';
 import type { FilterConfig } from '@/lib/types/filters';
-import type { Mentor } from '@/lib/types/mentor';
 
 export default function MentorListingPage() {
   const router = useRouter();
-  const { user, accessToken } = useAuth();
-
-  const [mentors, setMentors] = useState<Mentor[]>([]);
-  const [filteredMentors, setFilteredMentors] = useState<Mentor[]>([]);
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { allMentors, mentors, loading, error, refetch } = useMentorDirectory(searchQuery);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [hasSearched, setHasSearched] = useState(false);
-  // Track latest request to discard stale responses from in-flight concurrent requests
-  const requestIdRef = useRef<number>(0);
 
   // Derive filter options from the actual loaded mentor data
   // This guarantees filter values match the data exactly
   const filterConfigs: FilterConfig[] = useMemo(() => {
-    const uniqueInstitutions = [...new Set(mentors.map(m => m.institution).filter(Boolean))].sort();
-    const uniqueDepartments = [...new Set(mentors.map(m => m.department).filter(Boolean))].sort();
-    const uniqueDesignations = [...new Set(mentors.map(m => m.designation).filter(Boolean))].sort();
+    const uniqueInstitutions = [...new Set(allMentors.map(m => m.institution).filter(Boolean))].sort();
+    const uniqueDepartments = [...new Set(allMentors.map(m => m.department).filter(Boolean))].sort();
+    const uniqueDesignations = [...new Set(allMentors.map(m => m.designation).filter(Boolean))].sort();
 
     return [
       {
@@ -64,128 +56,30 @@ export default function MentorListingPage() {
         width: 'w-56',
       },
     ];
-  }, [mentors]);
+  }, [allMentors]);
 
   // Initialize filters hook
   const { filters, setFilter, clearAllFilters, activeFiltersCount } = useFilters({}, true);
 
-  // Auto-load mentors so filters populate with real data
-  useEffect(() => {
-    if (accessToken && !hasSearched) {
-      searchMentors('*');
-    }
-  }, [accessToken]);
-
-  // Fetch mentors from JKKN API based on search query
-  const searchMentors = async (query: string) => {
-    if (!accessToken || !query.trim()) {
-      setMentors([]);
-      setHasSearched(false);
-      return;
-    }
-
-    // Stamp this request so we can discard responses from older concurrent requests
-    const thisRequestId = ++requestIdRef.current;
-
-    try {
-      console.log('[MentorPage] Searching for mentors with query:', query);
-      setLoading(true);
-      setError(null);
-      setHasSearched(true);
-
-      // maxRetries: 2 gives 3 total attempts — handles transient JKKN token validation failures
-      const response = await fetchWithAuthRetry(`/api/mentor/list?search=${encodeURIComponent(query)}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      }, 2);
-
-      // Discard response if a newer request has already started
-      if (requestIdRef.current !== thisRequestId) return;
-
-      console.log('[MentorPage] API response status:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('[MentorPage] API error response:', errorData);
-        throw new Error(errorData.details || errorData.error || 'Failed to fetch mentors');
-      }
-
-      const data = await response.json();
-      console.log('[MentorPage] Received mentors:', {
-        count: data.data?.length,
-        total: data.meta?.total,
-      });
-
-      const mentorData = data.data || [];
-      setMentors(mentorData);
-    } catch (err) {
-      // Discard errors from stale requests
-      if (requestIdRef.current !== thisRequestId) return;
-
-      const errorMessage = err instanceof Error ? err.message : 'Failed to search mentors';
-      console.error('[MentorPage] Error searching mentors:', errorMessage);
-      setError(errorMessage);
-      setMentors([]);
-      setFilteredMentors([]);
-    } finally {
-      if (requestIdRef.current === thisRequestId) {
-        setLoading(false);
-      }
-    }
-  };
-
-  // Apply filters to mentors
-  useEffect(() => {
-    let filtered = [...mentors];
-
-    // Apply institution filter
+  const displayedMentors = useMemo(() => {
+    let result = mentors;
     if (filters.institution && filters.institution !== '') {
-      filtered = filtered.filter((mentor) =>
-        mentor.institution?.toLowerCase().includes((filters.institution as string).toLowerCase())
+      result = result.filter((m) =>
+        m.institution?.toLowerCase().includes((filters.institution as string).toLowerCase())
       );
     }
-
-    // Apply department filter
     if (filters.department && filters.department !== '') {
-      filtered = filtered.filter((mentor) =>
-        mentor.department?.toLowerCase().includes((filters.department as string).toLowerCase())
+      result = result.filter((m) =>
+        m.department?.toLowerCase().includes((filters.department as string).toLowerCase())
       );
     }
-
-    // Apply designation filter
     if (filters.designation && filters.designation !== '') {
-      filtered = filtered.filter((mentor) =>
-        mentor.designation?.toLowerCase().includes((filters.designation as string).toLowerCase())
+      result = result.filter((m) =>
+        m.designation?.toLowerCase().includes((filters.designation as string).toLowerCase())
       );
     }
-
-    setFilteredMentors(filtered);
-  }, [filters, mentors]);
-
-  // Debounced search - only search after user stops typing for 500ms
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      // Only reset if user explicitly cleared the search and no auto-loaded data exists
-      if (activeFiltersCount === 0 && user?.role !== 'faculty' && !loading) {
-        setHasSearched(false);
-      }
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      searchMentors(searchQuery.trim());
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Load data when filters are applied but no data exists yet
-  useEffect(() => {
-    if (activeFiltersCount > 0 && !hasSearched && accessToken) {
-      searchMentors('*');
-    }
-  }, [activeFiltersCount, hasSearched, accessToken]);
+    return result;
+  }, [mentors, filters]);
 
   const handleMentorClick = (mentorId: string) => {
     router.push(`/mentor/${mentorId}`);
@@ -280,12 +174,12 @@ export default function MentorListingPage() {
         <ErrorState
           title="Failed to load mentors"
           message={error}
-          onRetry={() => window.location.reload()}
+          onRetry={refetch}
         />
       )}
 
       {/* Initial State - No Search (only show for non-faculty users when no data loaded) */}
-      {!hasSearched && !loading && !error && mentors.length === 0 && user?.role !== 'faculty' && (
+      {!loading && !error && allMentors.length === 0 && user?.role !== 'faculty' && (
         <div className="bg-white rounded-xl p-10 lg:p-12 text-center shadow-sm">
           <div className="max-w-md mx-auto">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-neutral-100 flex items-center justify-center">
@@ -304,7 +198,7 @@ export default function MentorListingPage() {
       )}
 
       {/* No Results After Search */}
-      {hasSearched && !loading && !error && mentors.length === 0 && (
+      {!loading && !error && displayedMentors.length === 0 && allMentors.length > 0 && (
         <NoSearchResults
           searchQuery={searchQuery}
           onClearSearch={() => setSearchQuery('')}
@@ -312,13 +206,13 @@ export default function MentorListingPage() {
       )}
 
       {/* Mentors Content */}
-      {!loading && !error && filteredMentors.length > 0 && (
+      {!loading && !error && displayedMentors.length > 0 && (
         <>
           <div className="flex items-center justify-between">
             <p className="text-sm text-neutral-600">
-              Found <span className="font-medium text-brand-green">{filteredMentors.length}</span> mentor{filteredMentors.length !== 1 ? 's' : ''}
+              Found <span className="font-medium text-brand-green">{displayedMentors.length}</span> mentor{displayedMentors.length !== 1 ? 's' : ''}
               {activeFiltersCount > 0 && (
-                <span className="text-xs ml-2">({mentors.length} total)</span>
+                <span className="text-xs ml-2">({allMentors.length} total)</span>
               )}
             </p>
           </div>
@@ -326,7 +220,7 @@ export default function MentorListingPage() {
           {/* Grid View */}
           {viewMode === 'grid' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredMentors.map((mentor) => (
+              {displayedMentors.map((mentor) => (
                   <div
                     key={mentor.id}
                     onClick={() => handleMentorClick(mentor.id)}
@@ -516,7 +410,7 @@ export default function MentorListingPage() {
                       ),
                     },
                   ]}
-                  data={mentors}
+                  data={displayedMentors}
                   keyExtractor={(mentor) => mentor.id}
                   onRowClick={(mentor) => handleMentorClick(mentor.id)}
                   hoverable

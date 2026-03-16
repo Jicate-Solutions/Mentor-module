@@ -17,6 +17,17 @@ import StudentFeedbackTab from './components/StudentFeedbackTab';
 
 type TabType = 'students' | 'counseling' | 'attendance' | 'examResults' | 'idp' | 'achievement' | 'reports' | 'studentFeedback';
 
+const tabs = [
+  { id: 'students' as TabType, label: 'Students', icon: Users },
+  { id: 'counseling' as TabType, label: 'Counseling', icon: MessageSquare },
+  { id: 'attendance' as TabType, label: 'Attendance', icon: Calendar },
+  { id: 'examResults' as TabType, label: 'Exam Results', icon: FileText },
+  { id: 'idp' as TabType, label: 'IDP', icon: Target },
+  { id: 'achievement' as TabType, label: 'Achievement', icon: Award },
+  { id: 'studentFeedback' as TabType, label: 'Student Feedback', icon: ThumbsUp },
+  { id: 'reports' as TabType, label: 'Reports', icon: Download },
+];
+
 export default function MentorDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -28,8 +39,6 @@ export default function MentorDetailPage() {
 
   const [activeTab, setActiveTab] = useState<TabType>('students');
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
-
-  const loading = mentorLoading;
 
   // Compute pending feedback from sessions
   const pendingFeedback = useMemo(
@@ -46,7 +55,6 @@ export default function MentorDetailPage() {
   // Handle tab change with smooth scroll into view
   const handleTabChange = (tabId: TabType) => {
     setActiveTab(tabId);
-    // Scroll the tab button into view on mobile
     const tabButton = tabRefs.current[tabId];
     if (tabButton) {
       tabButton.scrollIntoView({
@@ -57,24 +65,13 @@ export default function MentorDetailPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-neutral-50/50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-neutral-200 border-t-brand-green mx-auto mb-3"></div>
-          <p className="text-[14px] text-neutral-600">Loading mentor details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !mentor) {
+  // Show error only after loading completes
+  if (!mentorLoading && (error || !mentor)) {
     const isPermissionError = error?.includes('permission') || error?.includes('403');
     return (
       <div className="min-h-screen bg-neutral-50/50 flex items-center justify-center p-4">
         <div className="text-center">
           <div className={`${isPermissionError ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'} border rounded-xl p-6 max-w-md w-full`}>
-            {/* Icon */}
             <div className={`w-12 h-12 mx-auto mb-4 rounded-full ${isPermissionError ? 'bg-amber-100' : 'bg-red-100'} flex items-center justify-center`}>
               {isPermissionError ? (
                 <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,15 +83,12 @@ export default function MentorDetailPage() {
                 </svg>
               )}
             </div>
-            {/* Title */}
             <h3 className={`text-lg font-medium mb-2 ${isPermissionError ? 'text-amber-800' : 'text-red-800'}`}>
               {isPermissionError ? 'Access Denied' : 'Error Loading Profile'}
             </h3>
-            {/* Message */}
             <p className={`${isPermissionError ? 'text-amber-700' : 'text-red-700'} text-[14px] leading-relaxed mb-4`}>
               {error || 'Mentor not found'}
             </p>
-            {/* Help text for permission errors */}
             {isPermissionError && (
               <p className="text-amber-600 text-xs mb-4">
                 Contact your HOD or administrator if you need access to this profile.
@@ -111,17 +105,6 @@ export default function MentorDetailPage() {
       </div>
     );
   }
-
-  const tabs = [
-    { id: 'students' as TabType, label: 'Students', icon: Users },
-    { id: 'counseling' as TabType, label: 'Counseling', icon: MessageSquare },
-    { id: 'attendance' as TabType, label: 'Attendance', icon: Calendar },
-    { id: 'examResults' as TabType, label: 'Exam Results', icon: FileText },
-    { id: 'idp' as TabType, label: 'IDP', icon: Target },
-    { id: 'achievement' as TabType, label: 'Achievement', icon: Award },
-    { id: 'studentFeedback' as TabType, label: 'Student Feedback', icon: ThumbsUp },
-    { id: 'reports' as TabType, label: 'Reports', icon: Download },
-  ];
 
   return (
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
@@ -142,30 +125,45 @@ export default function MentorDetailPage() {
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
               {/* Avatar */}
-              <div className="w-16 h-16 rounded-full bg-brand-yellow/20 text-brand-green flex items-center justify-center text-[18px] font-medium border-2 border-brand-green/30 flex-shrink-0">
-                {mentor.avatar ? (
-                  <img src={mentor.avatar} alt={mentor.name} className="w-full h-full rounded-full object-cover" />
-                ) : (
-                  getInitials(mentor.name)
-                )}
-              </div>
+              {mentorLoading ? (
+                <div className="w-16 h-16 rounded-full bg-neutral-200 animate-pulse flex-shrink-0" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-brand-yellow/20 text-brand-green flex items-center justify-center text-[18px] font-medium border-2 border-brand-green/30 flex-shrink-0">
+                  {mentor?.avatar ? (
+                    <img src={mentor.avatar} alt={mentor.name} className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    getInitials(mentor?.name || '')
+                  )}
+                </div>
+              )}
 
               {/* Mentor Info */}
               <div className="flex-1 min-w-0">
-                <h1 className="text-[22px] font-medium text-neutral-900 mb-2 tracking-tight">{mentor.name}</h1>
-                <div className="space-y-1 text-neutral-600">
-                  <p className="text-[14px] leading-relaxed">
-                    <span className="font-medium">Staff ID:</span> {mentor.id}
-                  </p>
-                  <p className="text-[14px] leading-relaxed">
-                    <span className="font-medium">Department:</span> {mentor.department}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="px-3 py-1 bg-brand-green/10 text-brand-green rounded-md text-[13px] font-medium">
-                      {mentor.designation}
-                    </span>
+                {mentorLoading ? (
+                  <div className="space-y-3">
+                    <div className="h-6 w-48 bg-neutral-200 rounded animate-pulse" />
+                    <div className="h-4 w-36 bg-neutral-200 rounded animate-pulse" />
+                    <div className="h-4 w-44 bg-neutral-200 rounded animate-pulse" />
+                    <div className="h-6 w-24 bg-neutral-200 rounded animate-pulse" />
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <h1 className="text-[22px] font-medium text-neutral-900 mb-2 tracking-tight">{mentor?.name}</h1>
+                    <div className="space-y-1 text-neutral-600">
+                      <p className="text-[14px] leading-relaxed">
+                        <span className="font-medium">Staff ID:</span> {mentor?.id}
+                      </p>
+                      <p className="text-[14px] leading-relaxed">
+                        <span className="font-medium">Department:</span> {mentor?.department}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="px-3 py-1 bg-brand-green/10 text-brand-green rounded-md text-[13px] font-medium">
+                          {mentor?.designation}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -184,7 +182,11 @@ export default function MentorDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[13px] font-medium text-neutral-600 uppercase tracking-wide mb-2">Students Assigned</p>
-                <p className="text-[28px] font-medium text-neutral-900 tracking-tight">{mentor.totalStudents || 0}</p>
+                {mentorLoading ? (
+                  <div className="h-8 w-16 bg-neutral-200 rounded animate-pulse" />
+                ) : (
+                  <p className="text-[28px] font-medium text-neutral-900 tracking-tight">{mentor?.totalStudents || 0}</p>
+                )}
               </div>
               <div className="w-12 h-12 bg-brand-yellow/20 rounded-xl flex items-center justify-center">
                 <Users className="w-6 h-6 text-brand-green" />
@@ -253,42 +255,27 @@ export default function MentorDetailPage() {
 
           {/* Tab Content */}
           <div className="p-4 lg:p-6">
-            {/* Students Tab */}
             {activeTab === 'students' && (
               <StudentsTab mentorId={mentorId} />
             )}
-
-            {/* Counseling Tab */}
             {activeTab === 'counseling' && (
               <CounselingTab mentorId={mentorId} />
             )}
-
-            {/* Attendance Tab */}
             {activeTab === 'attendance' && (
               <AttendanceTab mentorId={mentorId} />
             )}
-
-            {/* Exam Results Tab */}
             {activeTab === 'examResults' && (
               <ExamResultsTab mentorId={mentorId} />
             )}
-
-            {/* IDP Tab */}
             {activeTab === 'idp' && (
               <IDPTab mentorId={mentorId} students={students} />
             )}
-
-            {/* Achievement Tab */}
             {activeTab === 'achievement' && (
               <AchievementTab mentorId={mentorId} />
             )}
-
-            {/* Student Feedback Tab */}
             {activeTab === 'studentFeedback' && (
               <StudentFeedbackTab mentorId={mentorId} />
             )}
-
-            {/* Reports Tab */}
             {activeTab === 'reports' && (
               <ReportsTab mentorId={mentorId} />
             )}

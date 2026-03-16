@@ -1,18 +1,26 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
+import { readCache, writeCache } from '@/lib/utils/session-cache';
 import type { Mentor } from '@/lib/types/mentor';
 
+const CACHE_TTL = 5 * 60 * 1000;
+
 export function useMentorDetails(mentorId: string) {
-  const [mentor, setMentor] = useState<Mentor | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = `mentor_detail_${mentorId}`;
+  const cachedData = useRef(readCache<Mentor>(cacheKey, CACHE_TTL));
+
+  const [mentor, setMentor] = useState<Mentor | null>(cachedData.current ?? null);
+  const [loading, setLoading] = useState(!cachedData.current);
   const [error, setError] = useState<string | null>(null);
 
   const fetchMentor = useCallback(async () => {
     if (!mentorId) return;
 
-    setLoading(true);
+    if (!cachedData.current) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -29,12 +37,14 @@ export function useMentorDetails(mentorId: string) {
       // Route returns { success, data } — support legacy { mentor } shape too
       const mentorData = json.data ?? json.mentor ?? json;
       setMentor(mentorData);
+      writeCache(cacheKey, mentorData);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
       setLoading(false);
+      cachedData.current = null;
     }
-  }, [mentorId]);
+  }, [mentorId, cacheKey]);
 
   useEffect(() => {
     fetchMentor();

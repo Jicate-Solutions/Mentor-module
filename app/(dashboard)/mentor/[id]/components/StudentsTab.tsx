@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useToast } from '@/components/providers/ToastProvider';
 import useConfirm from '@/lib/hooks/useConfirm';
@@ -14,6 +14,7 @@ import BulkImportModal from './BulkImportModal';
 import AddLearnerFilters from './AddLearnerFilters';
 import { useAddLearnerFilters } from '@/hooks/useAddLearnerFilters';
 import { useAssignedStudents } from '@/hooks/mentor/useAssignedStudents';
+import { useStudentSearch } from '@/hooks/mentor/useStudentSearch';
 import type { Student } from '@/lib/types/mentor';
 
 interface StudentsTabProps {
@@ -35,9 +36,6 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
 
   // Add Student Modal State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Student[]>([]);
-  const [searching, setSearching] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
   const [assigning, setAssigning] = useState(false);
 
@@ -51,102 +49,22 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     activeFiltersCount,
   } = useAddLearnerFilters();
 
-  // Search for students (memoized to prevent unnecessary re-renders)
-  const handleSearch = useCallback(async (query: string) => {
-    if (!query.trim() || !accessToken) {
-      setSearchResults([]);
-      return;
-    }
+  const assignedStudentIds = useMemo(() => assignedStudents.map(s => s.id), [assignedStudents]);
 
-    console.log('[StudentsTab] Searching for students with query:', query);
+  const {
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    searching,
+    error: searchError,
+    clearSearch,
+  } = useStudentSearch(assignedStudentIds, mentorId);
 
-    try {
-      setSearching(true);
-      const response = await fetch(
-        `/api/students/search?q=${encodeURIComponent(query)}&for_assignment=true`,
-        {
-          credentials: 'include', // Important: Send cookies for server-side authentication
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('[StudentsTab] Search API response:', {
-          query,
-          resultsCount: data.students?.length || 0,
-          success: data.success
-        });
-
-        // Filter out already assigned students to prevent duplicate assignment errors
-        const assignedStudentIds = new Set(assignedStudents.map(s => s.id));
-        const unassignedStudents = (data.students || []).filter(
-          (student: Student) => !assignedStudentIds.has(student.id)
-        );
-
-        console.log('[StudentsTab] Filtered results:', {
-          total: data.students?.length || 0,
-          alreadyAssigned: (data.students?.length || 0) - unassignedStudents.length,
-          available: unassignedStudents.length
-        });
-
-        setSearchResults(unassignedStudents);
-
-        if (data.students?.length === 0) {
-          console.warn('[StudentsTab] No students found for query:', query);
-        } else if (unassignedStudents.length === 0 && data.students?.length > 0) {
-          console.log('[StudentsTab] All matching students are already assigned');
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('[StudentsTab] Search API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        });
-
-        toast.error(
-          'Search failed',
-          errorData.error || errorData.details || 'Could not search for students'
-        );
-        setSearchResults([]);
-      }
-    } catch (error) {
-      console.error('[StudentsTab] Search error:', error);
-      toast.error(
-        'Search error',
-        error instanceof Error ? error.message : 'An unexpected error occurred while searching'
-      );
-      setSearchResults([]);
-    } finally {
-      setSearching(false);
-    }
-  }, [accessToken, toast, assignedStudents]);
-
-  // Automatic debounced search (500ms delay, 2 character minimum)
   useEffect(() => {
-    // Only search if query has at least 2 characters
-    if (searchQuery.length < 2) {
-      setSearchResults([]);
-      setSearching(false);
-      return;
+    if (searchError) {
+      toast.error('Search error', searchError);
     }
-
-    // Show searching state immediately
-    setSearching(true);
-
-    // Set up debounce timer
-    const debounceTimer = setTimeout(() => {
-      handleSearch(searchQuery);
-    }, 500);
-
-    // Cleanup function to cancel timer if query changes
-    return () => {
-      clearTimeout(debounceTimer);
-    };
-  }, [searchQuery, handleSearch]);
+  }, [searchError, toast]);
 
   // Apply advanced filters to search results
   const filteredSearchResults = useMemo(() => {
@@ -288,8 +206,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
       }
 
       setShowAddModal(false);
-      setSearchQuery('');
-      setSearchResults([]);
+      clearSearch();
       setSelectedStudents([]);
     } catch (error) {
       console.error('[StudentsTab] Assignment error:', error);
@@ -456,8 +373,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
         isOpen={showAddModal}
         onClose={() => {
           setShowAddModal(false);
-          setSearchQuery('');
-          setSearchResults([]);
+          clearSearch();
           setSelectedStudents([]);
           clearAllFilters();
         }}
@@ -477,7 +393,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
 
           {/* Search Input */}
           <SearchInput
-            placeholder="Search by name, roll number, or email (min 2 chars)..."
+            placeholder="Search by name, roll number, or email..."
             value={searchQuery}
             onChange={setSearchQuery}
             loading={searching}
@@ -567,11 +483,9 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
             </div>
           ) : searchQuery && !searching ? (
             <div className="text-center py-8 text-neutral-600">
-              {searchQuery.length < 2
-                ? 'Please enter at least 2 characters to search'
-                : searchResults.length > 0 && filteredSearchResults.length === 0
-                  ? 'No learners match the selected filters. Try adjusting your filters.'
-                  : 'No learners found. Try a different search term.'
+              {searchResults.length > 0 && filteredSearchResults.length === 0
+                ? 'No learners match the selected filters. Try adjusting your filters.'
+                : 'No learners found. Try a different search term.'
               }
             </div>
           ) : null}
@@ -582,8 +496,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
               variant="outline"
               onClick={() => {
                 setShowAddModal(false);
-                setSearchQuery('');
-                setSearchResults([]);
+                clearSearch();
                 setSelectedStudents([]);
                 clearAllFilters();
               }}

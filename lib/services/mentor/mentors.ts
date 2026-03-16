@@ -505,7 +505,8 @@ export async function getMentorList(
   const { data: mentorRecords } = await supabaseAdmin
     .from('mentors')
     .select('id, user_id, institution_id, department_id')
-    .in('user_id', userIds);
+    .in('user_id', userIds)
+    .eq('is_active', true);
 
   const mentorIds = mentorRecords?.map(m => m.id) || [];
   const { data: studentCounts } = await supabaseAdmin
@@ -578,7 +579,8 @@ export async function getMentorList(
     const { data: localMentors } = await supabaseAdmin
       .from('mentors')
       .select('id, user_id, institution_id, department_id, users!inner(id, email, full_name, role)')
-      .not('user_id', 'is', null);
+      .not('user_id', 'is', null)
+      .eq('is_active', true);
 
     if (localMentors && localMentors.length > 0) {
       // Fetch student counts for local mentors not already in the count map.
@@ -667,6 +669,39 @@ export async function getMentorList(
       if (addedCount > 0) {
         console.log(`[getMentorList] Added ${addedCount} locally-registered mentors not found in JKKN API`);
       }
+    }
+  }
+
+  // ── Final dedup: name+institution (catches gmail vs jkkn.ac.in duplicates) ──
+  {
+    const seen = new Map<string, number>();
+    const toRemove = new Set<number>();
+    for (let i = 0; i < mentors.length; i++) {
+      const m = mentors[i] as any;
+      const key = `${(m.name || '').toUpperCase().trim()}::${m.institution_id || ''}`;
+      const existingIdx = seen.get(key);
+      if (existingIdx === undefined) {
+        seen.set(key, i);
+      } else {
+        // Keep the one with @jkkn.ac.in email; remove the other
+        const existing = mentors[existingIdx] as any;
+        const existingIsOfficial = (existing.email || '').includes('@jkkn.ac.in');
+        const currentIsOfficial = (m.email || '').includes('@jkkn.ac.in');
+        if (currentIsOfficial && !existingIsOfficial) {
+          // Current is better — merge student count and replace
+          m.totalStudents = Math.max(m.totalStudents || 0, existing.totalStudents || 0);
+          toRemove.add(existingIdx);
+          seen.set(key, i);
+        } else {
+          // Existing is better or equal — merge student count into it
+          existing.totalStudents = Math.max(existing.totalStudents || 0, m.totalStudents || 0);
+          toRemove.add(i);
+        }
+      }
+    }
+    if (toRemove.size > 0) {
+      mentors = mentors.filter((_: any, i: number) => !toRemove.has(i));
+      console.log(`[getMentorList] Deduped ${toRemove.size} name+institution duplicates`);
     }
   }
 

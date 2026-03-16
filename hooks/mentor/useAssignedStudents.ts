@@ -1,17 +1,25 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { readCache, writeCache, clearCache } from '@/lib/utils/session-cache';
 import type { Student } from '@/lib/types/mentor';
 
+const CACHE_TTL = 5 * 60 * 1000;
+
 export function useAssignedStudents(mentorId: string) {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = `assigned_students_${mentorId}`;
+  const cachedData = useRef(readCache<Student[]>(cacheKey, CACHE_TTL));
+
+  const [students, setStudents] = useState<Student[]>(cachedData.current ?? []);
+  const [loading, setLoading] = useState(!cachedData.current);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStudents = useCallback(async () => {
     if (!mentorId) return;
 
-    setLoading(true);
+    if (!cachedData.current) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -41,12 +49,14 @@ export function useAssignedStudents(mentorId: string) {
       }));
 
       setStudents(list);
+      writeCache(cacheKey, list);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
       setLoading(false);
+      cachedData.current = null;
     }
-  }, [mentorId]);
+  }, [mentorId, cacheKey]);
 
   /**
    * POST /api/mentor/{mentorId}/students
@@ -71,6 +81,7 @@ export function useAssignedStudents(mentorId: string) {
           return { success: false, error: json.error || 'Failed to assign student' };
         }
 
+        clearCache(cacheKey);
         await fetchStudents();
         return { success: true };
       } catch (e) {
@@ -78,7 +89,7 @@ export function useAssignedStudents(mentorId: string) {
         return { success: false, error: message };
       }
     },
-    [mentorId, fetchStudents]
+    [mentorId, fetchStudents, cacheKey]
   );
 
   /**
@@ -102,6 +113,7 @@ export function useAssignedStudents(mentorId: string) {
           return { success: false, error: json.error || 'Failed to remove student' };
         }
 
+        clearCache(cacheKey);
         await fetchStudents();
         return { success: true };
       } catch (e) {
@@ -109,7 +121,7 @@ export function useAssignedStudents(mentorId: string) {
         return { success: false, error: message };
       }
     },
-    [mentorId, fetchStudents]
+    [mentorId, fetchStudents, cacheKey]
   );
 
   useEffect(() => {

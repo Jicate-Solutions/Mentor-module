@@ -90,11 +90,92 @@ export default function DashboardPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch all dashboard data in parallel with per-endpoint error isolation
+  const fetchDashboardData = useCallback(async () => {
+    if (!accessToken) return;
+
+    const authHeaders = { Authorization: `Bearer ${accessToken}` };
+    setLoading(true);
+
+    try {
+      // Fire all 4 API calls in parallel
+      const [statsResult, activityResult, trendsResult, sessionsResult] = await Promise.allSettled([
+        fetch('/api/dashboard/stats', { headers: authHeaders }),
+        fetch('/api/dashboard/activity?limit=10', { headers: authHeaders }),
+        fetch('/api/dashboard/trends?days=30', { headers: authHeaders }),
+        fetch('/api/dashboard/sessions?limit=10', { headers: authHeaders }),
+      ]);
+
+      // --- Stats ---
+      let statsData: any = null;
+      if (statsResult.status === 'fulfilled' && statsResult.value.ok) {
+        statsData = await statsResult.value.json();
+        setStats(statsData);
+      }
+
+      // --- Activity feed ---
+      if (activityResult.status === 'fulfilled' && activityResult.value.ok) {
+        const activityData = await activityResult.value.json();
+        setActivities(activityData.activities || []);
+      }
+
+      // --- Trends (top mentors + department distribution) ---
+      let trendsData: any = null;
+      if (trendsResult.status === 'fulfilled' && trendsResult.value.ok) {
+        trendsData = await trendsResult.value.json();
+        setTopMentors(trendsData.topMentors || []);
+        setDepartmentData(trendsData.departmentDistribution || []);
+
+        const colors = ['#0b6d41', '#ffde59', '#84efc2', '#48dfa0', '#1ec481'];
+        const progress = trendsData.departmentDistribution?.slice(0, 5).map((dept: any, index: number) => ({
+          name: dept.name,
+          completed: dept.completed || 0,
+          total: dept.total || 0,
+          color: colors[index % colors.length],
+        })) || [];
+        setDepartmentProgress(progress);
+      }
+
+      // --- Upcoming sessions ---
+      let sessionsData: any = null;
+      if (sessionsResult.status === 'fulfilled' && sessionsResult.value.ok) {
+        sessionsData = await sessionsResult.value.json();
+        setUpcomingSessions(sessionsData.sessions || []);
+      }
+
+      // --- Notifications (derived from stats + sessions) ---
+      const notifs: Notification[] = [];
+      if (statsData?.pendingFeedback > 0) {
+        notifs.push({
+          id: 'feedback-1',
+          title: 'Pending Feedback',
+          description: `You have ${statsData.pendingFeedback} counseling session${statsData.pendingFeedback > 1 ? 's' : ''} awaiting feedback submission.`,
+          type: 'action',
+          actionLabel: 'Submit Feedback',
+          actionUrl: '/mentor',
+        });
+      }
+      if (sessionsData?.sessions && sessionsData.sessions.length > 0) {
+        notifs.push({
+          id: 'upcoming-1',
+          title: 'Upcoming Sessions',
+          description: `You have ${sessionsData.sessions.length} upcoming counseling session${sessionsData.sessions.length > 1 ? 's' : ''} scheduled.`,
+          type: 'info',
+        });
+      }
+      setNotifications(notifs);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken]);
+
   // Fetch dashboard data (gate on accessToken)
   useEffect(() => {
     if (!accessToken) return;
     fetchDashboardData();
-  }, [accessToken]);
+  }, [fetchDashboardData]);
 
   // Debounced realtime refresh — batch rapid changes into a single data fetch
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,8 +183,8 @@ export default function DashboardPage() {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     refreshTimerRef.current = setTimeout(() => {
       fetchDashboardData();
-    }, 2000); // 2s debounce for dashboard (heavier API call)
-  }, []);
+    }, 2000);
+  }, [fetchDashboardData]);
 
   // Set up real-time subscriptions for live dashboard updates
   useEffect(() => {
@@ -127,75 +208,6 @@ export default function DashboardPage() {
       channels.forEach((ch) => supabase.removeChannel(ch));
     };
   }, [debouncedRefresh]);
-
-  const fetchDashboardData = async () => {
-    if (!accessToken) return;
-
-    const authHeaders = {
-      Authorization: `Bearer ${accessToken}`,
-    };
-
-    setLoading(true);
-    try {
-      // Fetch stats
-      const statsResponse = await fetch('/api/dashboard/stats', { headers: authHeaders });
-      const statsData = await statsResponse.json();
-      setStats(statsData);
-
-      // Fetch activity feed
-      const activityResponse = await fetch('/api/dashboard/activity?limit=10', { headers: authHeaders });
-      const activityData = await activityResponse.json();
-      setActivities(activityData.activities || []);
-
-      // Fetch trends (includes top mentors and department distribution)
-      const trendsResponse = await fetch('/api/dashboard/trends?days=30', { headers: authHeaders });
-      const trendsData = await trendsResponse.json();
-      setTopMentors(trendsData.topMentors || []);
-      setDepartmentData(trendsData.departmentDistribution || []);
-
-      // Fetch upcoming sessions from API
-      const sessionsResponse = await fetch('/api/dashboard/sessions?limit=10', { headers: authHeaders });
-      const sessionsData = await sessionsResponse.json();
-      setUpcomingSessions(sessionsData.sessions || []);
-
-      // Use real department progress data from API
-      const colors = ['#0b6d41', '#ffde59', '#84efc2', '#48dfa0', '#1ec481'];
-      const progress = trendsData.departmentDistribution?.slice(0, 5).map((dept: any, index: number) => ({
-        name: dept.name,
-        completed: dept.completed || 0, // Real completed sessions count
-        total: dept.total || 0, // Real total sessions count
-        color: colors[index % colors.length],
-      })) || [];
-      setDepartmentProgress(progress);
-
-      // Generate notifications based on pending feedback
-      const notifs: Notification[] = [];
-      if (statsData.pendingFeedback > 0) {
-        notifs.push({
-          id: 'feedback-1',
-          title: 'Pending Feedback',
-          description: `You have ${statsData.pendingFeedback} counseling session${statsData.pendingFeedback > 1 ? 's' : ''} awaiting feedback submission.`,
-          type: 'action',
-          actionLabel: 'Submit Feedback',
-          actionUrl: '/mentor',
-        });
-      }
-      if (sessionsData.sessions && sessionsData.sessions.length > 0) {
-        notifs.push({
-          id: 'upcoming-1',
-          title: 'Upcoming Sessions',
-          description: `You have ${sessionsData.sessions.length} upcoming counseling session${sessionsData.sessions.length > 1 ? 's' : ''} scheduled.`,
-          type: 'info',
-        });
-      }
-      setNotifications(notifs);
-
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">

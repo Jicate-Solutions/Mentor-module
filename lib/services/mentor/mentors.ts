@@ -581,6 +581,38 @@ export async function getMentorList(
       .not('user_id', 'is', null);
 
     if (localMentors && localMentors.length > 0) {
+      // Fetch student counts for local mentors not already in the count map.
+      // The initial mentorStudentCountMap only covers mentors linked to JKKN API
+      // users — locally-registered mentors (not in the API) would show 0 without this.
+      const localIdsNotInMap = localMentors
+        .filter(lm => !mentorStudentCountMap.has(lm.id))
+        .map(lm => lm.id);
+
+      if (localIdsNotInMap.length > 0) {
+        const { data: localStudentCounts } = await supabaseAdmin
+          .from('mentor_students')
+          .select('mentor_id')
+          .in('mentor_id', localIdsNotInMap);
+
+        localStudentCounts?.forEach(record => {
+          mentorStudentCountMap.set(
+            record.mentor_id,
+            (mentorStudentCountMap.get(record.mentor_id) || 0) + 1
+          );
+        });
+      }
+
+      // Build a name+department index of API mentors so we can detect when a
+      // locally-registered mentor is the same person as an API entry (e.g. staff
+      // who logged in via JKKN OAuth but the HR API still returns their old
+      // personal Gmail address).
+      const apiNameDeptIndex = new Map<string, number>();
+      for (let i = 0; i < mentors.length; i++) {
+        const m = mentors[i] as any;
+        const key = `${(m.name || '').toUpperCase().trim()}::${m.department_id || ''}`;
+        apiNameDeptIndex.set(key, i);
+      }
+
       let addedCount = 0;
       for (const lm of localMentors) {
         const userRecord = lm.users as any;
@@ -588,13 +620,34 @@ export async function getMentorList(
         const email = userRecord.email.toLowerCase();
         if (apiEmails.has(email)) continue; // already in API results
 
+        const localStudentCount = mentorStudentCountMap.get(lm.id) || 0;
+
+        // Dedup: if the JKKN API already has an entry with the same name +
+        // department (but a different email, e.g. personal Gmail vs @jkkn.ac.in),
+        // merge by updating the API entry with the correct student count and
+        // Supabase IDs rather than adding a duplicate.
+        const dedupeKey = `${(userRecord.full_name || '').toUpperCase().trim()}::${lm.department_id || ''}`;
+        const existingIdx = apiNameDeptIndex.get(dedupeKey);
+        if (existingIdx !== undefined) {
+          const existing = mentors[existingIdx] as any;
+          const existingCount = existing.totalStudents || 0;
+          if (localStudentCount > existingCount) {
+            existing.totalStudents = localStudentCount;
+          }
+          // Prefer local Supabase IDs for correct resolution
+          existing.department_id = lm.department_id || existing.department_id;
+          existing.institution_id = lm.institution_id || existing.institution_id;
+          // Use the Supabase users.id so the detail page resolves correctly
+          existing.id = userRecord.id;
+          existing.email = userRecord.email;
+          continue; // skip adding a duplicate
+        }
+
         // Resolve department name from JKKN API if possible
         let departmentName = '';
         if (lm.department_id && apiKey) {
           departmentName = await resolveDepartmentName(lm.department_id, apiKey, baseUrl);
         }
-
-        const totalStudents = mentorStudentCountMap.get(lm.id) || 0;
 
         mentors.push({
           id: userRecord.id, // use Supabase users.id for Tier 4/4b resolution
@@ -607,7 +660,7 @@ export async function getMentorList(
           designation: userRecord.role || 'Faculty',
           phone: '',
           avatar: undefined,
-          totalStudents,
+          totalStudents: localStudentCount,
         });
         addedCount++;
       }

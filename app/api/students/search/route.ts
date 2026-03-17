@@ -322,9 +322,24 @@ export async function GET(request: NextRequest) {
         (depts || []).forEach((d: any) => deptMap.set(d.id, d.name));
       }
 
-      // 4. Transform — use JKKN UUIDs directly (assignment handles UUID conflicts via stale-row resolution)
+      // 4. Resolve local UUIDs — prevents 23505 roll_number constraint violations in bulkAssignStudents
+      //    when a student exists in local students table under a different UUID than in jkkn_students.
+      //    Mirrors the same resolution logic in the cache-first path (line ~444).
+      const rollNums = cachedStudents.map((s: any) => s.roll_number).filter(Boolean);
+      const localUUIDMap = new Map<string, string>();
+      if (rollNums.length > 0) {
+        const { data: localRows } = await supabaseAdmin
+          .from('students')
+          .select('id, roll_number')
+          .in('roll_number', rollNums);
+        (localRows || []).forEach((s: any) => {
+          if (s.roll_number) localUUIDMap.set(String(s.roll_number), s.id);
+        });
+      }
+
+      // 5. Transform — prefer local UUID when available, fall back to JKKN UUID for new students
       const transformed = cachedStudents.map((s: any) => ({
-        id: s.id,
+        id: localUUIDMap.get(s.roll_number) || s.id,
         name: s.name || 'Unknown',
         rollNumber: s.roll_number || s.id,
         email: s.email || '',

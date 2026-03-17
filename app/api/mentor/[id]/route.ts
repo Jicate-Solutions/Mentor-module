@@ -31,17 +31,19 @@ export async function GET(
     const supabase = createAdminClient();
     const resolved = await resolveMentorByJkknId(mentorId, supabase);
 
-    if (resolved) {
-      const canAccess = await canAccessFacultyProfile(
-        userAccess,
-        resolved.user.id,
-        resolved.mentor.department_id,
-        resolved.mentor.institution_id
-      );
+    if (!resolved) {
+      return err('Mentor not found', 404);
+    }
 
-      if (!canAccess) {
-        return err('You do not have permission to view this profile', 403);
-      }
+    const canAccess = await canAccessFacultyProfile(
+      userAccess,
+      resolved.user.id,
+      resolved.mentor.department_id,
+      resolved.mentor.institution_id
+    );
+
+    if (!canAccess) {
+      return err('You do not have permission to view this profile', 403);
     }
 
     return ok(mentor);

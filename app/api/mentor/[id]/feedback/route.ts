@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
-import { getUserAccess } from '@/lib/middleware/access-control';
+import { getUserAccess, canManageMentor } from '@/lib/middleware/access-control';
 import { getStudentFeedbackForMentor } from '@/lib/services/mentor/feedback';
+import { resolveMentorByJkknId } from '@/lib/services/mentor/resolve';
+import { createAdminClient } from '@/lib/supabase/server';
 import { ok, err } from '@/lib/utils/api-response';
 
 /**
@@ -19,6 +21,21 @@ export async function GET(
   const { id: mentorId } = await params;
 
   try {
+    const supabase = createAdminClient();
+    const resolved = await resolveMentorByJkknId(mentorId, supabase);
+    if (!resolved) {
+      return err('Mentor not found', 404);
+    }
+
+    const canAccess = await canManageMentor(
+      userAccess,
+      resolved.mentor.id,
+      resolved.mentor.institution_id || ''
+    );
+    if (!canAccess) {
+      return err('Forbidden', 403);
+    }
+
     const result = await getStudentFeedbackForMentor(mentorId);
     return ok({ feedback: result.feedback, stats: result.stats });
   } catch (error) {

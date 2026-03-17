@@ -199,13 +199,13 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
               {/* Area of Focus */}
               <div className="bg-brand-yellow/10 rounded-lg border-l-2 border-brand-yellow p-3 mb-3">
                 <p className="text-[13px] font-medium text-neutral-900 mb-1">Area of Focus</p>
-                <p className="text-[14px] text-neutral-700 leading-relaxed">{plan.area_of_focus}</p>
+                <p className="text-[14px] text-neutral-700 leading-relaxed whitespace-pre-wrap">{plan.area_of_focus}</p>
               </div>
 
               {/* SMART Goal */}
               <div className="mb-3">
                 <p className="text-[13px] font-medium text-neutral-900 mb-1">SMART Goal</p>
-                <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.smart_goal_statement}</p>
+                <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.smart_goal_statement}</p>
               </div>
 
               {/* Expanded Details */}
@@ -217,13 +217,13 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                       {plan.knowledge_to_develop && (
                         <div>
                           <p className="text-[13px] font-medium text-neutral-900 mb-1">Knowledge to Develop</p>
-                          <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.knowledge_to_develop}</p>
+                          <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.knowledge_to_develop}</p>
                         </div>
                       )}
                       {plan.knowledge_development_how && (
                         <div>
                           <p className="text-[13px] font-medium text-neutral-900 mb-1">How to Develop</p>
-                          <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.knowledge_development_how}</p>
+                          <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.knowledge_development_how}</p>
                         </div>
                       )}
                     </div>
@@ -235,13 +235,13 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                       {plan.skills_to_gain && (
                         <div>
                           <p className="text-[13px] font-medium text-neutral-900 mb-1">Skills to Gain</p>
-                          <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.skills_to_gain}</p>
+                          <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.skills_to_gain}</p>
                         </div>
                       )}
                       {plan.skills_development_how && (
                         <div>
                           <p className="text-[13px] font-medium text-neutral-900 mb-1">How to Develop</p>
-                          <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.skills_development_how}</p>
+                          <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.skills_development_how}</p>
                         </div>
                       )}
                     </div>
@@ -260,7 +260,7 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                     <div>
                       <p className="text-[13px] font-medium text-neutral-900 mb-1">Mentor Notes</p>
                       <div className="bg-blue-50 rounded-lg p-3">
-                        <p className="text-[14px] text-neutral-600 leading-relaxed">{plan.mentor_notes}</p>
+                        <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.mentor_notes}</p>
                       </div>
                     </div>
                   )}

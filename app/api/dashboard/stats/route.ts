@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const dateTo = searchParams.get('date_to');
 
     // --- Mentor counts ---
-    let mentorQuery = supabase.from('mentors').select('id', { count: 'exact', head: true });
+    let mentorQuery = supabase.from('mentors').select('id', { count: 'exact', head: true }).eq('is_active', true);
     let activeMentorQuery = supabase.from('mentors').select('id', { count: 'exact', head: true }).eq('is_active', true);
 
     if (institutionFilter) {

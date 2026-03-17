@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server';
 import { getUserAccess, canManageMentor } from '@/lib/middleware/access-control';
+import { getSessionStats, getMentorEngagement } from '@/lib/services/mentor/activity';
 import { resolveMentorByJkknId } from '@/lib/services/mentor/resolve';
-import { getActivityStats, getSessionStats, getMentorEngagement } from '@/lib/services/mentor/activity';
 import { createAdminClient } from '@/lib/supabase/server';
 import { ok, err } from '@/lib/utils/api-response';
 
 /**
  * GET /api/mentor/[id]/activity/stats
- * Returns combined activity stats, session stats, and engagement data for a mentor.
+ * Returns session stats and engagement data for a specific mentor.
  */
 export async function GET(
   _request: NextRequest,
@@ -36,17 +36,14 @@ export async function GET(
       return err('Forbidden', 403);
     }
 
-    const dbMentorId = resolved.mentor.id;
-
-    const [activityStats, sessionStats, engagement] = await Promise.all([
-      getActivityStats(dbMentorId),
-      getSessionStats(dbMentorId),
-      getMentorEngagement(dbMentorId),
+    const [stats, engagement] = await Promise.all([
+      getSessionStats(resolved.mentor.id),
+      getMentorEngagement(resolved.mentor.id).catch(() => null),
     ]);
 
-    return ok({ activityStats, sessionStats, engagement });
+    return ok({ stats, engagement });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch activity stats';
+    const message = error instanceof Error ? error.message : 'Failed to fetch session stats';
     return err(message, 500);
   }
 }

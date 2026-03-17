@@ -273,6 +273,44 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: true, students: transformed, source: 'local_fallback' });
       }
 
+      // 2b. Merge students from local `students` table that are missing from jkkn_students
+      //     Some students exist only in the local table (e.g. manually created, sync gaps)
+      const cachedIds = new Set(cachedStudents.map((s: any) => String(s.id)));
+      let localSupplementFrom = 0;
+
+      while (true) {
+        let supplementQuery = supabaseAdmin
+          .from('students')
+          .select('id, name, roll_number, email, department_id, institution_id, year')
+          .eq('is_active', true)
+          .order('name')
+          .range(localSupplementFrom, localSupplementFrom + PAGE_SIZE - 1);
+
+        if (!isAdmin) {
+          if (isMentorIncharge && mentorInchargeInstitutionId) {
+            supplementQuery = supplementQuery.eq('institution_id', mentorInchargeInstitutionId);
+          } else if (userInstitutionId) {
+            supplementQuery = supplementQuery.eq('institution_id', userInstitutionId);
+          }
+        }
+
+        const { data } = await supplementQuery;
+        if (!data || data.length === 0) break;
+
+        for (const s of data) {
+          const sid = String(s.id);
+          if (!cachedIds.has(sid)) {
+            cachedStudents.push(s);
+            cachedIds.add(sid);
+          }
+        }
+
+        if (data.length < PAGE_SIZE) break;
+        localSupplementFrom += PAGE_SIZE;
+      }
+
+      console.log(`[Student Search] Bulk-load: merged to ${cachedStudents.length} total students (jkkn_students + local)`);
+
       // 3. Resolve department names from jkkn_departments (DB only — no HTTP fallback)
       const deptIds = [...new Set(cachedStudents.map((s: any) => s.department_id).filter(Boolean))];
       const deptMap = new Map<string, string>();

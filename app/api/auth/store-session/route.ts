@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { upsertUser, createUserSession, isRoleAllowed, getDefaultRouteForRole } from '@/lib/supabase/auth';
+import { recordLogin } from '@/lib/services/mentor/activity';
+import { createAdminClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/auth/store-session
@@ -66,6 +68,26 @@ export async function POST(req: NextRequest) {
     );
 
     console.log(`✅ Session created with ID: ${session.id}`);
+
+    // Record login history (fire-and-forget — don't block auth on failure)
+    try {
+      const supabase = createAdminClient();
+      const { data: mentor } = await supabase
+        .from('mentors')
+        .select('id')
+        .eq('user_id', storedUser.id)
+        .maybeSingle();
+
+      const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || req.headers.get('x-real-ip')
+        || null;
+      const userAgent = req.headers.get('user-agent') || null;
+
+      await recordLogin(storedUser.id, mentor?.id || null, ip || undefined, userAgent || undefined);
+      console.log(`✅ Login recorded for user ${storedUser.id}`);
+    } catch (loginErr) {
+      console.warn('⚠️ Failed to record login (non-blocking):', loginErr);
+    }
 
     // Get default route for user role
     const redirectUrl = getDefaultRouteForRole(jkknUser.role);

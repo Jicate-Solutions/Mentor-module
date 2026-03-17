@@ -47,11 +47,22 @@ export async function GET(request: NextRequest) {
     const usersMap = new Map();
     users?.forEach((u: any) => usersMap.set(u.id, u));
 
-    // Combine data
+    // Transform to match frontend InchargeAssignment interface
     const data = assignments?.map((assignment: any) => ({
-      ...assignment,
-      incharge: assignment.user_id ? usersMap.get(assignment.user_id) : null,
-      assigner: assignment.assigned_by ? usersMap.get(assignment.assigned_by) : null,
+      id: assignment.id,
+      incharge_id: assignment.user_id,
+      scope_type: assignment.department_id ? 'department' : 'institution',
+      institution_id: assignment.institution_id,
+      department_ids: assignment.department_id ? [assignment.department_id] : [],
+      assigned_at: assignment.created_at,
+      is_active: true,
+      notes: assignment.notes,
+      incharge: assignment.user_id
+        ? [usersMap.get(assignment.user_id)].filter(Boolean)
+        : [],
+      assigner: assignment.assigned_by
+        ? [usersMap.get(assignment.assigned_by)].filter(Boolean)
+        : [],
     }));
 
     return NextResponse.json({

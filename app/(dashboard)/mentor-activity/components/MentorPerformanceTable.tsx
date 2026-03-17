@@ -14,6 +14,7 @@ import {
   ChevronUp,
   Building2,
   Filter,
+  LogIn,
 } from 'lucide-react';
 import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 
@@ -26,6 +27,8 @@ interface MentorStat {
   sessionCount: number;
   studentCount: number;
   lastSessionDate: string | null;
+  lastLoginDate: string | null;
+  loginCount: number;
   status: 'active' | 'low' | 'inactive';
 }
 
@@ -40,7 +43,7 @@ interface Summary {
   endDate: string;
 }
 
-type SortField = 'mentorName' | 'sessionCount' | 'studentCount' | 'lastSessionDate' | 'status';
+type SortField = 'mentorName' | 'sessionCount' | 'studentCount' | 'lastSessionDate' | 'lastLoginDate' | 'status';
 type SortDirection = 'asc' | 'desc';
 
 interface Institution {
@@ -184,6 +187,11 @@ export default function MentorPerformanceTable() {
           const dateB = b.lastSessionDate ? new Date(b.lastSessionDate).getTime() : 0;
           comparison = dateA - dateB;
           break;
+        case 'lastLoginDate':
+          const loginA = a.lastLoginDate ? new Date(a.lastLoginDate).getTime() : 0;
+          const loginB = b.lastLoginDate ? new Date(b.lastLoginDate).getTime() : 0;
+          comparison = loginA - loginB;
+          break;
         case 'status':
           const statusOrder = { inactive: 0, low: 1, active: 2 };
           comparison = statusOrder[a.status] - statusOrder[b.status];
@@ -232,13 +240,15 @@ export default function MentorPerformanceTable() {
   }
 
   function exportToCSV() {
-    const headers = ['Mentor Name', 'Email', 'Sessions', 'Learners', 'Last Session', 'Status'];
+    const headers = ['Mentor Name', 'Email', 'Sessions', 'Learners', 'Last Session', 'Last Login', 'Logins', 'Status'];
     const rows = getSortedMentors().map((m) => [
       m.mentorName,
       m.email,
       m.sessionCount.toString(),
       m.studentCount.toString(),
       formatDate(m.lastSessionDate),
+      formatDate(m.lastLoginDate),
+      (m.loginCount || 0).toString(),
       m.status,
     ]);
 
@@ -475,6 +485,15 @@ export default function MentorPerformanceTable() {
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('lastLoginDate')}
+              >
+                <div className="flex items-center gap-1">
+                  Last Login
+                  <SortIcon field="lastLoginDate" />
+                </div>
+              </th>
+              <th
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('status')}
               >
                 <div className="flex items-center gap-1">
@@ -487,7 +506,7 @@ export default function MentorPerformanceTable() {
           <tbody className="divide-y divide-gray-200">
             {getSortedMentors().length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                   No mentors found
                 </td>
               </tr>
@@ -527,6 +546,17 @@ export default function MentorPerformanceTable() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {formatDate(mentor.lastSessionDate)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <LogIn className="w-4 h-4 text-gray-400" />
+                      <div>
+                        <span className="text-sm text-gray-900">{formatDate(mentor.lastLoginDate)}</span>
+                        {mentor.loginCount > 0 && (
+                          <span className="text-xs text-gray-400 ml-1">({mentor.loginCount})</span>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4">{getStatusBadge(mentor.status)}</td>
                 </tr>

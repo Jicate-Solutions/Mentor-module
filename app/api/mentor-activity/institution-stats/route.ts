@@ -156,6 +156,33 @@ export async function GET(request: NextRequest) {
       studentCountMap.set(row.mentor_id, (studentCountMap.get(row.mentor_id) || 0) + 1);
     }
 
+    // Query 3: Last login per mentor (via user_id → mentor_login_history)
+    const userIds = (mentors || []).map((m) => m.user_id).filter(Boolean);
+    const lastLoginMap = new Map<string, string>();
+    const loginCountMap = new Map<string, number>();
+    if (userIds.length > 0) {
+      const { data: loginRows } = await supabase
+        .from('mentor_login_history')
+        .select('user_id, login_at')
+        .in('user_id', userIds)
+        .order('login_at', { ascending: false });
+
+      for (const row of loginRows || []) {
+        // Count logins per user
+        loginCountMap.set(row.user_id, (loginCountMap.get(row.user_id) || 0) + 1);
+        // Track most recent login per user
+        if (!lastLoginMap.has(row.user_id)) {
+          lastLoginMap.set(row.user_id, row.login_at);
+        }
+      }
+    }
+
+    // Build a userId → mentorId lookup for mapping login data
+    const userToMentor = new Map<string, string>();
+    for (const m of mentors || []) {
+      if (m.user_id) userToMentor.set(m.user_id, m.id);
+    }
+
     // Assemble stats from maps (no extra queries)
     const mentorStats = (mentors || []).map((mentor) => {
       const user = mentor.users as unknown as { full_name: string; email: string } | null;
@@ -172,6 +199,8 @@ export async function GET(request: NextRequest) {
         sessionCount,
         studentCount,
         lastSessionDate,
+        lastLoginDate: mentor.user_id ? (lastLoginMap.get(mentor.user_id) || null) : null,
+        loginCount: mentor.user_id ? (loginCountMap.get(mentor.user_id) || 0) : 0,
         status: sessionCount === 0 ? 'inactive' : sessionCount <= 2 ? 'low' : 'active',
       };
     });

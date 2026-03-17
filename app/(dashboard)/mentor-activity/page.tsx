@@ -10,6 +10,8 @@ import ActivityStatsGrid from './components/ActivityStatsGrid';
 import ActivityFilters, { type FilterState } from './components/ActivityFilters';
 import ActivityTimeline from './components/ActivityTimeline';
 import MentorPerformanceTable from './components/MentorPerformanceTable';
+import LoginHistorySection from './components/LoginHistorySection';
+import AttendanceOverview from './components/AttendanceOverview';
 import PageHeader from '@/components/ui/PageHeader';
 import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 
@@ -297,6 +299,14 @@ export default function MentorActivityPage() {
 
         {/* Statistics Grid */}
         <ActivityStatsGrid stats={stats} loading={statsLoading} />
+
+        {/* Login History & Session Completion — for individual mentors */}
+        {mentorId && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
+            <LoginHistorySection mentorId={mentorId} isAdmin={isAdmin} />
+            <AttendanceOverview mentorId={mentorId} isAdmin={isAdmin} />
+          </div>
+        )}
 
         {/* Mentor Performance Table - Only for Admin/Mentor In-Charge */}
         {isAdmin && <MentorPerformanceTable />}

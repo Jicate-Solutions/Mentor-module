@@ -57,23 +57,36 @@ export async function POST(request: NextRequest) {
         const institutionId = typeof s.institution === 'object' ? s.institution?.id : s.institution_id || s.institution;
         const departmentId = typeof s.department === 'object' ? s.department?.id : s.department_id || s.department;
 
-        // Check if user exists
-        const { data: existingUser, error: userCheckError } = await supabase
+        // Check if user exists — try jkkn_user_id first (stable), then email (fallback)
+        let existingUser: { id: string; role: string } | null = null;
+
+        const { data: userByJkknId } = await supabase
           .from('users')
           .select('id, role')
-          .eq('email', email)
-          .single();
+          .eq('jkkn_user_id', s.id)
+          .maybeSingle();
+
+        if (userByJkknId) {
+          existingUser = userByJkknId;
+        } else {
+          const { data: userByEmail } = await supabase
+            .from('users')
+            .select('id, role')
+            .eq('email', email)
+            .maybeSingle();
+          existingUser = userByEmail;
+        }
 
         let userId: string;
 
         if (existingUser) {
-          // User exists - update if needed
+          // User exists — update all fields (including email which may have changed)
           userId = existingUser.id;
 
-          // Always sync jkkn_user_id and metadata so the faculty profile filter works
           await supabase
             .from('users')
             .update({
+              email: email,
               jkkn_user_id: s.id,
               full_name: fullName,
               institution_id: institutionId,
@@ -82,7 +95,7 @@ export async function POST(request: NextRequest) {
             })
             .eq('id', userId);
         } else {
-          // Create new user
+          // Create new user — no conflict possible since we checked both keys
           const { data: newUser, error: createUserError } = await supabase
             .from('users')
             .insert({

@@ -95,6 +95,7 @@ export default function SearchInput({
         placeholder={placeholder}
         className="
           w-full pl-12 pr-12 py-3 rounded-lg border border-neutral-300
+          text-neutral-900 bg-white placeholder:text-neutral-400
           focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
           transition-colors
         "

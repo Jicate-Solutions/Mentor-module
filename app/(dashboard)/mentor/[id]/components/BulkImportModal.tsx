@@ -213,20 +213,21 @@ export default function BulkImportModal({
         throw new Error(error.error || 'Import failed');
       }
 
-      const data = await response.json();
+      const json = await response.json();
+      const summary = json.data?.summary || json.summary || {};
 
       // Show success message
-      if (data.summary.assigned > 0) {
+      if (summary.assigned > 0) {
         toast.success(
           'Import successful',
-          `Assigned ${data.summary.assigned} learner${data.summary.assigned > 1 ? 's' : ''} to mentor`
+          `Assigned ${summary.assigned} learner${summary.assigned > 1 ? 's' : ''} to mentor`
         );
       }
 
-      if (data.summary.failed > 0) {
+      if (summary.failed > 0) {
         toast.warning(
           'Some assignments failed',
-          `${data.summary.failed} learner${data.summary.failed > 1 ? 's' : ''} could not be assigned`
+          `${summary.failed} learner${summary.failed > 1 ? 's' : ''} could not be assigned`
         );
       }
 

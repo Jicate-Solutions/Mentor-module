@@ -73,9 +73,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2. Resolve department and institution names
-    const deptIds = [...new Set((matchedStudents || []).map(s => s.department_id).filter(Boolean))];
-    const instIds = [...new Set((matchedStudents || []).map(s => s.institution_id).filter(Boolean))];
+    // 1b. Fallback: check local `students` table for emails not found in jkkn_students
+    const unfoundEmails = normalizedEmails.filter(e => !studentByEmail.has(e));
+
+    if (unfoundEmails.length > 0) {
+      const { data: localMatches } = await supabase
+        .from('students')
+        .select('id, roll_number, name, email, department_id, institution_id, year')
+        .in('email', unfoundEmails)
+        .eq('is_active', true);
+
+      for (const s of localMatches || []) {
+        if (s.email && !studentByEmail.has(s.email.toLowerCase())) {
+          studentByEmail.set(s.email.toLowerCase(), s as any);
+        }
+      }
+    }
+
+    // 2. Resolve department and institution names (from ALL matched students, including local fallback)
+    const allMatchedStudents = Array.from(studentByEmail.values());
+    const deptIds = [...new Set(allMatchedStudents.map((s: any) => s.department_id).filter(Boolean))];
+    const instIds = [...new Set(allMatchedStudents.map((s: any) => s.institution_id).filter(Boolean))];
 
     const deptMap = new Map<string, string>();
     const instMap = new Map<string, string>();

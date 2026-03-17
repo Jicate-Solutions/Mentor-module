@@ -403,6 +403,8 @@ export async function bulkAssignStudents(
   // Process all students in parallel — upsert+insert are independent across students
   const assignments = await Promise.all(students.map(async (student) => {
     try {
+      let studentId: string = student.id;
+
       const { data: studentRecord, error: upsertError } = await supabaseAdmin
         .from('students')
         .upsert({
@@ -420,15 +422,44 @@ export async function bulkAssignStudents(
         .single();
 
       if (upsertError) {
-        console.error(`[bulkAssignStudents] Failed to upsert student ${student.rollNumber}:`, upsertError);
-        return { type: 'failed' as const, rollNumber: student.rollNumber, error: 'Failed to create student record' };
+        // Handle duplicate roll_number (jkkn_students.id ≠ students.id for same student)
+        if (upsertError.code === '23505') {
+          const { data: existing } = await supabaseAdmin
+            .from('students')
+            .select('id')
+            .eq('roll_number', student.rollNumber)
+            .maybeSingle();
+
+          if (existing) {
+            await supabaseAdmin
+              .from('students')
+              .update({
+                name: student.name,
+                email: student.email || `${student.rollNumber}@student.jkkn.ac.in`,
+                year: student.year || null,
+                is_active: true,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existing.id);
+
+            studentId = existing.id;
+          } else {
+            console.error(`[bulkAssignStudents] 23505 conflict but no row found for ${student.rollNumber}`);
+            return { type: 'failed' as const, rollNumber: student.rollNumber, error: 'Duplicate key but student not found' };
+          }
+        } else {
+          console.error(`[bulkAssignStudents] Failed to upsert student ${student.rollNumber}:`, upsertError);
+          return { type: 'failed' as const, rollNumber: student.rollNumber, error: 'Failed to create student record' };
+        }
+      } else if (studentRecord) {
+        studentId = studentRecord.id;
       }
 
       const { error: mappingError } = await supabaseAdmin
         .from('mentor_students')
         .insert({
           mentor_id: mentorId,
-          student_id: studentRecord.id,
+          student_id: studentId,
           assigned_by: assignedBy,
           assigned_at: new Date().toISOString(),
         });

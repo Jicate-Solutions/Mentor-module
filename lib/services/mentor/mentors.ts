@@ -159,8 +159,80 @@ export async function getMentorById(mentorJkknId: string): Promise<Mentor | null
       .maybeSingle();
 
     if (!mentorWithUser) {
-      console.error(`[getMentorById] Not found in Supabase either for ID: ${mentorJkknId}`);
-      return null;
+      // Second Supabase fallback: query by mentors.id directly.
+      // Handles cases where getMentorList returns mentors.id as the entry id
+      // (e.g. JKKN staff UUID == Supabase-generated mentors.id, or dedup merge paths).
+      const { data: mentorById } = await supabaseAdmin
+        .from('mentors')
+        .select('id, designation, department_id, users!inner(id, email, full_name, department_id, institution_id)')
+        .eq('id', mentorJkknId)
+        .maybeSingle();
+
+      if (!mentorById) {
+        // Third Supabase fallback: resolve via users.jkkn_user_id → mentors.user_id.
+        // Handles the most common failure case: URL contains a JKKN staff UUID
+        // (stored in users.jkkn_user_id) and the JKKN HR API is unavailable.
+        // Fallback 1 (user_id = X) fails because mentors.user_id = users.id ≠ jkkn_user_id.
+        // Fallback 2 (mentors.id = X) fails because mentors.id ≠ jkkn_user_id.
+        // This resolves jkkn_user_id → users.id → mentors record.
+        const { data: userForJkkn } = await supabaseAdmin
+          .from('users')
+          .select('id, email, full_name, department_id, institution_id')
+          .eq('jkkn_user_id', mentorJkknId)
+          .maybeSingle();
+
+        if (userForJkkn) {
+          const { data: mentorForJkknUser } = await supabaseAdmin
+            .from('mentors')
+            .select('id, designation, department_id')
+            .eq('user_id', userForJkkn.id)
+            .maybeSingle();
+
+          if (mentorForJkknUser) {
+            const { count: count3 } = await supabaseAdmin
+              .from('mentor_students')
+              .select('*', { count: 'exact', head: true })
+              .eq('mentor_id', mentorForJkknUser.id);
+            const effectiveDeptId3 = mentorForJkknUser.department_id || userForJkkn.department_id;
+            const department3 = await resolveDepartmentName(effectiveDeptId3, apiKey ?? '', baseUrl);
+            console.log(`[getMentorById] Returning via jkkn_user_id fallback for ${mentorJkknId}`);
+            return {
+              id: mentorJkknId,
+              name: userForJkkn.full_name || userForJkkn.email?.split('@')[0] || 'Unknown',
+              email: userForJkkn.email || '',
+              department: department3,
+              designation: mentorForJkknUser.designation || 'Faculty',
+              totalStudents: count3 || 0,
+            };
+          }
+        }
+
+        console.error(`[getMentorById] Not found in Supabase either for ID: ${mentorJkknId}`);
+        return null;
+      }
+
+      const sbUser2 = mentorById.users as unknown as {
+        id: string;
+        email: string;
+        full_name: string | null;
+        department_id: string | null;
+        institution_id: string | null;
+      };
+      const { count: count2 } = await supabaseAdmin
+        .from('mentor_students')
+        .select('*', { count: 'exact', head: true })
+        .eq('mentor_id', mentorById.id);
+      const effectiveDeptId2 = mentorById.department_id || sbUser2.department_id;
+      const department2 = await resolveDepartmentName(effectiveDeptId2, apiKey ?? '', baseUrl);
+      console.log(`[getMentorById] Returning Supabase mentor by mentors.id=${mentorJkknId}`);
+      return {
+        id: mentorJkknId,
+        name: sbUser2.full_name || sbUser2.email?.split('@')[0] || 'Unknown',
+        email: sbUser2.email || '',
+        department: department2,
+        designation: mentorById.designation || 'Faculty',
+        totalStudents: count2 || 0,
+      };
     }
 
     const sbUser = mentorWithUser.users as unknown as {

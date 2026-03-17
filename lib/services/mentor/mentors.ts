@@ -317,7 +317,7 @@ export async function getMentorById(mentorJkknId: string): Promise<Mentor | null
     .from('users')
     .select('id, jkkn_user_id, department_id, institution_id')
     .eq('jkkn_user_id', mentorJkknId)
-    .single();
+    .maybeSingle();
 
   if (!user && staff.email) {
     console.log('[getMentorById] User not found by jkkn_user_id, trying email lookup...');
@@ -325,7 +325,7 @@ export async function getMentorById(mentorJkknId: string): Promise<Mentor | null
       .from('users')
       .select('id, jkkn_user_id, department_id, institution_id')
       .eq('email', staff.email)
-      .single();
+      .maybeSingle();
 
     if (userByEmail) {
       console.log(`[getMentorById] Found user by email, updating jkkn_user_id: ${userByEmail.jkkn_user_id} → ${mentorJkknId}`);
@@ -370,7 +370,7 @@ export async function getMentorById(mentorJkknId: string): Promise<Mentor | null
       .from('mentors')
       .select('id, user_id, department_id, institution_id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!mentorRecord) {
       console.log('[getMentorById] Mentor record not found, creating...');
@@ -507,13 +507,13 @@ export async function getMentorList(
   }
 
   if (!successfulEndpoint) {
-    throw new Error(
-      `No working staff endpoint found. Tried ${possibleEndpoints.length} endpoints. Last error: ${lastError}`
+    // Don't hard-crash — the Supabase fallback (Tier 4/4b) can still resolve
+    // mentors for faculty/mentor users without the JKKN HR API. Admins/HODs
+    // will see only locally-registered mentors instead of an error page.
+    console.error(
+      `[getMentorList] No working staff endpoint found. Tried ${possibleEndpoints.length} endpoints. ` +
+      `Last error: ${lastError}. Continuing with Supabase-only data.`
     );
-  }
-
-  if (!allStaffData || allStaffData.length === 0) {
-    return [];
   }
 
   // Transform all staff members

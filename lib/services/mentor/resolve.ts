@@ -28,7 +28,7 @@ export async function resolveMentorByJkknId(
     .from('users')
     .select('id, email, full_name')
     .eq('jkkn_user_id', jkknUserId)
-    .single();
+    .maybeSingle();
 
   // Step 1b: Fallback — try jkknUserId as a Supabase users.id directly.
   // getMentorList Tier 4/4b uses userAccess.userId (Supabase UUID) as mentor.id,
@@ -62,7 +62,7 @@ export async function resolveMentorByJkknId(
             .from('users')
             .select('id, email, full_name')
             .eq('email', email)
-            .single();
+            .maybeSingle();
 
           if (userByEmail) {
             console.log(`[resolveMentorByJkknId] Found user by email ${email}, updating jkkn_user_id`);
@@ -89,7 +89,7 @@ export async function resolveMentorByJkknId(
     .from('mentors')
     .select('id, institution_id, department_id')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (!mentor) {
     console.log(`[resolveMentorByJkknId] No mentor record found for user ${user.id}`);

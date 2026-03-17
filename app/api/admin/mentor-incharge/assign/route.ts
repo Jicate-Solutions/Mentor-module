@@ -40,9 +40,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    if (targetUser.role !== 'mentor') {
+    const allowedRoles = ['mentor', 'hod', 'faculty'];
+    if (!allowedRoles.includes(targetUser.role)) {
       return NextResponse.json(
-        { error: 'Only mentors can be assigned as Mentor Incharge' },
+        { error: 'Only mentors, HODs, and faculty can be assigned as Mentor Incharge' },
         { status: 400 }
       );
     }

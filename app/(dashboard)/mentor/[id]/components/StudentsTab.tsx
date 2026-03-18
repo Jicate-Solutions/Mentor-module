@@ -29,6 +29,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
   const {
     students: assignedStudents,
     loading,
+    error: studentsError,
     refetch: fetchStudents,
   } = useAssignedStudents(mentorId);
 
@@ -268,6 +269,21 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
 
   return (
     <div>
+      {/* Error Banner */}
+      {studentsError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between gap-3">
+          <p className="text-[13px] text-red-700">
+            Failed to load learners: {studentsError}
+          </p>
+          <button
+            onClick={fetchStudents}
+            className="flex-shrink-0 px-3 py-1.5 text-[13px] font-medium text-red-700 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 lg:mb-6">
         <h2 className="text-[17px] font-medium text-neutral-900">

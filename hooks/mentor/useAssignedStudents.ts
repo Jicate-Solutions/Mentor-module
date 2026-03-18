@@ -59,7 +59,11 @@ export function useAssignedStudents(mentorId: string) {
       setStudents(list);
       writeCache(cacheKey, list);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      console.error(`[useAssignedStudents] Error fetching students for mentor ${mentorId}:`, msg);
+      setError(msg);
+      // Clear stale cache on error so next attempt doesn't show outdated data
+      clearCache(cacheKey);
     } finally {
       setLoading(false);
       cachedData.current = null;

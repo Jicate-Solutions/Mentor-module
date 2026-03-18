@@ -233,7 +233,19 @@ export async function createSession(
     throw new Error('Mentor not found. Please ensure the mentor has been set up correctly.');
   }
 
-  const { student, session_name: sessionName, date, time, notes } = data as any;
+  const { student, session_name: sessionName, date, time: rawTime, notes } = data as any;
+
+  // Validate & clamp time to prevent PostgreSQL "date/time field value out of range" errors
+  let time = rawTime || '09:00';
+  const timeParts = time.match(/^(\d{1,2}):(\d{2})$/);
+  if (timeParts) {
+    const h = Math.min(Math.max(parseInt(timeParts[1], 10), 0), 23);
+    const m = Math.min(Math.max(parseInt(timeParts[2], 10), 0), 59);
+    time = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  } else {
+    time = '09:00'; // fallback for malformed time
+  }
+
   const departmentId = resolved.mentor.department_id || '00000000-0000-0000-0000-000000000001';
   const institutionId = resolved.mentor.institution_id || '00000000-0000-0000-0000-000000000001';
 

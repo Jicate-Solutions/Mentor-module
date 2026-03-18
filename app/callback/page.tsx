@@ -2,12 +2,12 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { calculateExpiryTime } from '@/lib/auth/token-validation';
 
 function CallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [slow, setSlow] = useState(false);
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -16,13 +16,11 @@ function CallbackContent() {
       const oauthError = searchParams.get('error');
       const savedState = localStorage.getItem('oauth_state');
 
-      // Check for OAuth errors
       if (oauthError) {
         setError(searchParams.get('error_description') || 'Authorization failed');
         return;
       }
 
-      // Validate state (CSRF protection)
       if (state !== savedState) {
         setError('Invalid state parameter - possible CSRF attack');
         return;
@@ -33,62 +31,52 @@ function CallbackContent() {
         return;
       }
 
+      // Show "taking longer" message after 5s
+      const slowTimer = setTimeout(() => setSlow(true), 5000);
+
+      // Abort after 15s to prevent infinite loading
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       try {
-        // Exchange code for tokens via backend
-        const response = await fetch('/api/token', {
+        // Single API call: exchange code + store session + set cookies
+        const response = await fetch('/api/auth/callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code }),
+          signal: controller.signal,
         });
 
+        clearTimeout(slowTimer);
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error_description || 'Token exchange failed');
+          const errorData = await response.json().catch(() => ({ error: 'Authentication failed' }));
+          throw new Error(errorData.message || errorData.error || 'Authentication failed');
         }
 
         const data = await response.json();
 
-        // Log user data received from JKKN (visible in browser console)
-        console.log('========================================');
-        console.log('JKKN User Data Received:');
-        console.log('========================================');
-        console.log('User Object:', data.user);
-        console.log('Available User Fields:', Object.keys(data.user || {}));
-        console.log('========================================');
-
-        // Store user and session in Supabase (NOT localStorage!)
-        const storeResponse = await fetch('/api/auth/store-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user: data.user,
-            access_token: data.access_token,
-            refresh_token: data.refresh_token,
-            expires_in: data.expires_in,
-          }),
-        });
-
-        if (!storeResponse.ok) {
-          const errorData = await storeResponse.json();
-          throw new Error(errorData.error || 'Failed to store session');
-        }
-
-        const sessionData = await storeResponse.json();
-
-        // Store authentication data in localStorage for AuthProvider
+        // Store auth data in localStorage for AuthProvider
         const tokenExpiresAt = Date.now() + (data.expires_in * 1000);
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('refresh_token', data.refresh_token);
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token_expires_at', tokenExpiresAt.toString());
-        localStorage.setItem('session_id', sessionData.session_id);
+        localStorage.setItem('session_id', data.session_id);
         localStorage.removeItem('oauth_state');
 
-        // Redirect based on user role (use window.location for full page reload)
-        // This ensures AuthProvider re-initializes and reads tokens from localStorage
-        window.location.href = sessionData.redirect_url || '/';
+        // Full page reload so AuthProvider re-initializes from localStorage
+        window.location.href = data.redirect_url || '/';
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Authentication failed');
+        clearTimeout(slowTimer);
+        clearTimeout(timeoutId);
+
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          setError('Authentication timed out. Please try again.');
+        } else {
+          setError(err instanceof Error ? err.message : 'Authentication failed');
+        }
       }
     };
 
@@ -139,7 +127,9 @@ function CallbackContent() {
           Authenticating...
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Please wait while we complete your login.
+          {slow
+            ? 'Taking longer than expected. Please wait...'
+            : 'Please wait while we complete your login.'}
         </p>
       </div>
     </div>

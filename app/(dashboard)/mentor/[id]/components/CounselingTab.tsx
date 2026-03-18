@@ -162,11 +162,11 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
       return;
     }
 
-    // Validate date is not in the past
-    const selectedDate = new Date(`${formData.date}T${formData.time}`);
-    const now = new Date();
-    if (selectedDate < now) {
-      toast.warning('Invalid date', 'Please select a future date and time for the session');
+    // Validate date is not in the past (allow any time for today)
+    const selectedDateStr = formData.date; // "YYYY-MM-DD"
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (selectedDateStr < todayStr) {
+      toast.warning('Invalid date', 'Session date cannot be in the past');
       return;
     }
 
@@ -892,57 +892,67 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   <label className="block text-sm font-medium text-brand-green mb-2">
                     Time <span className="text-red-600">*</span>
                   </label>
-                  <div className="flex gap-2">
-                    <select
-                      value={formData.time ? (parseInt(formData.time.split(':')[0]) > 12 ? (parseInt(formData.time.split(':')[0]) - 12).toString().padStart(2, '0') : formData.time.split(':')[0] === '00' ? '12' : formData.time.split(':')[0]) : ''}
-                      onChange={(e) => {
-                        const hour = e.target.value;
-                        const currentMin = formData.time ? formData.time.split(':')[1] : '00';
-                        const currentPeriod = formData.time ? (parseInt(formData.time.split(':')[0]) >= 12 ? 'PM' : 'AM') : 'AM';
-                        let hour24 = parseInt(hour);
-                        if (currentPeriod === 'PM' && hour24 !== 12) hour24 += 12;
-                        if (currentPeriod === 'AM' && hour24 === 12) hour24 = 0;
-                        handleInputChange('time', `${hour24.toString().padStart(2, '0')}:${currentMin}`);
-                      }}
-                      className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
-                      required
-                    >
-                      <option value="">Hour</option>
-                      {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => (
-                        <option key={h} value={h.toString().padStart(2, '0')}>{h}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={formData.time ? formData.time.split(':')[1] : ''}
-                      onChange={(e) => {
-                        const currentHour = formData.time ? formData.time.split(':')[0] : '09';
-                        handleInputChange('time', `${currentHour}:${e.target.value}`);
-                      }}
-                      className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
-                      required
-                    >
-                      <option value="">Min</option>
-                      {['00', '15', '30', '45'].map(m => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={formData.time ? (parseInt(formData.time.split(':')[0]) >= 12 ? 'PM' : 'AM') : 'AM'}
-                      onChange={(e) => {
-                        if (!formData.time) return;
-                        let hour24 = parseInt(formData.time.split(':')[0]);
-                        const min = formData.time.split(':')[1];
-                        const hour12 = hour24 % 12 || 12;
-                        if (e.target.value === 'PM' && hour24 < 12) hour24 = hour12 + 12;
-                        if (e.target.value === 'AM' && hour24 >= 12) hour24 = hour12 === 12 ? 0 : hour12;
-                        handleInputChange('time', `${hour24.toString().padStart(2, '0')}:${min}`);
-                      }}
-                      className="w-20 px-2 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green font-medium"
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
+                  {(() => {
+                    // Parse stored 24h time into 12h display values
+                    const h24 = formData.time ? parseInt(formData.time.split(':')[0]) : -1;
+                    const storedMin = formData.time ? formData.time.split(':')[1] : '';
+                    const displayHour = h24 < 0 ? '' : h24 === 0 ? '12' : h24 > 12 ? String(h24 - 12) : String(h24);
+                    const displayPeriod = h24 >= 12 ? 'PM' : 'AM';
+
+                    // Convert 12h selections back to 24h for storage
+                    const to24 = (h12: number, period: string): number => {
+                      if (period === 'AM') return h12 === 12 ? 0 : h12;
+                      return h12 === 12 ? 12 : h12 + 12;
+                    };
+
+                    return (
+                      <div className="flex gap-2">
+                        <select
+                          value={displayHour}
+                          onChange={(e) => {
+                            const h12 = parseInt(e.target.value);
+                            const period = h24 >= 12 ? 'PM' : 'AM';
+                            const h = to24(h12, period);
+                            handleInputChange('time', `${String(h).padStart(2, '0')}:${storedMin || '00'}`);
+                          }}
+                          className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                          required
+                        >
+                          <option value="">Hour</option>
+                          {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => (
+                            <option key={h} value={String(h)}>{h}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={storedMin}
+                          onChange={(e) => {
+                            const hour = h24 >= 0 ? h24 : 9;
+                            handleInputChange('time', `${String(hour).padStart(2, '0')}:${e.target.value}`);
+                          }}
+                          className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                          required
+                        >
+                          <option value="">Min</option>
+                          {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={h24 >= 0 ? displayPeriod : 'AM'}
+                          onChange={(e) => {
+                            if (h24 < 0) return;
+                            const curH12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+                            const h = to24(curH12, e.target.value);
+                            handleInputChange('time', `${String(h).padStart(2, '0')}:${storedMin || '00'}`);
+                          }}
+                          className="w-20 px-2 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green font-medium"
+                        >
+                          <option value="AM">AM</option>
+                          <option value="PM">PM</option>
+                        </select>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

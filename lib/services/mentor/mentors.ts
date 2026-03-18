@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { ensureMentorRecord } from '@/lib/services/mentor/resolve';
 import { Mentor } from '@/lib/types/mentor';
 
 // Filters for getMentorList
@@ -182,11 +183,24 @@ export async function getMentorById(mentorJkknId: string): Promise<Mentor | null
           .maybeSingle();
 
         if (userForJkkn) {
-          const { data: mentorForJkknUser } = await supabaseAdmin
+          let mentorForJkknUser = (await supabaseAdmin
             .from('mentors')
             .select('id, designation, department_id')
             .eq('user_id', userForJkkn.id)
-            .maybeSingle();
+            .maybeSingle()).data;
+
+          // Self-heal: user exists but no mentors row — auto-create one
+          if (!mentorForJkknUser) {
+            console.log(`[getMentorById] No mentor row for user ${userForJkkn.id} via jkkn_user_id fallback — self-healing...`);
+            const autoCreated = await ensureMentorRecord(userForJkkn.id, supabaseAdmin);
+            if (autoCreated) {
+              mentorForJkknUser = {
+                id: autoCreated.id,
+                designation: null,
+                department_id: autoCreated.department_id,
+              };
+            }
+          }
 
           if (mentorForJkknUser) {
             const { count: count3 } = await supabaseAdmin
@@ -203,6 +217,37 @@ export async function getMentorById(mentorJkknId: string): Promise<Mentor | null
               department: department3,
               designation: mentorForJkknUser.designation || 'Faculty',
               totalStudents: count3 || 0,
+            };
+          }
+        }
+
+        // Fourth Supabase fallback: mentorJkknId is a users.id directly.
+        // getMentorList Tier 4b uses userAccess.userId (Supabase users.id) as the
+        // entry's id, so the URL param may be a users.id rather than a jkkn_user_id.
+        const { data: userDirect } = await supabaseAdmin
+          .from('users')
+          .select('id, email, full_name, department_id, institution_id')
+          .eq('id', mentorJkknId)
+          .maybeSingle();
+
+        if (userDirect) {
+          console.log(`[getMentorById] Found user by users.id=${mentorJkknId}, no mentors row — self-healing...`);
+          const autoCreated = await ensureMentorRecord(userDirect.id, supabaseAdmin);
+          if (autoCreated) {
+            const { count: count4 } = await supabaseAdmin
+              .from('mentor_students')
+              .select('*', { count: 'exact', head: true })
+              .eq('mentor_id', autoCreated.id);
+            const effectiveDeptId4 = autoCreated.department_id || userDirect.department_id;
+            const department4 = await resolveDepartmentName(effectiveDeptId4, apiKey ?? '', baseUrl);
+            console.log(`[getMentorById] Returning via users.id self-heal for ${mentorJkknId}`);
+            return {
+              id: mentorJkknId,
+              name: userDirect.full_name || userDirect.email?.split('@')[0] || 'Unknown',
+              email: userDirect.email || '',
+              department: department4,
+              designation: 'Faculty',
+              totalStudents: count4 || 0,
             };
           }
         }
@@ -576,15 +621,11 @@ export async function getMentorList(
 
   const { data: mentorRecords } = await supabaseAdmin
     .from('mentors')
-    .select('id, user_id, institution_id, department_id')
+    .select('id, user_id, institution_id, department_id, total_students')
     .in('user_id', userIds)
     .eq('is_active', true);
 
   const mentorIds = mentorRecords?.map(m => m.id) || [];
-  const { data: studentCounts } = await supabaseAdmin
-    .from('mentor_students')
-    .select('mentor_id')
-    .in('mentor_id', mentorIds);
 
   const userToMentorMap = new Map(mentorRecords?.map(m => [m.user_id, m.id]) || []);
   // Map mentor_id → local institution/department UUIDs for role-based filtering.
@@ -595,8 +636,8 @@ export async function getMentorList(
   );
   const jkknToUserMap = new Map(users.map(u => [u.jkkn_user_id, u.id]));
   const mentorStudentCountMap = new Map<string, number>();
-  studentCounts?.forEach(record => {
-    mentorStudentCountMap.set(record.mentor_id, (mentorStudentCountMap.get(record.mentor_id) || 0) + 1);
+  mentorRecords?.forEach(m => {
+    mentorStudentCountMap.set(m.id, (m as any).total_students || 0);
   });
 
   // ── Transform to Mentor[] ─────────────────────────────────────────────────
@@ -650,30 +691,15 @@ export async function getMentorList(
 
     const { data: localMentors } = await supabaseAdmin
       .from('mentors')
-      .select('id, user_id, institution_id, department_id, users!inner(id, email, full_name, role)')
+      .select('id, user_id, institution_id, department_id, total_students, users!inner(id, email, full_name, role)')
       .not('user_id', 'is', null)
       .eq('is_active', true);
 
     if (localMentors && localMentors.length > 0) {
-      // Fetch student counts for local mentors not already in the count map.
-      // The initial mentorStudentCountMap only covers mentors linked to JKKN API
-      // users — locally-registered mentors (not in the API) would show 0 without this.
-      const localIdsNotInMap = localMentors
-        .filter(lm => !mentorStudentCountMap.has(lm.id))
-        .map(lm => lm.id);
-
-      if (localIdsNotInMap.length > 0) {
-        const { data: localStudentCounts } = await supabaseAdmin
-          .from('mentor_students')
-          .select('mentor_id')
-          .in('mentor_id', localIdsNotInMap);
-
-        localStudentCounts?.forEach(record => {
-          mentorStudentCountMap.set(
-            record.mentor_id,
-            (mentorStudentCountMap.get(record.mentor_id) || 0) + 1
-          );
-        });
+      // Use total_students column (kept in sync by DB trigger) for local mentors
+      // not already in the count map.
+      for (const lm of localMentors.filter(lm => !mentorStudentCountMap.has(lm.id))) {
+        mentorStudentCountMap.set(lm.id, (lm as any).total_students || 0);
       }
 
       // Build a name+department index of API mentors so we can detect when a
@@ -934,6 +960,9 @@ export async function getMentorList(
           .maybeSingle();
 
         if (userRecord) {
+          // Self-heal: auto-create mentors row so detail page and permission checks work
+          const autoMentor = await ensureMentorRecord(userRecord.id, supabaseAdmin);
+
           const deptStaff4b = staffMembers.find(
             (s: any) => typeof s.department === 'object' && s.department?.id === userRecord.department_id
           );
@@ -954,12 +983,12 @@ export async function getMentorList(
             designation: 'Faculty',
             phone: userRecord.phone_number || '',
             avatar: undefined,
-            totalStudents: 0,
+            totalStudents: autoMentor ? (mentorStudentCountMap.get(autoMentor.id) || 0) : 0,
           }];
           resolved = true;
           console.log(
             `[getMentorList] Tier 4b (users direct): found user record for ${userRecord.email} ` +
-            `(no mentors row — run admin sync to populate full profile) → 1 result`
+            `(auto-created mentors row: ${autoMentor?.id ?? 'failed'}) → 1 result`
           );
         }
       }

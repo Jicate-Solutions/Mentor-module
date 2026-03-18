@@ -12,70 +12,59 @@ export async function upsertUser(jkknUser: JKKNUser & {
   avatar_url?: string;
   profile_completed?: boolean;
 }) {
-  try {
-    const supabaseAdmin = createAdminClient();
+  const supabaseAdmin = createAdminClient();
+  const dbRole = mapJkknRoleToDbRole(jkknUser.role);
 
-    // Map JKKN role to our DB role
-    const dbRole = mapJkknRoleToDbRole(jkknUser.role);
+  const userData = {
+    jkkn_user_id: jkknUser.id,
+    email: jkknUser.email,
+    full_name: jkknUser.full_name,
+    role: dbRole,
+    department_id: jkknUser.department_id || null,
+    institution_id: jkknUser.institution_id || null,
+    phone_number: jkknUser.phone_number || null,
+    gender: jkknUser.gender || null,
+    designation: jkknUser.designation || null,
+    avatar_url: jkknUser.avatar_url || null,
+    is_super_admin: dbRole === 'super_admin',
+    profile_completed: jkknUser.profile_completed || false,
+    last_login: new Date().toISOString(),
+  };
 
-    console.log(`📋 Role Mapping: ${jkknUser.role} → ${dbRole}`);
+  // Try upsert by jkkn_user_id first (fast path for 99% of logins)
+  let { data, error } = await supabaseAdmin
+    .from('users')
+    .upsert(userData, { onConflict: 'jkkn_user_id' })
+    .select()
+    .single();
 
-    // First check if user exists by email (handles JKKN ID changes)
-    const { data: existingUser } = await supabaseAdmin
+  // If JKKN ID changed but email exists, update jkkn_user_id then retry
+  if (error && error.code === '23505') {
+    await supabaseAdmin
       .from('users')
-      .select('id, jkkn_user_id')
-      .eq('email', jkknUser.email)
-      .single();
+      .update({ jkkn_user_id: jkknUser.id })
+      .eq('email', jkknUser.email);
 
-    // If user exists with different JKKN ID, update the JKKN ID first
-    if (existingUser && existingUser.jkkn_user_id !== jkknUser.id) {
-      console.log(`🔄 Updating JKKN ID for ${jkknUser.email}: ${existingUser.jkkn_user_id} → ${jkknUser.id}`);
-      await supabaseAdmin
-        .from('users')
-        .update({ jkkn_user_id: jkknUser.id })
-        .eq('id', existingUser.id);
-    }
-
-    const { data, error } = await supabaseAdmin
+    const retry = await supabaseAdmin
       .from('users')
-      .upsert(
-        {
-          jkkn_user_id: jkknUser.id,
-          email: jkknUser.email,
-          full_name: jkknUser.full_name,
-          role: dbRole, // Use mapped role instead of original
-          department_id: jkknUser.department_id || null,
-          institution_id: jkknUser.institution_id || null,
-          phone_number: jkknUser.phone_number || null,
-          gender: jkknUser.gender || null,
-          designation: jkknUser.designation || null,
-          avatar_url: jkknUser.avatar_url || null,
-          is_super_admin: dbRole === 'super_admin',
-          profile_completed: jkknUser.profile_completed || false,
-          last_login: new Date().toISOString(),
-        },
-        {
-          onConflict: 'jkkn_user_id',
-        }
-      )
+      .upsert(userData, { onConflict: 'jkkn_user_id' })
       .select()
       .single();
 
-    if (error) {
-      console.error('Error upserting user:', error);
-      throw error;
-    }
-
-    // If user is faculty, ensure they exist in mentors table
-    if (jkknUser.role === 'faculty' && jkknUser.department_id && jkknUser.institution_id) {
-      await ensureMentorRecord(data.id, jkknUser.department_id, jkknUser.institution_id, jkknUser.designation);
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Failed to upsert user:', error);
-    throw error;
+    data = retry.data;
+    error = retry.error;
   }
+
+  if (error || !data) {
+    throw error || new Error('Failed to upsert user');
+  }
+
+  // Ensure mentor record for faculty (non-blocking for the caller)
+  if (jkknUser.role === 'faculty' && jkknUser.department_id && jkknUser.institution_id) {
+    await ensureMentorRecord(data.id, jkknUser.department_id, jkknUser.institution_id, jkknUser.designation);
+  }
+
+  return data;
 }
 
 /**
@@ -107,7 +96,6 @@ async function ensureMentorRecord(
       );
 
     if (error && error.code !== '23505') {
-      // Ignore unique constraint violations
       console.error('Error creating mentor record:', error);
     }
   } catch (error) {

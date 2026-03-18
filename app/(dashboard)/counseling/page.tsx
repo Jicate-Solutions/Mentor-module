@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { CounselingSession } from '@/lib/types/mentor';
 import { supabase } from '@/lib/supabase/client';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
@@ -44,7 +45,7 @@ export default function CounselingSessionsPage() {
   const { user, accessToken } = useAuth();
   const [sessions, setSessions] = useState<CounselingSession[]>([]);
   const [filteredSessions, setFilteredSessions] = useState<GroupedSession[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,7 +56,6 @@ export default function CounselingSessionsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
   const [mentorId, setMentorId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null); // Store users.id (UUID)
   const [isAdmin, setIsAdmin] = useState(false); // Check if user is admin (not a mentor)
 
   // Filter configuration - Student-focused filters (institution, department, program)
@@ -179,12 +179,12 @@ export default function CounselingSessionsPage() {
     }
   }, [user]);
 
-  // Fetch sessions after we know if user is admin or mentor
+  // Fetch sessions as soon as user is available (doesn't depend on mentorId)
   useEffect(() => {
-    if (user && (mentorId !== null || isAdmin)) {
+    if (user) {
       fetchSessions();
     }
-  }, [user, mentorId, isAdmin]);
+  }, [user]);
 
   // Set up real-time subscription
   useEffect(() => {
@@ -322,51 +322,38 @@ export default function CounselingSessionsPage() {
 
   const fetchMentorId = async () => {
     try {
-      // First get the users.id from jkkn_user_id
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, role')
-        .eq('jkkn_user_id', user?.id)
-        .single();
-
-      if (userError) throw userError;
-
-      if (!userData?.id) {
-        throw new Error('User not found in database');
-      }
-
-      // Store the users.id for later use
-      setUserId(userData.id);
-
-      // Check if user is an administrator (not a mentor)
+      // Determine admin vs mentor from the auth context role (no DB query needed)
       const adminRoles = ['super_admin', 'administrator', 'principal', 'digital_coordinator'];
-      const userIsAdmin = adminRoles.includes(userData.role);
+      const userIsAdmin = adminRoles.includes(user?.role || '');
 
-      // Then get mentor ID using users.id
-      const { data, error } = await supabase
-        .from('mentors')
-        .select('id')
-        .eq('user_id', userData.id)
-        .single();
-
-      if (error && error.code === 'PGRST116') {
-        // No mentor record found - user might be admin only
-        if (userIsAdmin) {
-          setIsAdmin(true);
-          setMentorId(null);
-          console.log('User is administrator - showing all sessions');
-        } else {
-          throw new Error('User is not a mentor and not an administrator');
-        }
-      } else if (error) {
-        throw error;
-      } else {
-        setMentorId(data?.id || null);
-        setIsAdmin(false);
+      if (userIsAdmin) {
+        setIsAdmin(true);
+        setMentorId(null);
+        console.log('User is administrator - showing all sessions');
+        return;
       }
+
+      // For mentor/faculty/hod users, verify via API route (handles self-healing)
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      const response = await fetchWithAuthRetry(`/api/mentor/${user?.id}`, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (response.ok) {
+        const json = await response.json();
+        setMentorId(json.data?.id || user?.id || null);
+      } else {
+        // API couldn't find mentor but user is authenticated — use user.id as
+        // fallback so the session fetch (which also self-heals) can proceed
+        console.warn('Mentor lookup returned non-OK, using user.id as fallback');
+        setMentorId(user?.id || null);
+      }
+      setIsAdmin(false);
     } catch (err: any) {
       console.error('Error fetching mentor ID:', err);
-      setError(err.message || 'Failed to fetch user information');
+      // Graceful fallback — let fetchSessions attempt its own resolution
+      setMentorId(user?.id || null);
+      setIsAdmin(false);
     }
   };
 
@@ -390,8 +377,24 @@ export default function CounselingSessionsPage() {
       setLoading(true);
       setError(null);
 
-      // Build query based on user role - fetch full student data from JKKN for filtering
-      let query = supabase
+      // For mentor users, use the API route (service-role client bypasses RLS)
+      if (user?.id && !isAdmin) {
+        const response = await fetchWithAuthRetry(
+          `/api/mentor/${user.id}/counseling`
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to fetch sessions');
+        }
+
+        const json = await response.json();
+        setSessions(json.data || []);
+        return;
+      }
+
+      // Fallback for admin users: direct query to show all sessions
+      const { data, error: fetchError } = await supabase
         .from('counseling_sessions')
         .select(`
           *,
@@ -408,51 +411,39 @@ export default function CounselingSessionsPage() {
             id,
             user_id
           )
-        `);
-
-      // If user is a mentor (not admin), filter by their mentor_id
-      if (mentorId && !isAdmin) {
-        query = query.eq('mentor_id', mentorId);
-      }
-      // If admin, show all sessions (no filter)
-
-      const { data, error: fetchError } = await query
+        `)
         .order('date', { ascending: false })
         .order('time', { ascending: false });
 
       if (fetchError) throw fetchError;
 
       // Transform data to match CounselingSession interface
-      const transformedData: CounselingSession[] = (data || []).map((session) => {
-        return {
-          id: session.id,
-          mentorId: session.mentor_id,
-          studentId: session.student_id,
-          studentName: session.student?.name || 'Unknown Student',
-          student: session.student ? {
-            id: session.student.id,
-            name: session.student.name,
-            email: session.student.email,
-            rollNumber: session.student.roll_number,
-            department: session.student.department_id,
-            year: session.student.year,
-            avatar: session.student.avatar_url,
-            // Note: JKKN student data not available as jkkn_student_id field doesn't exist
-            // Filters will work based on local student data instead
-            institution: undefined,
-            departmentName: undefined,
-            programName: undefined,
-          } : undefined,
-          sessionName: session.session_name,
-          date: session.date,
-          time: session.time,
-          notes: session.notes,
-          attachment: session.attachment_url,
-          status: session.status as 'scheduled' | 'completed' | 'cancelled',
-          createdAt: session.created_at,
-          updatedAt: session.updated_at
-        };
-      });
+      const transformedData: CounselingSession[] = (data || []).map((session) => ({
+        id: session.id,
+        mentorId: session.mentor_id,
+        studentId: session.student_id,
+        studentName: session.student?.name || 'Unknown Student',
+        student: session.student ? {
+          id: session.student.id,
+          name: session.student.name,
+          email: session.student.email,
+          rollNumber: session.student.roll_number,
+          department: session.student.department_id,
+          year: session.student.year,
+          avatar: session.student.avatar_url,
+          institution: undefined,
+          departmentName: undefined,
+          programName: undefined,
+        } : undefined,
+        sessionName: session.session_name,
+        date: session.date,
+        time: session.time,
+        notes: session.notes,
+        attachment: session.attachment_url,
+        status: session.status as 'scheduled' | 'completed' | 'cancelled',
+        createdAt: session.created_at,
+        updatedAt: session.updated_at,
+      }));
 
       setSessions(transformedData);
     } catch (err: any) {
@@ -464,26 +455,33 @@ export default function CounselingSessionsPage() {
   };
 
   const createSession = async (formData: SessionFormData) => {
-    if (!mentorId) {
-      alert('Mentor ID not found. Please try refreshing the page.');
+    if (!user?.id) {
+      alert('User not found. Please try refreshing the page.');
       return;
     }
 
     try {
       setSubmitting(true);
 
-      const { error } = await supabase.from('counseling_sessions').insert({
-        mentor_id: mentorId,
-        student_id: formData.studentId,
-        session_name: formData.sessionName,
-        date: formData.date,
-        time: formData.time,
-        notes: formData.notes,
-        status: formData.status,
-        created_by: userId  // Use users.id (UUID), not jkkn_user_id (text)
-      });
+      const response = await fetchWithAuthRetry(
+        `/api/mentor/${user.id}/counseling`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            student: { id: formData.studentId },
+            sessionName: formData.sessionName,
+            date: formData.date,
+            time: formData.time,
+            notes: formData.notes,
+          }),
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create session');
+      }
 
       setIsModalOpen(false);
       fetchSessions(); // Refresh list
@@ -496,23 +494,30 @@ export default function CounselingSessionsPage() {
   };
 
   const updateSession = async (sessionId: string, formData: SessionFormData) => {
+    if (!user?.id) return;
+
     try {
       setSubmitting(true);
 
-      const { error } = await supabase
-        .from('counseling_sessions')
-        .update({
-          session_name: formData.sessionName,
-          student_id: formData.studentId,
-          date: formData.date,
-          time: formData.time,
-          notes: formData.notes,
-          status: formData.status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', sessionId);
+      const response = await fetchWithAuthRetry(
+        `/api/mentor/${user.id}/counseling/${sessionId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionName: formData.sessionName,
+            date: formData.date,
+            time: formData.time,
+            notes: formData.notes,
+            status: formData.status,
+          }),
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update session');
+      }
 
       setIsModalOpen(false);
       setEditingSession(null);
@@ -529,14 +534,18 @@ export default function CounselingSessionsPage() {
     if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
       return;
     }
+    if (!user?.id) return;
 
     try {
-      const { error } = await supabase
-        .from('counseling_sessions')
-        .delete()
-        .eq('id', sessionId);
+      const response = await fetchWithAuthRetry(
+        `/api/mentor/${user.id}/counseling/${sessionId}`,
+        { method: 'DELETE' }
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete session');
+      }
 
       fetchSessions(); // Refresh list
     } catch (err: any) {

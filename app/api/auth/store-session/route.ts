@@ -20,17 +20,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Log received user data
-    console.log('========================================');
-    console.log('Storing JKKN User in Supabase:');
-    console.log('User Role:', jkknUser.role);
-    console.log('Department:', jkknUser.department_id);
-    console.log('Institution:', jkknUser.institution_id);
-    console.log('========================================');
-
     // Check if user role is allowed to access the system
     if (!isRoleAllowed(jkknUser.role)) {
-      console.log(`⛔ Access denied for role: ${jkknUser.role}`);
       return NextResponse.json(
         {
           error: 'access_denied',
@@ -39,8 +30,6 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
-
-    console.log(`✅ Access granted for role: ${jkknUser.role}`);
 
     // Store/update user in Supabase
     const storedUser = await upsertUser({
@@ -57,8 +46,6 @@ export async function POST(req: NextRequest) {
       profile_completed: jkknUser.profile_completed || false,
     });
 
-    console.log(`✅ User stored in Supabase with ID: ${storedUser.id}`);
-
     // Create session in Supabase
     const session = await createUserSession(
       storedUser.id,
@@ -66,8 +53,6 @@ export async function POST(req: NextRequest) {
       refresh_token,
       expires_in
     );
-
-    console.log(`✅ Session created with ID: ${session.id}`);
 
     // Record login history (fire-and-forget — don't block auth on failure)
     try {
@@ -84,16 +69,12 @@ export async function POST(req: NextRequest) {
       const userAgent = req.headers.get('user-agent') || null;
 
       await recordLogin(storedUser.id, mentor?.id || null, ip || undefined, userAgent || undefined);
-      console.log(`✅ Login recorded for user ${storedUser.id}`);
     } catch (loginErr) {
-      console.warn('⚠️ Failed to record login (non-blocking):', loginErr);
+      console.warn('Failed to record login (non-blocking):', loginErr);
     }
 
     // Get default route for user role
     const redirectUrl = getDefaultRouteForRole(jkknUser.role);
-
-    console.log(`✅ Redirecting ${jkknUser.role} to: ${redirectUrl}`);
-    console.log('========================================');
 
     // Set HTTP-only cookies for server-side authentication
     const cookieStore = await cookies();
@@ -115,8 +96,6 @@ export async function POST(req: NextRequest) {
       path: '/',
     });
 
-    console.log('✅ HTTP-only cookies set for authentication');
-
     return NextResponse.json({
       success: true,
       session_id: session.id,
@@ -125,7 +104,7 @@ export async function POST(req: NextRequest) {
       message: `Welcome, ${storedUser.full_name}!`,
     });
   } catch (error) {
-    console.error('❌ Error storing session:', error);
+    console.error('Error storing session:', error);
     return NextResponse.json(
       {
         error: 'Failed to store session',

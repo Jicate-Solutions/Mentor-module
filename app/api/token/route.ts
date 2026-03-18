@@ -35,20 +35,6 @@ export async function POST(req: NextRequest) {
 
     const data = await response.json();
 
-    // Log complete JKKN authentication response to see all available user fields
-    console.log('========================================');
-    console.log('JKKN Authentication - Full Response:');
-    console.log('========================================');
-    console.log(JSON.stringify(data, null, 2));
-    console.log('========================================');
-    console.log('User Data Fields:');
-    console.log('========================================');
-    if (data.user) {
-      console.log('User Object:', JSON.stringify(data.user, null, 2));
-      console.log('Available Fields:', Object.keys(data.user));
-    }
-    console.log('========================================');
-
     return NextResponse.json(data);
   } catch (error) {
     console.error('Token exchange error:', error);

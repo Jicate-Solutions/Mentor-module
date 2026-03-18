@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import { readCache, writeCache } from '@/lib/utils/session-cache';
 import type { StudentFeedback, StudentFeedbackStats } from '@/lib/types/mentor';
 
@@ -31,12 +32,7 @@ export function useStudentFeedback(mentorId: string) {
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/mentor/${mentorId}/feedback`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await fetchWithAuthRetry(`/api/mentor/${mentorId}/feedback`);
 
       const json = await res.json();
 

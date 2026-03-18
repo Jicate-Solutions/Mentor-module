@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import { readCache, writeCache, clearCache } from '@/lib/utils/session-cache';
 import type { CounselingSession, Student } from '@/lib/types/mentor';
 
@@ -30,12 +31,9 @@ export function useCounselingSessions(mentorId: string) {
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token');
-      const headers = { Authorization: `Bearer ${token}` };
-
       const [sessionsRes, studentsRes] = await Promise.all([
-        fetch(`/api/mentor/${mentorId}/counseling`, { headers }),
-        fetch(`/api/mentor/${mentorId}/students`, { headers }),
+        fetchWithAuthRetry(`/api/mentor/${mentorId}/counseling`),
+        fetchWithAuthRetry(`/api/mentor/${mentorId}/students`),
       ]);
 
       let sessionsData: CounselingSession[] = [];
@@ -98,13 +96,9 @@ export function useCounselingSessions(mentorId: string) {
       notes?: string;
       attachment?: string;
     }): Promise<CounselingSession> => {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/mentor/${mentorId}/counseling`, {
+      const res = await fetchWithAuthRetry(`/api/mentor/${mentorId}/counseling`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -138,13 +132,9 @@ export function useCounselingSessions(mentorId: string) {
         status?: 'scheduled' | 'completed' | 'cancelled';
       }
     ): Promise<CounselingSession> => {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/mentor/${mentorId}/counseling/${sessionId}`, {
+      const res = await fetchWithAuthRetry(`/api/mentor/${mentorId}/counseling/${sessionId}`, {
         method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -168,12 +158,8 @@ export function useCounselingSessions(mentorId: string) {
    */
   const deleteSession = useCallback(
     async (sessionId: string): Promise<void> => {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/mentor/${mentorId}/counseling/${sessionId}`, {
+      const res = await fetchWithAuthRetry(`/api/mentor/${mentorId}/counseling/${sessionId}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (!res.ok) {
@@ -200,13 +186,9 @@ export function useCounselingSessions(mentorId: string) {
         attachmentUrl?: string;
       }
     ): Promise<CounselingSession> => {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/mentor/${mentorId}/counseling/${sessionId}/feedback`, {
+      const res = await fetchWithAuthRetry(`/api/mentor/${mentorId}/counseling/${sessionId}/feedback`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 

@@ -112,6 +112,10 @@ export async function fetchWithAuthRetry(
 
     if (!refreshed) {
       console.error('[Fetch Auth Retry] Token refresh failed, returning 401 response');
+      // Signal session expiry so AuthProvider can handle logout
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:session-expired'));
+      }
       return response;
     }
 

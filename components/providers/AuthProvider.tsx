@@ -196,6 +196,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = '/';
   }, []);
 
+  // Handle session expiry from fetchWithAuthRetry
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      console.log('[AuthProvider] Session expired event received, logging out...');
+      logout();
+    };
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('auth:session-expired', handleSessionExpired);
+  }, [logout]);
+
   return (
     <AuthContext.Provider
       value={{

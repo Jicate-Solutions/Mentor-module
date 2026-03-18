@@ -1,5 +1,6 @@
 import { createAdminClient } from './server';
 import type { JKKNUser } from '../auth/token-validation';
+import { fetchAndBackfillInstitutionDepartment } from '@/lib/services/mentor/resolve';
 
 /**
  * Store or update user in Supabase after JKKN authentication
@@ -59,9 +60,23 @@ export async function upsertUser(jkknUser: JKKNUser & {
     throw error || new Error('Failed to upsert user');
   }
 
-  // Ensure mentor record for faculty (non-blocking for the caller)
-  if (jkknUser.role === 'faculty' && jkknUser.department_id && jkknUser.institution_id) {
-    await ensureMentorRecord(data.id, jkknUser.department_id, jkknUser.institution_id, jkknUser.designation);
+  // Ensure mentor record for faculty
+  if (jkknUser.role === 'faculty' || jkknUser.role === 'hod') {
+    let deptId = jkknUser.department_id;
+    let instId = jkknUser.institution_id;
+
+    // If OAuth didn't include institution/department, try JKKN Staff API
+    if (!deptId || !instId) {
+      const enriched = await fetchAndBackfillInstitutionDepartment(data.id, jkknUser.id);
+      if (enriched) {
+        deptId = deptId || enriched.department_id;
+        instId = instId || enriched.institution_id;
+      }
+    }
+
+    if (deptId && instId) {
+      await ensureMentorRecord(data.id, deptId, instId, jkknUser.designation);
+    }
   }
 
   return data;

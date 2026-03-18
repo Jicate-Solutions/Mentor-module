@@ -11,6 +11,7 @@ import Badge from '@/components/ui/Badge';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useCounselingSessions } from '@/hooks/mentor/useCounselingSessions';
 import type { CounselingSession, Student } from '@/lib/types/mentor';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 
 interface CounselingTabProps {
   mentorId: string;
@@ -182,11 +183,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
           uploadFormData.append('bucket', 'documents');
           uploadFormData.append('path', 'counseling-attachments');
 
-          const uploadResponse = await fetch('/api/upload', {
+          const uploadResponse = await fetchWithAuthRetry('/api/upload', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-            },
             body: uploadFormData,
           });
 
@@ -213,10 +211,9 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
           const student = students.find(s => s.id === studentId);
           if (!student) continue; // Skip if student not found
 
-          const response = await fetch(`/api/mentor/${mentorId}/counseling`, {
+          const response = await fetchWithAuthRetry(`/api/mentor/${mentorId}/counseling`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -337,11 +334,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         formData.append('bucket', 'documents');
         formData.append('path', `feedback/${selectedSession.id}`);
 
-        const uploadResponse = await fetch('/api/upload', {
+        const uploadResponse = await fetchWithAuthRetry('/api/upload', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
           body: formData,
         });
 
@@ -354,12 +348,11 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
         setUploadingFile(false);
       }
 
-      const response = await fetch(
+      const response = await fetchWithAuthRetry(
         `/api/mentor/${mentorId}/counseling/${selectedSession.id}/feedback`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -382,6 +375,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
           actionTaken: '',
           attachment: null
         });
+      } else if (response.status === 401) {
+        toast.error('Session expired', 'Your session has expired. Redirecting to login...');
       } else {
         const errorData = await response.json();
         toast.error('Failed to submit session log', errorData.error || 'An error occurred');
@@ -421,10 +416,9 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
     try {
       setUpdating(true);
 
-      const response = await fetch(`/api/mentor/${mentorId}/counseling/${editingSession.id}`, {
+      const response = await fetchWithAuthRetry(`/api/mentor/${mentorId}/counseling/${editingSession.id}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -467,11 +461,8 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
     try {
       setDeleting(true);
 
-      const response = await fetch(`/api/mentor/${mentorId}/counseling/${deletingSession.id}`, {
+      const response = await fetchWithAuthRetry(`/api/mentor/${mentorId}/counseling/${deletingSession.id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
       });
 
       if (response.ok) {

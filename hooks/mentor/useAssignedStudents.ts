@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import { readCache, writeCache, clearCache, clearCacheByPrefix } from '@/lib/utils/session-cache';
 import type { Student } from '@/lib/types/mentor';
 
@@ -31,12 +32,7 @@ export function useAssignedStudents(mentorId: string) {
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/mentor/${mentorId}/students`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await fetchWithAuthRetry(`/api/mentor/${mentorId}/students`);
 
       const json = await res.json();
 
@@ -77,13 +73,9 @@ export function useAssignedStudents(mentorId: string) {
   const assignStudent = useCallback(
     async (studentData: Partial<Student>): Promise<{ success: boolean; error?: string }> => {
       try {
-        const token = localStorage.getItem('access_token');
-        const res = await fetch(`/api/mentor/${mentorId}/students`, {
+        const res = await fetchWithAuthRetry(`/api/mentor/${mentorId}/students`, {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ student: studentData }),
         });
 
@@ -111,12 +103,8 @@ export function useAssignedStudents(mentorId: string) {
   const removeStudent = useCallback(
     async (studentId: string): Promise<{ success: boolean; error?: string }> => {
       try {
-        const token = localStorage.getItem('access_token');
-        const res = await fetch(`/api/mentor/${mentorId}/students/${studentId}`, {
+        const res = await fetchWithAuthRetry(`/api/mentor/${mentorId}/students/${studentId}`, {
           method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         });
 
         const json = await res.json();

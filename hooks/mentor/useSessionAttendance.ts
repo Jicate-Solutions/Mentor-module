@@ -58,13 +58,9 @@ export function useSessionAttendance(mentorId: string, sessionId: string) {
 
   const markAttendance = useCallback(
     async (studentId: string, status: SessionAttendanceStatus): Promise<void> => {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/mentor/${mentorId}/counseling/${sessionId}/attendance`, {
+      const res = await fetchWithAuthRetry(`/api/mentor/${mentorId}/counseling/${sessionId}/attendance`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentId, status }),
       });
 

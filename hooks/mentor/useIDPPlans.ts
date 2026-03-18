@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import { readCache, writeCache } from '@/lib/utils/session-cache';
 import type { IDPPlan } from '@/lib/types/mentor';
 
@@ -24,13 +25,7 @@ export function useIDPPlans(mentorId: string) {
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/idp?mentor_id=${encodeURIComponent(mentorId)}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const res = await fetchWithAuthRetry(`/api/idp?mentor_id=${encodeURIComponent(mentorId)}`);
 
       const json = await res.json();
 
@@ -55,13 +50,9 @@ export function useIDPPlans(mentorId: string) {
    */
   const updatePlanStatus = useCallback(
     async (planId: string, status: IDPPlan['status']): Promise<void> => {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/idp/${planId}`, {
+      const res = await fetchWithAuthRetry(`/api/idp/${planId}`, {
         method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
 
@@ -86,12 +77,8 @@ export function useIDPPlans(mentorId: string) {
    */
   const deletePlan = useCallback(
     async (planId: string): Promise<void> => {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`/api/idp/${planId}`, {
+      const res = await fetchWithAuthRetry(`/api/idp/${planId}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (!res.ok) {

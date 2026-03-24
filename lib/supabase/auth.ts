@@ -16,9 +16,12 @@ export async function upsertUser(jkknUser: JKKNUser & {
   const supabaseAdmin = createAdminClient();
   const dbRole = mapJkknRoleToDbRole(jkknUser.role);
 
+  // Normalize email to lowercase to prevent case-sensitive duplicates
+  const normalizedEmail = jkknUser.email.toLowerCase();
+
   const userData = {
     jkkn_user_id: jkknUser.id,
-    email: jkknUser.email,
+    email: normalizedEmail,
     full_name: jkknUser.full_name,
     role: dbRole,
     department_id: jkknUser.department_id || null,
@@ -40,11 +43,12 @@ export async function upsertUser(jkknUser: JKKNUser & {
     .single();
 
   // If JKKN ID changed but email exists, update jkkn_user_id then retry
+  // Use case-insensitive email match to handle mixed-case duplicates
   if (error && error.code === '23505') {
     await supabaseAdmin
       .from('users')
-      .update({ jkkn_user_id: jkknUser.id })
-      .eq('email', jkknUser.email);
+      .update({ jkkn_user_id: jkknUser.id, email: normalizedEmail })
+      .ilike('email', normalizedEmail);
 
     const retry = await supabaseAdmin
       .from('users')
@@ -60,22 +64,28 @@ export async function upsertUser(jkknUser: JKKNUser & {
     throw error || new Error('Failed to upsert user');
   }
 
-  // Ensure mentor record for faculty
+  // Ensure mentor record for faculty — wrapped in try/catch so login never fails
+  // just because mentor record creation has an issue
   if (jkknUser.role === 'faculty' || jkknUser.role === 'hod') {
-    let deptId = jkknUser.department_id;
-    let instId = jkknUser.institution_id;
+    try {
+      let deptId = jkknUser.department_id;
+      let instId = jkknUser.institution_id;
 
-    // If OAuth didn't include institution/department, try JKKN Staff API
-    if (!deptId || !instId) {
-      const enriched = await fetchAndBackfillInstitutionDepartment(data.id, jkknUser.id);
-      if (enriched) {
-        deptId = deptId || enriched.department_id;
-        instId = instId || enriched.institution_id;
+      // If OAuth didn't include institution/department, try JKKN Staff API
+      if (!deptId || !instId) {
+        const enriched = await fetchAndBackfillInstitutionDepartment(data.id, jkknUser.id);
+        if (enriched) {
+          deptId = deptId || enriched.department_id;
+          instId = instId || enriched.institution_id;
+        }
       }
-    }
 
-    if (deptId && instId) {
-      await ensureMentorRecord(data.id, deptId, instId, jkknUser.designation);
+      if (deptId && instId) {
+        await ensureMentorRecord(data.id, deptId, instId, jkknUser.designation);
+      }
+    } catch (mentorErr) {
+      // Log but don't block login — mentor record can be created later via self-heal
+      console.warn('Non-blocking: failed to ensure mentor record during login:', mentorErr);
     }
   }
 

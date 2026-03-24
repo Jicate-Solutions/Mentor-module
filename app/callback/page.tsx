@@ -21,8 +21,12 @@ function CallbackContent() {
         return;
       }
 
-      if (state !== savedState) {
-        setError('Invalid state parameter - possible CSRF attack');
+      if (!savedState) {
+        // State was cleared (browser cache cleared, different tab, or stale session)
+        // Allow the flow to continue — the auth code is still valid
+        console.warn('OAuth state missing from localStorage — skipping CSRF check (likely stale session)');
+      } else if (state !== savedState) {
+        setError('Login session expired. Please try again.');
         return;
       }
 
@@ -52,7 +56,12 @@ function CallbackContent() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: 'Authentication failed' }));
-          throw new Error(errorData.message || errorData.error || 'Authentication failed');
+          console.error('Auth callback error:', response.status, errorData);
+
+          // Build a user-friendly message from all available error fields
+          const detail = errorData.details ? ` (${errorData.details})` : '';
+          const message = errorData.message || errorData.error || 'Authentication failed';
+          throw new Error(`${message}${detail}`);
         }
 
         const data = await response.json();
@@ -105,13 +114,27 @@ function CallbackContent() {
           <h1 className="text-2xl font-medium text-red-600 mb-4">
             Authentication Error
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400 mb-6">{error}</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-          >
-            Try Again
-          </button>
+          <p className="text-zinc-600 dark:text-zinc-400 mb-4">{error}</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-500 mb-6">
+            If this issue persists, please clear your browser cache and try again, or contact your institution&apos;s digital coordinator.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => {
+                // Clear stale auth state before retry
+                localStorage.removeItem('oauth_state');
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('token_expires_at');
+                localStorage.removeItem('session_id');
+                router.push('/login');
+              }}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     );

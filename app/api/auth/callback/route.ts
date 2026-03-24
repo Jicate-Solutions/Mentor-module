@@ -39,7 +39,15 @@ export async function POST(req: NextRequest) {
 
     if (!tokenResponse.ok) {
       const error = await tokenResponse.json().catch(() => ({ error: 'Token exchange failed' }));
-      return NextResponse.json(error, { status: tokenResponse.status });
+      console.error('Token exchange failed:', tokenResponse.status, error);
+      return NextResponse.json(
+        {
+          error: error.error || 'Token exchange failed',
+          message: error.message || 'Failed to authenticate with JKKN. Please try logging in again.',
+          details: `Auth server returned ${tokenResponse.status}`,
+        },
+        { status: tokenResponse.status }
+      );
     }
 
     const tokenData = await tokenResponse.json();
@@ -126,11 +134,16 @@ export async function POST(req: NextRequest) {
       message: `Welcome, ${storedUser.full_name}!`,
     });
   } catch (error) {
-    console.error('Auth callback error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorCode = (error as { code?: string })?.code;
+    console.error('Auth callback error:', { message: errorMessage, code: errorCode, error });
     return NextResponse.json(
       {
         error: 'Authentication failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        message: errorCode === '23505'
+          ? 'Account conflict detected. Please contact your digital coordinator.'
+          : 'Something went wrong during login. Please try again.',
+        details: errorMessage,
       },
       { status: 500 }
     );

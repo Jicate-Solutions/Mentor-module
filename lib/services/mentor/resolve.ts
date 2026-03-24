@@ -22,9 +22,13 @@ export async function fetchAndBackfillInstitutionDepartment(
   if (!apiKey) return null;
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5s max
     const res = await fetch(`${baseUrl}/api-management/staff/${jkknUserId}`, {
       headers: { 'Authorization': `Bearer ${apiKey}` },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     if (!res.ok) return null;
 
     const json = await res.json();
@@ -228,9 +232,13 @@ export async function resolveMentorByJkknId(
   if (!user && apiKey) {
     console.log(`[resolveMentorByJkknId] No user found by jkkn_user_id=${jkknUserId}, trying JKKN API + email lookup...`);
     try {
+      const staffCtrl = new AbortController();
+      const staffTimeout = setTimeout(() => staffCtrl.abort(), 5000);
       const staffResponse = await fetch(`${baseUrl}/api-management/staff/${jkknUserId}`, {
         headers: { 'Authorization': `Bearer ${apiKey}` },
+        signal: staffCtrl.signal,
       });
+      clearTimeout(staffTimeout);
 
       if (staffResponse.ok) {
         const staffData = await staffResponse.json();

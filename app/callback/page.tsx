@@ -38,9 +38,9 @@ function CallbackContent() {
       // Show "taking longer" message after 5s
       const slowTimer = setTimeout(() => setSlow(true), 5000);
 
-      // Abort after 15s to prevent infinite loading
+      // Abort after 30s to prevent infinite loading
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       try {
         // Single API call: exchange code + store session + set cookies

@@ -116,7 +116,8 @@
       "Bash(rm:*)",
       "Bash(find /c/Users/Admin/Documents/GitHub/Mentor-module -type f \\\\\\( -name \"*search*\" -o -name \"*Search*\" \\\\\\) 2>/dev/null | head -20)",
       "Bash(find /c/Users/Admin/Documents/GitHub/Mentor-module/components -type f \\\\\\( -name \"*search*\" -o -name \"*Search*\" \\\\\\) 2>/dev/null | grep -v node_modules)",
-      "Bash(find /c/Users/Admin/Documents/GitHub/Mentor-module -type f \\\\\\( -name \"*cron*\" -o -name \"*sync*\" -o -name \"*background*\" -o -name \"*worker*\" -o -name \"*job*\" \\\\\\) 2>/dev/null | head -20)"
+      "Bash(find /c/Users/Admin/Documents/GitHub/Mentor-module -type f \\\\\\( -name \"*cron*\" -o -name \"*sync*\" -o -name \"*background*\" -o -name \"*worker*\" -o -name \"*job*\" \\\\\\) 2>/dev/null | head -20)",
+      "Bash(/dev/null:*)"
     ],
     "deny": [],
     "ask": []

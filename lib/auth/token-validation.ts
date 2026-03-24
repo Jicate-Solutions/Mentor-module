@@ -133,7 +133,7 @@ export async function validateToken(accessToken: string): Promise<ValidationResp
       result: failResult,
       expiresAt: Date.now() + TIMEOUT_CACHE_DURATION,
     });
-    console.log('[Token Validation] ❌', errorMessage, '- cached for 30s');
+    console.log('[Token Validation] ❌', errorMessage, '- cached for 5s');
     return failResult;
   }
 }

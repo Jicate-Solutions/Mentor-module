@@ -35,11 +35,16 @@ export async function GET(
       return err('Mentor not found', 404);
     }
 
+    // Fall back to the user's own institution/department when the mentor record
+    // has null/empty values (common for auto-created or incompletely backfilled records).
+    const effectiveInstitutionId = resolved.mentor.institution_id || userAccess.institutionId || null;
+    const effectiveDepartmentId = resolved.mentor.department_id || userAccess.departmentId || null;
+
     const canAccess = await canAccessFacultyProfile(
       userAccess,
       resolved.user.id,
-      resolved.mentor.department_id,
-      resolved.mentor.institution_id
+      effectiveDepartmentId,
+      effectiveInstitutionId
     );
 
     if (!canAccess) {

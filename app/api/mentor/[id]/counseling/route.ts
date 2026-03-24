@@ -93,7 +93,7 @@ export async function POST(
 
     const session = await createSession(
       mentorId,
-      { student, session_name: sessionName, date, time, notes },
+      { student, session_name: sessionName, date, time, notes, attachment },
       currentUser.id
     );
 

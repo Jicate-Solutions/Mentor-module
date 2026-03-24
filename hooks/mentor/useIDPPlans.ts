@@ -45,7 +45,30 @@ export function useIDPPlans(mentorId: string) {
   }, [mentorId, cacheKey]);
 
   /**
-   * PATCH /api/idp/{planId}
+   * POST /api/idp
+   * Creates a new IDP plan for a student.
+   */
+  const createPlan = useCallback(
+    async (planData: Record<string, unknown>): Promise<void> => {
+      const payload = { ...planData, mentor_id: planData.mentor_id || mentorId };
+      const res = await fetchWithAuthRetry('/api/idp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || 'Failed to create IDP plan');
+      }
+
+      await fetchPlans(); // refresh the list
+    },
+    [mentorId, fetchPlans]
+  );
+
+  /**
+   * PUT /api/idp/{planId}
    * Updates the status of an IDP plan.
    */
   const updatePlanStatus = useCallback(
@@ -104,6 +127,7 @@ export function useIDPPlans(mentorId: string) {
     loading,
     error,
     refetch: fetchPlans,
+    createPlan,
     updatePlanStatus,
     deletePlan,
   };

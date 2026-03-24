@@ -12,6 +12,7 @@ export interface CreateSessionInput {
   date: string;
   time: string;
   notes?: string;
+  attachment?: string;
   student_ids?: string[];
 }
 
@@ -236,8 +237,9 @@ export async function createSession(
   const { student, session_name: sessionName, date, time: rawTime, notes } = data as any;
 
   // Validate & clamp time to prevent PostgreSQL "date/time field value out of range" errors
+  // Accept HH:MM and HH:MM:SS formats (some browsers send seconds)
   let time = rawTime || '09:00';
-  const timeParts = time.match(/^(\d{1,2}):(\d{2})$/);
+  const timeParts = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
   if (timeParts) {
     const h = Math.min(Math.max(parseInt(timeParts[1], 10), 0), 23);
     const m = Math.min(Math.max(parseInt(timeParts[2], 10), 0), 59);
@@ -318,7 +320,7 @@ export async function createSession(
       realStudentData?.roll_number ||
       realStudentData?.register_number ||
       student.rollNumber ||
-      student.id
+      `JKKN-${student.id.substring(0, 8)}`
     );
 
     // First check if student already exists by roll_number under a different UUID
@@ -386,7 +388,7 @@ export async function createSession(
       date,
       time,
       notes: notes || null,
-      attachment_url: (data as any).attachment || null,
+      attachment_url: data.attachment || null,
       status: 'scheduled',
       created_by: createdBy,
     })

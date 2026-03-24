@@ -134,10 +134,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(data.access_token);
       setUser(data.user);
       setTokenExpiresAt(expiryTime);
+      setLoading(false);
 
       return true;
     } catch (error) {
       console.error('Failed to refresh token:', error);
+      setLoading(false);
       logout();
       return false;
     }

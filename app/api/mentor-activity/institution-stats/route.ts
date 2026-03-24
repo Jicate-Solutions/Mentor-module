@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getCurrentUser } from '@/lib/auth/get-current-user';
 import { getUserAccess } from '@/lib/middleware/access-control';
+import { ok, err } from '@/lib/utils/api-response';
 
 /**
  * GET /api/mentor-activity/institution-stats
@@ -13,28 +13,21 @@ import { getUserAccess } from '@/lib/middleware/access-control';
  */
 export async function GET(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const userAccess = await getUserAccess();
     if (!userAccess) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return err('Unauthorized', 401);
     }
 
-    // Only admin or mentor in-charge can access this
+    // Admin, HOD, or mentor in-charge can access institution stats
     const isAuthorized =
       userAccess.role === 'super_admin' ||
       userAccess.role === 'institution_admin' ||
+      userAccess.role === 'hod' ||
       userAccess.isSuperAdmin ||
       userAccess.isMentorIncharge;
 
     if (!isAuthorized) {
-      return NextResponse.json(
-        { error: 'Forbidden: Only admins and mentor in-charge can view institution stats' },
-        { status: 403 }
-      );
+      return err('Forbidden: Only admins, HODs, and mentor in-charge can view institution stats', 403);
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -112,10 +105,7 @@ export async function GET(request: NextRequest) {
 
     if (mentorsError) {
       console.error('[Institution Stats] Error fetching mentors:', mentorsError);
-      return NextResponse.json(
-        { error: 'Failed to fetch mentors' },
-        { status: 500 }
-      );
+      return err('Failed to fetch mentors', 500);
     }
 
     // Batch queries: 3 queries total instead of 3 per mentor
@@ -220,16 +210,9 @@ export async function GET(request: NextRequest) {
       endDate: endDateStr,
     };
 
-    return NextResponse.json({
-      success: true,
-      mentors: mentorStats,
-      summary,
-    });
+    return ok({ mentors: mentorStats, summary });
   } catch (error) {
     console.error('[Institution Stats] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch institution stats' },
-      { status: 500 }
-    );
+    return err('Failed to fetch institution stats', 500);
   }
 }

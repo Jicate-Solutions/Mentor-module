@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
       .select('id, status')
       .eq('student_id', student_id)
       .in('status', ['draft', 'in_progress'])
-      .single();
+      .maybeSingle();
 
     if (existingPlan) {
       return err('Student already has an active IDP plan. Complete or archive it first.', 400);

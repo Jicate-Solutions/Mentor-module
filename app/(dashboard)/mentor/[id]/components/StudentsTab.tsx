@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useToast } from '@/components/providers/ToastProvider';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import useConfirm from '@/lib/hooks/useConfirm';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -22,7 +23,8 @@ interface StudentsTabProps {
 }
 
 export default function StudentsTab({ mentorId }: StudentsTabProps) {
-  const { accessToken } = useAuth();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
   const toast = useToast();
   const { ConfirmationDialog, confirm } = useConfirm();
 
@@ -160,15 +162,14 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
 
   // Assign students to mentor via a single bulk request
   const handleAssignStudents = async () => {
-    if (selectedStudents.length === 0 || !accessToken) return;
+    if (selectedStudents.length === 0) return;
 
     try {
       setAssigning(true);
 
-      const response = await fetch(`/api/mentor/${mentorId}/students/bulk`, {
+      const response = await fetchWithAuthRetry(`/api/mentor/${mentorId}/students/bulk`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ students: selectedStudents }),
@@ -219,8 +220,6 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
 
   // Remove student from mentor
   const handleRemoveStudent = async (studentId: string) => {
-    if (!accessToken) return;
-
     const student = assignedStudents.find(s => s.id === studentId);
     if (!student) return;
 
@@ -234,11 +233,8 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`/api/mentor/${mentorId}/students/${studentId}`, {
+      const response = await fetchWithAuthRetry(`/api/mentor/${mentorId}/students/${studentId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
       });
 
       if (response.ok) {
@@ -397,15 +393,17 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
         size="lg"
       >
         <div className="space-y-4">
-          {/* Advanced Filters */}
-          <AddLearnerFilters
-            filters={advancedFilters}
-            onFilterChange={setAdvancedFilter}
-            onClearAll={clearAllFilters}
-            filterOptions={filterOptions}
-            loading={filterLoading}
-            activeFiltersCount={activeFiltersCount}
-          />
+          {/* Advanced Filters - Super Admin only */}
+          {isSuperAdmin && (
+            <AddLearnerFilters
+              filters={advancedFilters}
+              onFilterChange={setAdvancedFilter}
+              onClearAll={clearAllFilters}
+              filterOptions={filterOptions}
+              loading={filterLoading}
+              activeFiltersCount={activeFiltersCount}
+            />
+          )}
 
           {/* Search Input */}
           <SearchInput
@@ -415,8 +413,8 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
             loading={searching}
           />
 
-          {/* Filter Status */}
-          {searchResults.length > 0 && activeFiltersCount > 0 && (
+          {/* Filter Status - Super Admin only */}
+          {isSuperAdmin && searchResults.length > 0 && activeFiltersCount > 0 && (
             <div className="text-xs text-neutral-500">
               Showing {filteredSearchResults.length} of {searchResults.length} results
               {filteredSearchResults.length === 0 && (
@@ -499,7 +497,7 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
             </div>
           ) : searchQuery && !searching ? (
             <div className="text-center py-8 text-neutral-600">
-              {searchResults.length > 0 && filteredSearchResults.length === 0
+              {isSuperAdmin && searchResults.length > 0 && filteredSearchResults.length === 0
                 ? 'No learners match the selected filters. Try adjusting your filters.'
                 : 'No learners found. Try a different search term.'
               }

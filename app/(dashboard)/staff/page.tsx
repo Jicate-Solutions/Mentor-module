@@ -6,7 +6,6 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import SearchInput from '@/components/ui/SearchInput';
 import PageContainer from '@/components/ui/PageContainer';
-import PageHeader from '@/components/ui/PageHeader';
 import {
   fetchStaff,
   checkApiStatus,
@@ -182,14 +181,6 @@ export default function StaffPage() {
 
   return (
     <PageContainer>
-      {/* Hero Header */}
-      <PageHeader
-        title="JKKN Staff Directory"
-        description="Browse and manage staff members from MyJKKN database"
-        variant="gradient"
-        icon={<span>👨‍🏫</span>}
-        badge={isConfigured ? { text: "✓ API Connected", variant: "success" } : undefined}
-      />
 
       {/* Initial API Check Loading */}
       {isCheckingApi && (

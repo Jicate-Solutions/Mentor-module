@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { useAuth } from '@/components/providers/AuthProvider';
 import { useToast } from '@/components/providers/ToastProvider';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import Modal, { ModalFooter } from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
@@ -37,7 +37,6 @@ export default function BulkImportModal({
   mentorId,
   onSuccess
 }: BulkImportModalProps) {
-  const { accessToken } = useAuth();
   const toast = useToast();
 
   const [step, setStep] = useState<ImportStep>('input');
@@ -112,10 +111,9 @@ export default function BulkImportModal({
     try {
       setValidating(true);
 
-      const response = await fetch('/api/students/validate-bulk', {
+      const response = await fetchWithAuthRetry('/api/students/validate-bulk', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ emails, mentorId }),
@@ -199,10 +197,9 @@ export default function BulkImportModal({
       setImporting(true);
       setStep('importing');
 
-      const response = await fetch(`/api/mentor/${mentorId}/students/bulk`, {
+      const response = await fetchWithAuthRetry(`/api/mentor/${mentorId}/students/bulk`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ students: studentsToAssign }),

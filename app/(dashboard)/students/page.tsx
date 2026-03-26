@@ -7,7 +7,6 @@ import Badge from '@/components/ui/Badge';
 import SearchInput from '@/components/ui/SearchInput';
 import HorizontalFilterBar from '@/components/filters/HorizontalFilterBar';
 import PageContainer from '@/components/ui/PageContainer';
-import PageHeader from '@/components/ui/PageHeader';
 import { useFilters } from '@/hooks/useFilters';
 import type { FilterConfig } from '@/lib/types/filters';
 import {
@@ -382,14 +381,6 @@ export default function StudentsPage() {
 
   return (
     <PageContainer>
-      {/* Hero Header */}
-      <PageHeader
-        title="JKKN Learners"
-        description="Browse and manage learner records from MyJKKN database"
-        variant="gradient"
-        icon={<span>👨‍🎓</span>}
-        badge={isConfigured ? { text: "✓ API Connected", variant: "success" } : undefined}
-      />
 
       {/* Initial API Check Loading */}
       {isCheckingApi && (

@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import PageHeader from '@/components/ui/PageHeader';
 import Card from '@/components/ui/Card';
 import SearchInput from '@/components/ui/SearchInput';
 import Badge from '@/components/ui/Badge';
@@ -87,13 +86,6 @@ export default function MentorListingPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
-      <PageHeader
-        variant="gradient"
-        title={user?.role === 'faculty' ? 'My Profile' : 'Mentor Directory'}
-        description={user?.role === 'faculty'
-          ? 'View and manage your mentor profile, assigned learners, and counseling sessions'
-          : 'Connect with learning facilitators to manage counseling, guidance, and academic progress'}
-      />
       {user?.role === 'faculty' && (
         <p className="text-amber-700 text-[12px] lg:text-[13px] flex items-center gap-1.5 -mt-2">
           <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +95,7 @@ export default function MentorListingPage() {
         </p>
       )}
 
-      {/* Search, Filters & View Toggle - Combined */}
+      {/* Search & Filters */}
       <div className="bg-white rounded-xl p-4 lg:p-5 shadow-sm">
         <div className="flex flex-col gap-3 lg:gap-4">
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
@@ -114,49 +106,54 @@ export default function MentorListingPage() {
               className="w-full sm:flex-1"
             />
 
-            {/* View Toggle - Hidden on mobile */}
-            <div className="hidden lg:flex items-center gap-1 rounded-lg bg-neutral-100 p-0.5">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`px-3 py-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center gap-1.5 text-sm font-medium ${
-                  viewMode === 'grid'
-                    ? 'bg-accent-100/80 text-brand-green shadow-sm'
-                    : 'text-neutral-500 hover:bg-neutral-100/70'
-                }`}
-                aria-label="Grid view"
-                aria-pressed={viewMode === 'grid'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-                Grid
-              </button>
-              <button
-                onClick={() => setViewMode('table')}
-                className={`px-3 py-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center gap-1.5 text-sm font-medium ${
-                  viewMode === 'table'
-                    ? 'bg-accent-100/80 text-brand-green shadow-sm'
-                    : 'text-neutral-500 hover:bg-neutral-100/70'
-                }`}
-                aria-label="Table view"
-                aria-pressed={viewMode === 'table'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Table
-              </button>
-            </div>
+            {/* View Toggle - Super Admin only */}
+            {user?.role === 'super_admin' && (
+              <div className="hidden lg:flex items-center gap-1 rounded-lg bg-neutral-100 p-0.5">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center gap-1.5 text-sm font-medium ${
+                    viewMode === 'grid'
+                      ? 'bg-accent-100/80 text-brand-green shadow-sm'
+                      : 'text-neutral-500 hover:bg-neutral-100/70'
+                  }`}
+                  aria-label="Grid view"
+                  aria-pressed={viewMode === 'grid'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                  Grid
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center gap-1.5 text-sm font-medium ${
+                    viewMode === 'table'
+                      ? 'bg-accent-100/80 text-brand-green shadow-sm'
+                      : 'text-neutral-500 hover:bg-neutral-100/70'
+                  }`}
+                  aria-label="Table view"
+                  aria-pressed={viewMode === 'table'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Table
+                </button>
+              </div>
+            )}
           </div>
 
-          <HorizontalFilterBar
-            filters={filterConfigs}
-            filterState={filters}
-            onFilterChange={setFilter}
-            onClearAll={clearAllFilters}
-            activeFiltersCount={activeFiltersCount}
-            loading={loading}
-          />
+          {/* Filters - Super Admin only */}
+          {user?.role === 'super_admin' && (
+            <HorizontalFilterBar
+              filters={filterConfigs}
+              filterState={filters}
+              onFilterChange={setFilter}
+              onClearAll={clearAllFilters}
+              activeFiltersCount={activeFiltersCount}
+              loading={loading}
+            />
+          )}
         </div>
       </div>
 
@@ -219,25 +216,25 @@ export default function MentorListingPage() {
 
           {/* Grid View */}
           {viewMode === 'grid' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {displayedMentors.map((mentor) => (
                   <div
                     key={mentor.id}
                     onClick={() => handleMentorClick(mentor.id)}
-                    className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col h-full group"
+                    className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col h-full group"
                   >
                     {/* Avatar and Basic Info */}
-                    <div className="flex items-start gap-4 mb-4">
+                    <div className="flex items-start gap-3 mb-2.5">
                       {/* Avatar */}
                       <div className="flex-shrink-0">
                         {mentor.avatar ? (
                           <img
                             src={mentor.avatar}
                             alt={mentor.name}
-                            className="w-14 h-14 rounded-full object-cover border-2 border-primary-500 shadow-sm"
+                            className="w-11 h-11 rounded-full object-cover border-2 border-primary-500 shadow-sm"
                           />
                         ) : (
-                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center text-lg font-medium shadow-sm">
+                          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center text-sm font-medium shadow-sm">
                             {mentor.name ? mentor.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2) : '?'}
                           </div>
                         )}
@@ -249,7 +246,7 @@ export default function MentorListingPage() {
                           {mentor.name}
                         </h3>
 
-                        <p className="text-sm text-neutral-600 mb-2 line-clamp-1">
+                        <p className="text-sm text-neutral-600 mb-0.5 line-clamp-1">
                           {mentor.designation}
                         </p>
                       </div>
@@ -257,7 +254,7 @@ export default function MentorListingPage() {
 
                     {/* Department Badge */}
                     {mentor.department && (
-                      <div className="mb-4">
+                      <div className="mb-2.5">
                         <Badge variant="success" size="sm" className="inline-flex">
                           {mentor.department}
                         </Badge>
@@ -265,7 +262,7 @@ export default function MentorListingPage() {
                     )}
 
                     {/* Contact Information */}
-                    <div className="space-y-2 text-sm text-neutral-700 mb-4">
+                    <div className="space-y-1.5 text-sm text-neutral-700 mb-2.5">
                       <div className="flex items-center gap-2">
                         <svg
                           className="w-4 h-4 flex-shrink-0 text-neutral-500"
@@ -304,7 +301,7 @@ export default function MentorListingPage() {
                     </div>
 
                     {/* Student Count and View Details - Footer */}
-                    <div className="mt-auto pt-4 border-t border-neutral-100">
+                    <div className="mt-auto pt-3 border-t border-neutral-100">
                       <div className="flex items-center justify-between">
                         {mentor.totalStudents !== undefined && (
                           <div className="flex items-center gap-2 text-sm">

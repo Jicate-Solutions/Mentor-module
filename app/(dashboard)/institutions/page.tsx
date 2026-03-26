@@ -6,7 +6,6 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import SearchInput from '@/components/ui/SearchInput';
 import PageContainer from '@/components/ui/PageContainer';
-import PageHeader from '@/components/ui/PageHeader';
 import {
   fetchInstitutions,
   checkApiStatus,
@@ -110,14 +109,6 @@ export default function InstitutionsPage() {
 
   return (
     <PageContainer>
-      {/* Hero Header */}
-      <PageHeader
-        title="JKKN Institutions"
-        description="Browse and manage institutions from MyJKKN database"
-        variant="gradient"
-        icon={<span>🏛️</span>}
-        badge={isConfigured ? { text: "✓ API Connected", variant: "success" } : undefined}
-      />
 
       {/* Initial API Check Loading */}
       {isCheckingApi && (

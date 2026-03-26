@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import type { Student, IDPPlan } from '@/lib/types/mentor';
 
 interface IDPFormProps {
@@ -21,7 +21,6 @@ export default function IDPForm({
   onSuccess,
   onCancel,
 }: IDPFormProps) {
-  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,11 +46,6 @@ export default function IDPForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!accessToken) {
-      setError('No authentication token available. Please log in again.');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
@@ -63,11 +57,9 @@ export default function IDPForm({
         ? formData
         : { ...formData, mentor_id: mentorId };
 
-      const response = await fetch(url, {
+      const response = await fetchWithAuthRetry(url, {
         method,
-        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),

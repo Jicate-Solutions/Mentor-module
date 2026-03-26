@@ -5,7 +5,6 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { useToast } from '@/components/providers/ToastProvider';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import PageHeader from '@/components/ui/PageHeader';
 import Badge from '@/components/ui/Badge';
 import SearchInput from '@/components/ui/SearchInput';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -245,23 +244,19 @@ export default function MentorInchargePage() {
 
   return (
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
-      <PageHeader
-        variant="gradient"
-        title="Mentor Incharge Management"
-        description="Assign mentors to supervise other mentors in their department or institution"
-        actions={
-          <Button
-            variant="primary"
-            onClick={() => setShowAssignModal(true)}
-            className="bg-brand-green hover:bg-brand-green/90 w-full lg:w-auto flex items-center justify-center min-h-[44px] lg:min-h-0"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Assign Incharge
-          </Button>
-        }
-      />
+      {/* Assign Incharge Button */}
+      <div className="flex justify-end">
+        <Button
+          variant="primary"
+          onClick={() => setShowAssignModal(true)}
+          className="bg-brand-green hover:bg-brand-green/90 w-full lg:w-auto flex items-center justify-center min-h-[44px] lg:min-h-0"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Assign Incharge
+        </Button>
+      </div>
 
       {/* Search and Filters - Always visible */}
       <div className="space-y-3 lg:space-y-4">

@@ -1,6 +1,5 @@
 'use client';
 
-import StatCard from '@/components/ui/StatCard';
 import { MentoringIllustration, StudentsIllustration, SessionsIllustration, FeedbackIllustration } from '@/lib/illustrations';
 
 interface StatsGridProps {
@@ -17,145 +16,114 @@ interface StatsGridProps {
 }
 
 export const StatsGrid = ({ stats, loading }: StatsGridProps) => {
-  // Show skeleton loader during loading
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className="bg-white shadow-sm rounded-xl p-5 animate-pulse"
-          >
-            <div className="h-3 bg-neutral-100 rounded w-24 mb-3" />
-            <div className="h-8 bg-neutral-100 rounded w-16 mb-2" />
-            <div className="h-2 bg-neutral-100 rounded w-32" />
+          <div key={i} className="bg-white rounded-xl border border-neutral-100 p-4 animate-pulse">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 bg-neutral-100 rounded-lg" />
+              <div className="h-3 bg-neutral-100 rounded w-16" />
+            </div>
+            <div className="h-7 bg-neutral-100 rounded w-12 mb-1" />
+            <div className="h-3 bg-neutral-50 rounded w-24" />
           </div>
         ))}
       </div>
     );
   }
 
+  const cards = [
+    {
+      label: 'Total Mentors',
+      value: stats.totalMentors,
+      sub: 'Active faculty',
+      icon: MentoringIllustration,
+      iconBg: 'bg-brand-green/10',
+      iconColor: 'text-brand-green',
+      accent: 'border-l-brand-green',
+    },
+    {
+      label: 'Active Learners',
+      value: stats.activeStudents,
+      sub: 'Currently enrolled',
+      icon: StudentsIllustration,
+      iconBg: 'bg-amber-50',
+      iconColor: 'text-amber-600',
+      accent: 'border-l-amber-400',
+    },
+    {
+      label: 'Sessions',
+      value: stats.totalSessions,
+      sub: 'All time counseling',
+      icon: SessionsIllustration,
+      iconBg: 'bg-blue-50',
+      iconColor: 'text-blue-600',
+      accent: 'border-l-blue-400',
+      trend: stats.trends?.sessions,
+    },
+    {
+      label: 'Pending',
+      value: stats.pendingFeedback,
+      sub: 'Awaiting feedback',
+      icon: FeedbackIllustration,
+      iconBg: 'bg-orange-50',
+      iconColor: 'text-orange-600',
+      accent: 'border-l-orange-400',
+      alert: stats.pendingFeedback > 0,
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-      {/* Mentor Card - Primary with Enhanced Style */}
-      <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-100/50 via-primary-50/40 to-primary-100/50 p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
-        <div className="absolute inset-0 bg-grid-pattern opacity-[0.03]" />
-        <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary-300/30 rounded-full blur-2xl group-hover:blur-xl transition-all" />
-
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-md">
-              <MentoringIllustration className="w-6 h-6 text-white" />
-            </div>
-            <div className="px-2 py-0.5 rounded-full bg-primary-500">
-              <span className="text-[9px] text-white font-medium uppercase tracking-wider">Active</span>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <h3 className="text-[11px] font-medium text-primary-600 uppercase tracking-wide">Total Mentors</h3>
-            <p className="text-[32px] font-medium text-primary-800 leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
-              {stats.totalMentors}
-            </p>
-            <p className="text-[12px] text-primary-700/70 font-medium">Active faculty members</p>
-          </div>
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary-400 to-transparent opacity-50" />
-      </div>
-
-      {/* Learners Card - Accent with Bold Design */}
-      <div className="group relative overflow-hidden rounded-2xl bg-white p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-brand-yellow/20 to-transparent rounded-full blur-2xl group-hover:blur-xl transition-all" />
-
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-yellow/20 to-brand-yellow/10 flex items-center justify-center group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300">
-              <StudentsIllustration className="w-6 h-6 text-brand-green" />
-            </div>
-            <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-lg shadow-green-500/50 animate-pulse" />
-          </div>
-
-          <div className="space-y-1.5">
-            <h3 className="text-[11px] font-medium text-neutral-600 uppercase tracking-wide">Active Learners</h3>
-            <p className="text-[32px] font-medium text-brand-green leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
-              {stats.activeStudents}
-            </p>
-            <p className="text-[12px] text-neutral-500 font-medium">Currently enrolled</p>
-          </div>
-        </div>
-
-        <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-brand-yellow to-transparent opacity-50" />
-      </div>
-
-      {/* Sessions Card - Clean with Trend */}
-      <div className="group relative overflow-hidden rounded-2xl bg-white p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-11 h-11 rounded-xl bg-brand-green/10 flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
-              <SessionsIllustration className="w-6 h-6 text-brand-green" />
-            </div>
-            {stats.trends?.sessions && (
-              <div className={`px-2 py-1 rounded-lg flex items-center gap-1 ${
-                stats.trends.sessions >= 0
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-red-100 text-red-700'
-              }`}>
-                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {stats.trends.sessions >= 0 ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  )}
-                </svg>
-                <span className="text-[10px] font-medium">{Math.abs(stats.trends.sessions)}%</span>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {cards.map((card) => {
+        const Icon = card.icon;
+        return (
+          <div
+            key={card.label}
+            className={`relative bg-white rounded-xl border border-neutral-100 border-l-[3px] ${card.accent} p-4 hover:shadow-md transition-shadow duration-200`}
+          >
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className={`w-9 h-9 rounded-lg ${card.iconBg} flex items-center justify-center flex-shrink-0`}>
+                <Icon className={`w-5 h-5 ${card.iconColor}`} />
               </div>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <h3 className="text-[11px] font-medium text-neutral-600 uppercase tracking-wide">Sessions</h3>
-            <p className="text-[32px] font-medium text-neutral-900 leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
-              {stats.totalSessions}
-            </p>
-            <p className="text-[12px] text-neutral-500 font-medium">All time counseling</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Feedback Card - Alert Style */}
-      <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-neutral-50 to-white p-4 shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02]">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-full blur-2xl" />
-
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300">
-              <FeedbackIllustration className="w-6 h-6 text-orange-600" />
+              <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider leading-tight">
+                {card.label}
+              </span>
             </div>
-            {stats.pendingFeedback > 0 && (
-              <div className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 animate-bounce">
-                <span className="text-[11px] font-medium">{stats.pendingFeedback}</span>
+
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-[28px] font-bold text-neutral-900 leading-none tabular-nums">
+                  {card.value.toLocaleString()}
+                </p>
+                <p className="text-[11px] text-neutral-500 mt-1">{card.sub}</p>
               </div>
-            )}
-          </div>
 
-          <div className="space-y-1.5">
-            <h3 className="text-[11px] font-medium text-neutral-600 uppercase tracking-wide">Pending</h3>
-            <p className="text-[32px] font-medium text-neutral-900 leading-none tracking-tight group-hover:scale-105 transition-transform inline-block">
-              {stats.pendingFeedback}
-            </p>
-            <p className="text-[12px] text-neutral-500 font-medium">Awaiting feedback</p>
-          </div>
+              {card.trend !== undefined && card.trend !== 0 && (
+                <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                  card.trend >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+                }`}>
+                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {card.trend >= 0 ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    )}
+                  </svg>
+                  {Math.abs(card.trend)}%
+                </div>
+              )}
 
-          {stats.pendingFeedback > 0 && (
-            <div className="mt-3 px-2.5 py-1.5 rounded-lg bg-orange-50">
-              <p className="text-[10px] text-orange-700 font-medium">Action required</p>
+              {card.alert && (
+                <span className="text-[10px] font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
+                  Action needed
+                </span>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

@@ -4,7 +4,6 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import Tabs from '@/components/ui/Tabs';
-import PageHeader from '@/components/ui/PageHeader';
 import ApiManagementTab from './components/ApiManagementTab';
 import GeneralSettingsTab from './components/GeneralSettingsTab';
 import DataSyncTab from './components/DataSyncTab';
@@ -59,11 +58,6 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
-      <PageHeader
-        variant="default"
-        title="Settings"
-        description="Manage your application settings and API integrations"
-      />
 
       {/* Tabs Content */}
       <div className="bg-white rounded-xl border border-neutral-200/50 p-6 shadow-sm">

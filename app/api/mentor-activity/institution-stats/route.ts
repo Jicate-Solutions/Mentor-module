@@ -135,16 +135,76 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Query 2: Student counts per mentor
+    // Query 2: Student counts per mentor + student IDs for session attendance check
     const { data: studentRows } = await supabase
       .from('mentor_students')
-      .select('mentor_id')
+      .select('mentor_id, student_id')
       .in('mentor_id', mentorIds);
 
     const studentCountMap = new Map<string, number>();
+    const allStudentIds = new Set<string>();
     for (const row of studentRows || []) {
       studentCountMap.set(row.mentor_id, (studentCountMap.get(row.mentor_id) || 0) + 1);
+      allStudentIds.add(row.student_id);
     }
+
+    // Query 2b: Find students who have attended at least one counseling session
+    // Use batched .in() to avoid PostgREST URL length limits with large ID arrays
+    const studentsWithSessions = new Set<string>();
+    const allStudentIdArr = Array.from(allStudentIds);
+    const BATCH_SIZE = 200;
+
+    for (let i = 0; i < allStudentIdArr.length; i += BATCH_SIZE) {
+      const batch = allStudentIdArr.slice(i, i + BATCH_SIZE);
+      const { data: sessionStudents } = await supabase
+        .from('counseling_sessions')
+        .select('student_id')
+        .in('student_id', batch);
+      for (const row of sessionStudents || []) {
+        studentsWithSessions.add(row.student_id);
+      }
+    }
+
+    // Build list of students without sessions (with names + mentor info)
+    const studentIdsWithNoSession = allStudentIdArr.filter(id => !studentsWithSessions.has(id));
+    const studentsWithNoSession = studentIdsWithNoSession.length;
+
+    // Build mentor name lookup
+    const mentorNameMap = new Map<string, { name: string; email: string }>();
+    for (const m of mentors || []) {
+      const u = m.users as unknown as { full_name: string; email: string } | null;
+      mentorNameMap.set(m.id, { name: u?.full_name || 'Unknown', email: u?.email || '' });
+    }
+
+    // Build student → mentor mapping
+    const studentToMentor = new Map<string, string>();
+    for (const row of studentRows || []) {
+      studentToMentor.set(row.student_id, row.mentor_id);
+    }
+
+    // Fetch student details in batches
+    let studentsWithNoSessionList: { studentId: string; studentName: string; studentEmail: string; rollNumber: string; mentorName: string; mentorEmail: string }[] = [];
+    for (let i = 0; i < studentIdsWithNoSession.length; i += BATCH_SIZE) {
+      const batch = studentIdsWithNoSession.slice(i, i + BATCH_SIZE);
+      const { data: noSessionStudents } = await supabase
+        .from('students')
+        .select('id, name, email, roll_number')
+        .in('id', batch);
+
+      for (const s of noSessionStudents || []) {
+        const mId = studentToMentor.get(s.id) || '';
+        const mentorInfo = mentorNameMap.get(mId) || { name: 'Unknown', email: '' };
+        studentsWithNoSessionList.push({
+          studentId: s.id,
+          studentName: s.name || 'Unknown',
+          studentEmail: s.email || '',
+          rollNumber: s.roll_number || '',
+          mentorName: mentorInfo.name,
+          mentorEmail: mentorInfo.email,
+        });
+      }
+    }
+    studentsWithNoSessionList.sort((a, b) => a.mentorName.localeCompare(b.mentorName));
 
     // Query 3: Last login per mentor (via user_id → mentor_login_history)
     const userIds = (mentors || []).map((m) => m.user_id).filter(Boolean);
@@ -199,18 +259,21 @@ export async function GET(request: NextRequest) {
     mentorStats.sort((a, b) => a.sessionCount - b.sessionCount);
 
     // Calculate summary
+    const totalStudents = mentorStats.reduce((sum, m) => sum + m.studentCount, 0);
     const summary = {
       totalMentors: mentorStats.length,
       activeMentors: mentorStats.filter((m) => m.status === 'active').length,
       lowActivityMentors: mentorStats.filter((m) => m.status === 'low').length,
       inactiveMentors: mentorStats.filter((m) => m.status === 'inactive').length,
       totalSessions: mentorStats.reduce((sum, m) => sum + m.sessionCount, 0),
+      totalStudents,
+      studentsWithNoSession,
       period,
       startDate: startDateStr || 'all',
       endDate: endDateStr,
     };
 
-    return ok({ mentors: mentorStats, summary });
+    return ok({ mentors: mentorStats, summary, studentsWithNoSessionList });
   } catch (error) {
     console.error('[Institution Stats] Error:', error);
     return err('Failed to fetch institution stats', 500);

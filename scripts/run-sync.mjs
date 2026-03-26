@@ -71,13 +71,17 @@ async function syncStudents() {
     const departmentId = typeof r.department === 'object'
       ? (r.department?.id || null)
       : (r.department_id || r.department || null);
-    const rollNumber = String(r.roll_number || r.rollNumber || r.roll_no || r.register_number || r.id || '');
+    const rawRoll = r.roll_number || r.rollNumber || r.roll_no || r.register_number || '';
+    const isUuidRoll = !rawRoll || /^[0-9a-f]{8}-[0-9a-f]{4}/.test(String(rawRoll));
+    const rollNumber = isUuidRoll
+      ? `JKKN-${(r.id || r.student_id || '').substring(0, 8).toUpperCase()}`
+      : String(rawRoll);
 
     return {
       id: r.id || r.student_id,
       roll_number: rollNumber,
       name,
-      email: r.email || r.college_email || r.student_email || null,
+      email: r.college_email || r.student_email || r.email || null,
       department_id: departmentId,
       institution_id: institutionId,
       year: (r.year || r.current_year || r.admission_year)
@@ -90,20 +94,35 @@ async function syncStudents() {
     };
   }).filter(r => {
     if (!r.id || !r.roll_number) return false;
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}/.test(String(r.roll_number))) return false;
     return true;
   });
 
   console.log(`After filtering: ${rows.length} valid rows`);
 
-  // Deduplicate by roll_number (JKKN API can return same student twice)
-  const rollMap = new Map();
+  // Deduplicate by id first (primary key), then by roll_number
+  const idMap = new Map();
   for (const r of rows) {
+    const existing = idMap.get(r.id);
+    if (!existing) {
+      idMap.set(r.id, r);
+    } else {
+      // Prefer real roll number over placeholder
+      const existingIsPlaceholder = existing.roll_number.startsWith('JKKN-');
+      const newIsPlaceholder = r.roll_number.startsWith('JKKN-');
+      if (existingIsPlaceholder && !newIsPlaceholder) {
+        idMap.set(r.id, r);
+      } else if (r.lifecycle_status === 'active' && existing.lifecycle_status !== 'active') {
+        idMap.set(r.id, r);
+      }
+    }
+  }
+  // Also deduplicate by roll_number (different IDs with same roll)
+  const rollMap = new Map();
+  for (const r of idMap.values()) {
     const existing = rollMap.get(r.roll_number);
     if (!existing) {
       rollMap.set(r.roll_number, r);
     } else {
-      // Prefer jkkn.ac.in email and active lifecycle
       const existingIsOfficial = (existing.email || '').includes('@jkkn.ac.in');
       const newIsOfficial = (r.email || '').includes('@jkkn.ac.in');
       if ((newIsOfficial && !existingIsOfficial) || (r.lifecycle_status === 'active' && existing.lifecycle_status !== 'active')) {
@@ -112,18 +131,22 @@ async function syncStudents() {
     }
   }
   const dedupedRows = Array.from(rollMap.values());
-  console.log(`After dedup by roll_number: ${dedupedRows.length} unique rows (removed ${rows.length - dedupedRows.length} duplicates)`);
+  console.log(`After dedup by id+roll_number: ${dedupedRows.length} unique rows (removed ${rows.length - dedupedRows.length} duplicates)`);
 
-  // Upsert to jkkn_students in chunks
+  // Clear and re-populate jkkn_students cache (safe — it's a pure cache table)
   const rows_final = dedupedRows;
+  console.log(`Clearing jkkn_students cache and inserting ${rows_final.length} rows...`);
+  const { error: deleteError } = await supabase.from('jkkn_students').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (deleteError) console.warn(`Warning: cache clear failed (${deleteError.message}), falling back to upsert`);
+
   const chunkSize = 500;
   for (let i = 0; i < rows_final.length; i += chunkSize) {
     const chunk = rows_final.slice(i, i + chunkSize);
     const { error } = await supabase
       .from('jkkn_students')
-      .upsert(chunk, { onConflict: 'roll_number' });
+      .upsert(chunk, { onConflict: 'id', ignoreDuplicates: true });
     if (error) throw new Error(`Chunk ${Math.floor(i / chunkSize) + 1} failed: ${error.message}`);
-    console.log(`  Upserted chunk ${Math.floor(i / chunkSize) + 1}/${Math.ceil(rows_final.length / chunkSize)}`);
+    console.log(`  Inserted chunk ${Math.floor(i / chunkSize) + 1}/${Math.ceil(rows_final.length / chunkSize)}`);
   }
 
   // Reconcile: deactivate local students not in JKKN active set

@@ -115,14 +115,14 @@ export async function GET(request: NextRequest) {
     });
 
     // Get department-wise session distribution
+    // Note: mentors.department_id has no FK to jkkn_departments, so we join manually
     let deptSessionsQuery = supabase
       .from('counseling_sessions')
       .select(`
         id,
         status,
         mentors:mentor_id (
-          department_id,
-          departments(name)
+          department_id
         )
       `)
       .gte('date', startDateStr);
@@ -133,10 +133,31 @@ export async function GET(request: NextRequest) {
 
     const { data: departmentSessions } = await deptSessionsQuery;
 
+    // Collect unique department IDs from sessions
+    const deptIds = new Set<string>();
+    departmentSessions?.forEach((session: any) => {
+      const deptId = session.mentors?.department_id;
+      if (deptId) deptIds.add(deptId);
+    });
+
+    // Fetch department names from jkkn_departments
+    const deptNameMap: Record<string, string> = {};
+    if (deptIds.size > 0) {
+      const { data: departments } = await supabase
+        .from('jkkn_departments')
+        .select('id, name')
+        .in('id', Array.from(deptIds));
+
+      departments?.forEach((dept: any) => {
+        deptNameMap[dept.id] = dept.name;
+      });
+    }
+
     const departmentCounts: { [key: string]: { total: number; completed: number } } = {};
 
     departmentSessions?.forEach((session: any) => {
-      const deptName = session.mentors?.departments?.name || 'Unknown';
+      const deptId = session.mentors?.department_id;
+      const deptName = (deptId && deptNameMap[deptId]) || 'Unknown';
 
       if (!departmentCounts[deptName]) {
         departmentCounts[deptName] = { total: 0, completed: 0 };
@@ -150,6 +171,7 @@ export async function GET(request: NextRequest) {
     });
 
     const departmentDistribution = Object.entries(departmentCounts)
+      .filter(([name]) => name !== 'Unknown')
       .map(([name, counts]) => ({
         name,
         value: counts.total,

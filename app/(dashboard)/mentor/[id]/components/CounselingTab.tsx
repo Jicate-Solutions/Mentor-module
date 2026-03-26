@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/components/providers/AuthProvider';
 import { useToast } from '@/components/providers/ToastProvider';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -18,7 +17,6 @@ interface CounselingTabProps {
 }
 
 export default function CounselingTab({ mentorId }: CounselingTabProps) {
-  const { accessToken, user } = useAuth();
   const toast = useToast();
 
   const {
@@ -158,7 +156,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
   // Create new session
   const handleCreateSession = async () => {
     // Validate required fields
-    if (!accessToken || formData.selectedStudentIds.length === 0 || !formData.sessionName || !formData.date || !formData.time) {
+    if (formData.selectedStudentIds.length === 0 || !formData.sessionName || !formData.date || !formData.time) {
       toast.warning('Missing fields', 'Please select at least one learner and fill in all required fields');
       return;
     }
@@ -316,7 +314,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
   // Submit session log
   const handleSubmitFeedback = async () => {
     // Validate required fields
-    if (!accessToken || !selectedSession || !feedbackData.counselingQueries || !feedbackData.actionTaken) {
+    if (!selectedSession || !feedbackData.counselingQueries || !feedbackData.actionTaken) {
       toast.warning('Missing information', 'Please fill in all required fields');
       return;
     }
@@ -405,7 +403,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
   // Update session
   const handleUpdateSession = async () => {
-    if (!accessToken || !editingSession) return;
+    if (!editingSession) return;
 
     // Validate required fields
     if (!editFormData.sessionName || !editFormData.date || !editFormData.time) {
@@ -456,7 +454,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
 
   // Delete session
   const handleDeleteSession = async () => {
-    if (!accessToken || !deletingSession) return;
+    if (!deletingSession) return;
 
     try {
       setDeleting(true);
@@ -479,6 +477,25 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
       toast.error('Error deleting session', 'An unexpected error occurred. Please try again');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // Resend notification email for a session
+  const handleResendNotification = async (session: CounselingSession) => {
+    try {
+      const response = await fetchWithAuthRetry(`/api/mentor/${mentorId}/counseling/${session.id}/notify`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success('Notification sent', `Email sent to ${data.data?.email || 'learner'}`);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error('Failed to send notification', errorData.error || 'Could not send email');
+      }
+    } catch {
+      toast.error('Error', 'An unexpected error occurred while sending notification');
     }
   };
 
@@ -583,8 +600,17 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                       {groupedSession.sessionName}
                     </h3>
 
-                    {/* Edit and Delete Actions */}
+                    {/* Session Actions */}
                     <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleResendNotification(groupedSession.students[0].session)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                        title="Resend notification email"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      </button>
                       <button
                         onClick={() => handleEditSession(groupedSession.students[0].session)}
                         className="p-1.5 text-brand-green hover:bg-brand-green/10 rounded-md transition-colors"

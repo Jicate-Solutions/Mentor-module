@@ -3,7 +3,6 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useDashboard } from '@/hooks/useDashboard';
-import { WelcomeHero } from './components/WelcomeHero';
 import { StatsGrid } from './components/StatsGrid';
 import { ProgressCard } from './components/ProgressCard';
 import { ActivityFeed } from './components/ActivityFeed';
@@ -63,11 +62,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
-      {/* Welcome Hero - Full Width with Modern Gradient */}
-      <div className="animate-fadeIn">
-        <WelcomeHero />
-      </div>
-
       {/* Stats Grid - Enhanced Cards */}
       <div className="animate-fadeIn" style={{ animationDelay: '100ms' }}>
         <StatsGrid stats={stats} loading={statsLoading} />

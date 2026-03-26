@@ -71,7 +71,7 @@ async function resolveDepartmentName(
   try {
     const res = await fetch(
       `${baseUrl}/api-management/organizations/departments/${departmentId}`,
-      { headers: { Authorization: `Bearer ${apiKey}` } }
+      { headers: { Authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(5000) }
     );
     if (res.ok) {
       const data = await res.json();
@@ -134,6 +134,7 @@ export async function getMentorById(mentorJkknId: string): Promise<Mentor | null
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
+        signal: AbortSignal.timeout(5000),
       });
       if (apiResponse.ok) {
         apiData = await apiResponse.json();
@@ -509,6 +510,7 @@ export async function getMentorList(
             'Content-Type': 'application/json',
           },
           next: { revalidate: 60 },
+          signal: AbortSignal.timeout(10000),
         });
 
         if (apiResponse.ok) {

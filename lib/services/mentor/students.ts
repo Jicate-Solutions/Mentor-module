@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { Student } from '@/lib/types/mentor';
 import { resolveMentorByJkknId } from './resolve';
 import { getDepartmentMap } from '@/lib/services/jkkn-sync';
+import { sendMentorAssignmentEmail } from '@/lib/email/send-assignment-notification';
 
 export interface StudentAssignmentInput {
   studentId?: string;
@@ -125,7 +126,7 @@ export async function assignStudentsToMentor(
   // Fetch the mentor's department/institution for student upsert
   const { data: mentorRecord } = await supabaseAdmin
     .from('mentors')
-    .select('id, department_id, institution_id')
+    .select('id, department_id, institution_id, user_id')
     .eq('id', mentorId)
     .single();
 
@@ -135,6 +136,21 @@ export async function assignStudentsToMentor(
 
   const departmentId = mentorRecord.department_id || '00000000-0000-0000-0000-000000000001';
   const institutionId = mentorRecord.institution_id || '00000000-0000-0000-0000-000000000001';
+
+  // Fetch mentor display name (once, before the loop)
+  let mentorDisplayName = 'Your Mentor';
+  if (mentorRecord?.user_id) {
+    const { data: mentorUser } = await supabaseAdmin
+      .from('users')
+      .select('full_name')
+      .eq('id', mentorRecord.user_id)
+      .single();
+    mentorDisplayName = mentorUser?.full_name || 'Your Mentor';
+  }
+
+  // JKKN API constants (used for email resolution inside the loop)
+  const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+  const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
 
   for (const studentInput of studentsPayload) {
     // Derive the canonical student id
@@ -180,11 +196,34 @@ export async function assignStudentsToMentor(
         continue;
       }
 
+      // ── Resolve real email from JKKN Learners API ───────────────────────
+      let resolvedEmail = studentInput.email || '';
+      let resolvedName = studentInput.name;
+
+      if (apiKey && (!resolvedEmail || resolvedEmail.includes('@student.jkkn.ac.in'))) {
+        try {
+          const res = await fetch(
+            `${baseUrl}/api-management/learners/profiles/${studentId}`,
+            { headers: { 'Authorization': `Bearer ${apiKey}` }, signal: AbortSignal.timeout(5000) }
+          );
+          if (res.ok) {
+            const json = await res.json();
+            const profile = json.data || json;
+            const realEmail = profile?.college_email || profile?.student_email || '';
+            if (realEmail) resolvedEmail = realEmail;
+            const apiName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim();
+            if (apiName) resolvedName = apiName;
+          }
+        } catch {
+          // Non-critical, continue with existing email
+        }
+      }
+
       // ── Upsert student row ────────────────────────────────────────────────
       const studentData = {
         id: studentId,
-        name: studentInput.name,
-        email: studentInput.email || `${studentId}@student.jkkn.ac.in`,
+        name: resolvedName,
+        email: resolvedEmail || `${studentId}@student.jkkn.ac.in`,
         roll_number:
           studentInput.rollNumber && studentInput.rollNumber !== 'N/A'
             ? studentInput.rollNumber
@@ -313,6 +352,18 @@ export async function assignStudentsToMentor(
 
       result.assigned++;
       console.log(`[assignStudentsToMentor] Assigned student ${studentIdForAssignment} to mentor ${mentorId}`);
+
+      // ── Send assignment notification email (non-blocking) ────────────
+      const finalEmail = resolvedEmail || studentInput.email || '';
+      if (finalEmail && !finalEmail.includes('@student.jkkn.ac.in') && finalEmail.includes('@')) {
+        sendMentorAssignmentEmail({
+          studentEmail: finalEmail,
+          studentName: resolvedName || studentInput.name,
+          studentId: studentIdForAssignment,
+          mentorName: mentorDisplayName,
+          mentorId,
+        }).catch(e => console.error('[assignStudentsToMentor] Assignment email failed:', e));
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       result.errors.push(`${studentInput.name}: Unexpected error — ${msg}`);

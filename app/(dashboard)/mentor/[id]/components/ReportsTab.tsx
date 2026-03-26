@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Calendar, Loader2, FileText, Trash2, Clock, CheckCircle2, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 
 interface ReportsTabProps {
   mentorId: string;
@@ -22,7 +22,7 @@ interface GeneratedReport {
 }
 
 export default function ReportsTab({ mentorId }: ReportsTabProps) {
-  const { accessToken } = useAuth();
+
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -40,12 +40,7 @@ export default function ReportsTab({ mentorId }: ReportsTabProps) {
   const fetchReports = async () => {
     try {
       setLoadingReports(true);
-      const response = await fetch(`/api/reports/mentor/${mentorId}/list`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
+      const response = await fetchWithAuthRetry(`/api/reports/mentor/${mentorId}/list`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch reports');
@@ -75,15 +70,9 @@ export default function ReportsTab({ mentorId }: ReportsTabProps) {
 
       console.log(`[Reports] Generating ${period} report for mentor ${mentorId}`);
 
-      const response = await fetch(
+      const response = await fetchWithAuthRetry(
         `/api/reports/mentor/${mentorId}/counseling?${params}`,
-        {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
+        { headers: { 'Content-Type': 'application/json' } }
       );
 
       if (!response.ok) {
@@ -129,14 +118,8 @@ export default function ReportsTab({ mentorId }: ReportsTabProps) {
         end_date: report.endDate.split('T')[0],
       });
 
-      const response = await fetch(
-        `/api/reports/mentor/${mentorId}/counseling?${params}`,
-        {
-          credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
+      const response = await fetchWithAuthRetry(
+        `/api/reports/mentor/${mentorId}/counseling?${params}`
       );
 
       if (!response.ok) {
@@ -165,15 +148,9 @@ export default function ReportsTab({ mentorId }: ReportsTabProps) {
 
     try {
       setDeletingReport(reportId);
-      const response = await fetch(
+      const response = await fetchWithAuthRetry(
         `/api/reports/mentor/${mentorId}/list?reportId=${reportId}`,
-        {
-          method: 'DELETE',
-          credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
+        { method: 'DELETE' }
       );
 
       if (!response.ok) {

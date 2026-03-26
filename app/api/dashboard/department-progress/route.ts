@@ -11,60 +11,63 @@ export async function GET(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Fetch departments with mentors and sessions
+    // Fetch departments from jkkn_departments
     let departmentQuery = supabase
-      .from('departments')
-      .select(`
-        id,
-        name,
-        institution_id,
-        staff!department_id(
-          id,
-          role,
-          counseling_sessions!mentor_id(
-            id,
-            status
-          )
-        )
-      `);
+      .from('jkkn_departments')
+      .select('id, name, institution_id')
+      .eq('is_active', true);
 
     // Role-based filtering
-    if (user.role === 'institution_admin' || user.role === 'mentor') {
-      if (user.institution_id) {
-        departmentQuery = departmentQuery.eq('institution_id', user.institution_id);
-      }
+    if (user.role !== 'super_admin' && user.role !== 'administrator' && user.institution_id) {
+      departmentQuery = departmentQuery.eq('institution_id', user.institution_id);
     }
 
-    const { data: departments, error } = await departmentQuery;
+    const { data: departments, error: deptError } = await departmentQuery;
 
-    if (error) {
-      console.error('Error fetching department progress:', error);
+    if (deptError) {
+      console.error('Error fetching departments:', deptError);
       return NextResponse.json({ error: 'Failed to fetch department progress' }, { status: 500 });
     }
 
+    // Fetch mentors with their sessions
+    const { data: mentors } = await supabase
+      .from('mentors')
+      .select('id, department_id')
+      .eq('is_active', true);
+
+    const { data: sessions } = await supabase
+      .from('counseling_sessions')
+      .select('id, mentor_id, status');
+
+    // Build mentor-to-sessions map
+    const mentorSessionsMap: Record<string, { total: number; completed: number }> = {};
+    sessions?.forEach((session: any) => {
+      if (!mentorSessionsMap[session.mentor_id]) {
+        mentorSessionsMap[session.mentor_id] = { total: 0, completed: 0 };
+      }
+      mentorSessionsMap[session.mentor_id].total++;
+      if (session.status === 'completed') {
+        mentorSessionsMap[session.mentor_id].completed++;
+      }
+    });
+
     // Calculate progress for each department
-    const departmentProgress = departments.map((dept: any) => {
-      const mentors = dept.staff?.filter((s: any) => s.role === 'mentor') || [];
-      const totalMentors = mentors.length;
+    const departmentProgress = (departments || []).map((dept: any) => {
+      const deptMentors = mentors?.filter((m: any) => m.department_id === dept.id) || [];
+      const totalMentors = deptMentors.length;
 
-      // Count mentors with at least one completed session
-      const activeMentors = mentors.filter((mentor: any) => {
-        const completedSessions = mentor.counseling_sessions?.filter(
-          (session: any) => session.status === 'completed'
-        ).length || 0;
-        return completedSessions > 0;
-      }).length;
+      let totalSessions = 0;
+      let completedSessions = 0;
+      let activeMentors = 0;
 
-      const totalSessions = mentors.reduce((sum: number, mentor: any) => {
-        return sum + (mentor.counseling_sessions?.length || 0);
-      }, 0);
-
-      const completedSessions = mentors.reduce((sum: number, mentor: any) => {
-        const completed = mentor.counseling_sessions?.filter(
-          (session: any) => session.status === 'completed'
-        ).length || 0;
-        return sum + completed;
-      }, 0);
+      deptMentors.forEach((mentor: any) => {
+        const stats = mentorSessionsMap[mentor.id];
+        if (stats) {
+          totalSessions += stats.total;
+          completedSessions += stats.completed;
+          if (stats.completed > 0) activeMentors++;
+        }
+      });
 
       const progressPercentage = totalSessions > 0
         ? Math.round((completedSessions / totalSessions) * 100)
@@ -82,7 +85,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Sort by progress percentage (descending)
+    // Sort by progress percentage (descending), filter out departments with no sessions
     departmentProgress.sort((a, b) => b.progress - a.progress);
 
     return NextResponse.json({

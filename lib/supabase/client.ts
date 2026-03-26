@@ -31,7 +31,9 @@ export function createSupabaseClientWithContext(user: {
   department_id?: string | null;
   institution_id?: string | null;
 }) {
-  const client = createClient(supabaseUrl, supabaseAnonKey);
+  // Reuse the singleton client to avoid "Multiple GoTrueClient instances" warning
+  // and prevent cookie/header bloat that causes HTTP 431 errors
+  const client = supabase;
 
   // Set user context for RLS policies
   const setContext = async () => {

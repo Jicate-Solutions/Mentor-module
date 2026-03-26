@@ -15,8 +15,19 @@ import {
   Building2,
   Filter,
   LogIn,
+  X,
+  UserX,
 } from 'lucide-react';
 import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
+
+interface NoSessionStudent {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  rollNumber: string;
+  mentorName: string;
+  mentorEmail: string;
+}
 
 interface MentorStat {
   mentorId: string;
@@ -38,6 +49,8 @@ interface Summary {
   lowActivityMentors: number;
   inactiveMentors: number;
   totalSessions: number;
+  totalStudents: number;
+  studentsWithNoSession: number;
   period: string;
   startDate: string;
   endDate: string;
@@ -81,6 +94,11 @@ export default function MentorPerformanceTable() {
   const [selectedInstitution, setSelectedInstitution] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Learners without session modal
+  const [noSessionStudents, setNoSessionStudents] = useState<NoSessionStudent[]>([]);
+  const [showNoSessionModal, setShowNoSessionModal] = useState(false);
+  const [noSessionSearch, setNoSessionSearch] = useState('');
 
   const isSuperAdmin = accessInfo?.role === 'super_admin' || accessInfo?.isSuperAdmin;
 
@@ -140,14 +158,19 @@ export default function MentorPerformanceTable() {
       if (selectedDepartment) params.append('departmentId', selectedDepartment);
 
       const response = await fetchWithAuthRetry(`/api/mentor-activity/institution-stats?${params.toString()}`);
+      const json = await response.json();
 
       if (response.ok) {
-        const data = await response.json();
-        setMentors(data.mentors || []);
-        setSummary(data.summary || null);
+        const payload = json.data || json;
+        setMentors(payload.mentors || []);
+        setSummary(payload.summary || null);
+        setNoSessionStudents(payload.studentsWithNoSessionList || []);
+      } else {
+        console.error('[MentorPerformanceTable] API error:', response.status, json.error || json);
+        setMentors([]);
       }
     } catch (error) {
-      console.error('Error fetching mentor performance:', error);
+      console.error('[MentorPerformanceTable] Fetch error:', error);
     } finally {
       setLoading(false);
     }
@@ -422,7 +445,7 @@ export default function MentorPerformanceTable() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-6 border-b border-neutral-100 bg-neutral-50/50">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 p-6 border-b border-neutral-100 bg-neutral-50/50">
             <div className="bg-white rounded-xl p-4 border border-neutral-100 shadow-sm">
               <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Total Mentors</p>
               <p className="text-2xl font-medium text-neutral-900 mt-1">{summary.totalMentors}</p>
@@ -438,6 +461,18 @@ export default function MentorPerformanceTable() {
             <div className="bg-white rounded-xl p-4 border border-red-100 shadow-sm">
               <p className="text-xs font-medium text-red-600 uppercase tracking-wide">No Sessions</p>
               <p className="text-2xl font-medium text-red-700 mt-1">{summary.inactiveMentors}</p>
+            </div>
+            <div
+              className="bg-white rounded-xl p-4 border border-purple-100 shadow-sm cursor-pointer hover:border-purple-300 hover:shadow-md transition-all"
+              onClick={() => setShowNoSessionModal(true)}
+              title="Click to view learner details"
+            >
+              <p className="text-xs font-medium text-purple-600 uppercase tracking-wide flex items-center gap-1">
+                <UserX className="w-3 h-3" />
+                Learners Without Session
+              </p>
+              <p className="text-2xl font-medium text-purple-700 mt-1">{summary.studentsWithNoSession ?? 0}</p>
+              <p className="text-xs text-purple-400 mt-1">of {summary.totalStudents ?? 0} total &middot; Click to view</p>
             </div>
           </div>
         )}
@@ -565,6 +600,109 @@ export default function MentorPerformanceTable() {
           </tbody>
         </table>
       </div>
+
+      {/* Learners Without Session Modal */}
+      {showNoSessionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+                  <UserX className="w-5 h-5 text-purple-600" />
+                  Learners Without Counseling Session
+                </h3>
+                <p className="text-sm text-neutral-500 mt-0.5">{noSessionStudents.length} learners have no sessions</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const headers = ['Learner Name', 'Email', 'Roll Number', 'Mentor Name', 'Mentor Email'];
+                    const rows = noSessionStudents.map(s => [
+                      s.studentName, s.studentEmail, s.rollNumber, s.mentorName, s.mentorEmail
+                    ]);
+                    const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `learners-without-session-${new Date().toISOString().split('T')[0]}.csv`;
+                    a.click();
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Export CSV
+                </button>
+                <button
+                  onClick={() => { setShowNoSessionModal(false); setNoSessionSearch(''); }}
+                  className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="px-6 py-3 border-b border-neutral-100">
+              <input
+                type="text"
+                placeholder="Search by learner name, email, or mentor..."
+                value={noSessionSearch}
+                onChange={(e) => setNoSessionSearch(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              />
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-auto">
+              <table className="w-full">
+                <thead className="bg-neutral-50 sticky top-0">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">#</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Learner Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Roll No</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Mentor</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {(() => {
+                    const filtered = noSessionStudents.filter(s => {
+                      if (!noSessionSearch) return true;
+                      const q = noSessionSearch.toLowerCase();
+                      return s.studentName.toLowerCase().includes(q) ||
+                        s.studentEmail.toLowerCase().includes(q) ||
+                        s.mentorName.toLowerCase().includes(q) ||
+                        s.rollNumber.toLowerCase().includes(q);
+                    });
+                    if (filtered.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-12 text-center text-neutral-400">
+                            {noSessionStudents.length === 0
+                              ? 'No data available — all learners have sessions or data is loading.'
+                              : 'No learners match your search.'}
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return filtered.map((s, idx) => (
+                      <tr key={s.studentId} className="hover:bg-purple-50/30">
+                        <td className="px-6 py-3 text-sm text-neutral-400">{idx + 1}</td>
+                        <td className="px-6 py-3 text-sm font-medium text-neutral-900">{s.studentName}</td>
+                        <td className="px-6 py-3 text-sm text-neutral-500">{s.studentEmail || '—'}</td>
+                        <td className="px-6 py-3 text-sm text-neutral-500">{s.rollNumber || '—'}</td>
+                        <td className="px-6 py-3 text-sm text-neutral-600">{s.mentorName}</td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

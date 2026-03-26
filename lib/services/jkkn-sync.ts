@@ -37,6 +37,7 @@ async function paginateAll<T>(
     const res = await fetch(url, {
       headers: { 'Authorization': `Bearer ${apiKey}` },
       cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!res.ok) {
@@ -243,13 +244,19 @@ export async function syncStudents(): Promise<SyncResult> {
       const departmentId =
         typeof r.department === 'object' ? (r.department?.id || null) : (r.department_id || r.department || null);
 
-      const rollNumber = String(r.roll_number || r.rollNumber || r.roll_no || r.register_number || r.id || '');
+      const rawRoll = r.roll_number || r.rollNumber || r.roll_no || r.register_number || '';
+      // If the student has no real roll number, generate a stable placeholder
+      // using their JKKN ID so they are NOT excluded from the cache.
+      const isUuidRoll = !rawRoll || /^[0-9a-f]{8}-[0-9a-f]{4}/.test(String(rawRoll));
+      const rollNumber = isUuidRoll
+        ? `JKKN-${(r.id || r.student_id || '').substring(0, 8).toUpperCase()}`
+        : String(rawRoll);
 
       return {
         id: r.id || r.student_id,
         roll_number: rollNumber,
         name,
-        email: r.email || r.college_email || r.student_email || null,
+        email: r.college_email || r.student_email || r.email || null,
         department_id: departmentId,
         institution_id: institutionId,
         year: r.year || r.current_year || r.admission_year ? String(r.year || r.current_year || r.admission_year || '') : null,
@@ -261,19 +268,36 @@ export async function syncStudents(): Promise<SyncResult> {
       };
     }).filter((r: any) => {
       if (!r.id || !r.roll_number) return false;
-      // Skip records where JKKN API returned a UUID as roll_number instead of a proper one
-      if (/^[0-9a-f]{8}-[0-9a-f]{4}/.test(String(r.roll_number))) return false;
       return true;
     });
 
-    // Upsert in chunks of 500 to avoid payload limits
+    // Deduplicate by id (PK) then by roll_number (UNIQUE)
+    const idMap = new Map<string, typeof rows[0]>();
+    for (const r of rows) {
+      const existing = idMap.get(r.id);
+      if (!existing || (r.lifecycle_status === 'active' && existing.lifecycle_status !== 'active')) {
+        idMap.set(r.id, r);
+      }
+    }
+    const rollMap = new Map<string, typeof rows[0]>();
+    for (const r of idMap.values()) {
+      const existing = rollMap.get(r.roll_number);
+      if (!existing || (r.lifecycle_status === 'active' && existing.lifecycle_status !== 'active')) {
+        rollMap.set(r.roll_number, r);
+      }
+    }
+    const dedupedRows = Array.from(rollMap.values());
+
+    // Clear and re-populate jkkn_students cache (safe — pure cache table)
     const supabase = createAdminClient();
+    await supabase.from('jkkn_students').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
     const chunkSize = 500;
-    for (let i = 0; i < rows.length; i += chunkSize) {
-      const chunk = rows.slice(i, i + chunkSize);
+    for (let i = 0; i < dedupedRows.length; i += chunkSize) {
+      const chunk = dedupedRows.slice(i, i + chunkSize);
       const { error } = await supabase
         .from('jkkn_students')
-        .upsert(chunk, { onConflict: 'roll_number' });
+        .upsert(chunk, { onConflict: 'id', ignoreDuplicates: true });
       if (error) throw new Error(`Chunk ${i / chunkSize + 1} failed: ${error.message}`);
     }
 
@@ -281,7 +305,7 @@ export async function syncStudents(): Promise<SyncResult> {
     // Deactivate local students whose roll_number does NOT appear in jkkn_students
     // with lifecycle_status = 'active'. This handles students deactivated in MyJKKN.
     const activeRolls = new Set(
-      rows
+      dedupedRows
         .filter(r => r.lifecycle_status === 'active')
         .map(r => r.roll_number)
     );
@@ -322,8 +346,8 @@ export async function syncStudents(): Promise<SyncResult> {
       }
     }
 
-    await logSyncEnd(logId, rows.length);
-    return { entity: 'students', totalRecords: rows.length, durationMs: Date.now() - start };
+    await logSyncEnd(logId, dedupedRows.length);
+    return { entity: 'students', totalRecords: dedupedRows.length, durationMs: Date.now() - start };
   } catch (e: any) {
     await logSyncEnd(logId, 0, e.message);
     return { entity: 'students', totalRecords: 0, durationMs: Date.now() - start, error: e.message };
@@ -370,7 +394,7 @@ export async function getDepartmentMap(): Promise<Map<string, string>> {
   try {
     const res = await fetch(
       `${baseUrl}/api-management/organizations/departments?page=1&limit=500`,
-      { headers: { 'Authorization': `Bearer ${apiKey}` }, next: { revalidate: 60 } }
+      { headers: { 'Authorization': `Bearer ${apiKey}` }, next: { revalidate: 60 }, signal: AbortSignal.timeout(5000) }
     );
     if (res.ok) {
       const data = await res.json();

@@ -12,7 +12,6 @@ import ActivityTimeline from './components/ActivityTimeline';
 import MentorPerformanceTable from './components/MentorPerformanceTable';
 import LoginHistorySection from './components/LoginHistorySection';
 import AttendanceOverview from './components/AttendanceOverview';
-import PageHeader from '@/components/ui/PageHeader';
 import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 
 export default function MentorActivityPage() {
@@ -262,14 +261,6 @@ export default function MentorActivityPage() {
   return (
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
         {/* Page Header */}
-        <PageHeader
-          variant="gradient"
-          title="Mentor Activity"
-          description={isAdmin
-            ? 'View and track all mentor activities across the system'
-            : 'Track your mentoring activities and performance'}
-          icon={<Activity className="w-6 h-6" />}
-        />
 
         {/* Error Message */}
         {error && (

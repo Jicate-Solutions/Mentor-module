@@ -181,7 +181,7 @@ export async function getSessionsForMentor(mentorJkknId: string): Promise<Counse
           try {
             const res = await fetch(
               `${baseUrl}/api-management/learners/profiles/${studentId}`,
-              { headers: { 'Authorization': `Bearer ${apiKey}` }, cache: 'no-store' }
+              { headers: { 'Authorization': `Bearer ${apiKey}` }, cache: 'no-store', signal: AbortSignal.timeout(5000) }
             );
             if (res.ok) {
               const data = await res.json();
@@ -257,6 +257,8 @@ export async function createSession(
 
   if (apiKey) {
     try {
+      const learnerCtrl = new AbortController();
+      const learnerTimeout = setTimeout(() => learnerCtrl.abort(), 5000);
       const jkknResponse = await fetch(
         `${baseUrl}/api-management/learners/profiles/${student.id}`,
         {
@@ -266,8 +268,10 @@ export async function createSession(
             'Content-Type': 'application/json',
           },
           cache: 'no-store',
+          signal: learnerCtrl.signal,
         }
       );
+      clearTimeout(learnerTimeout);
       if (jkknResponse.ok) {
         const jkknData = await jkknResponse.json();
         realStudentData = jkknData.data || jkknData;
@@ -771,7 +775,7 @@ export async function submitSessionFeedback(
         try {
           const jkknRes = await fetch(
             `${baseUrl}/api-management/learners/profiles/${session.student_id}`,
-            { headers: { Authorization: `Bearer ${apiKey}` } }
+            { headers: { Authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(5000) }
           );
           if (jkknRes.ok) {
             const jkknData = await jkknRes.json();
@@ -837,4 +841,94 @@ export async function submitSessionFeedback(
       console.error('[submitSessionFeedback] Error sending feedback email:', error);
     }
   })();
+}
+
+// ── resendSessionNotification ─────────────────────────────────────────────────
+
+/**
+ * Resend email notification for an existing counseling session.
+ *
+ * Fetches session + student data from DB, resolves a valid email,
+ * and fires a session_created notification. Useful when the original
+ * notification was missed due to transient failures.
+ */
+export async function resendSessionNotification(
+  sessionId: string,
+  mentorJkknId: string
+): Promise<{ sent: boolean; email: string; reason?: string }> {
+  const supabaseAdmin = createAdminClient();
+  const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+  const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+  // Resolve mentor
+  const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
+  if (!resolved) {
+    return { sent: false, email: '', reason: 'Mentor not found' };
+  }
+
+  // Fetch session with student join
+  const { data: session, error: sessionErr } = await supabaseAdmin
+    .from('counseling_sessions')
+    .select('*, student:students!student_id(id, name, email)')
+    .eq('id', sessionId)
+    .eq('mentor_id', resolved.mentor.id)
+    .single();
+
+  if (sessionErr || !session) {
+    return { sent: false, email: '', reason: 'Session not found or does not belong to this mentor' };
+  }
+
+  // Resolve student email
+  let studentEmail = session.student?.email || '';
+
+  // Try JKKN Learners API if email is missing or placeholder
+  if ((!studentEmail || isPlaceholderEmail(studentEmail)) && apiKey) {
+    try {
+      const res = await fetch(
+        `${baseUrl}/api-management/learners/profiles/${session.student_id}`,
+        { headers: { Authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(8000) }
+      );
+      if (res.ok) {
+        const profile = (await res.json()).data;
+        const realEmail = profile?.college_email || profile?.student_email || '';
+        if (realEmail) {
+          studentEmail = realEmail;
+          // Persist the real email
+          await supabaseAdmin
+            .from('students')
+            .update({ email: realEmail, updated_at: new Date().toISOString() })
+            .eq('id', session.student_id);
+        }
+      }
+    } catch { /* non-critical */ }
+  }
+
+  if (!isValidStudentEmail(studentEmail)) {
+    return { sent: false, email: studentEmail, reason: 'No valid student email available' };
+  }
+
+  // Fetch mentor display name
+  const { data: mentorUser } = await supabaseAdmin
+    .from('users')
+    .select('full_name')
+    .eq('id', resolved.user.id)
+    .single();
+  const mentorName = mentorUser?.full_name || 'Your Mentor';
+
+  // Send notification
+  const sent = await sendSessionCreatedEmail({
+    studentEmail,
+    studentName: session.student?.name || 'Student',
+    studentId: session.student_id,
+    mentorName,
+    mentorId: resolved.mentor.id,
+    sessionId: session.id,
+    sessionName: session.session_name,
+    sessionDate: session.date,
+    sessionTime: session.time,
+    sessionNotes: session.notes,
+    sessionStatus: 'scheduled',
+  });
+
+  return { sent, email: studentEmail };
 }

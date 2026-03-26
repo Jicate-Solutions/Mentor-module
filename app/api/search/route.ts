@@ -47,8 +47,8 @@ export async function GET(req: NextRequest) {
     if (types.includes('students')) {
       const { data: students, error: studentsError } = await supabase
         .from('students')
-        .select('id, name, register_number, department_id')
-        .or(`name.ilike.${searchPattern},register_number.ilike.${searchPattern}`)
+        .select('id, name, roll_number, department_id')
+        .or(`name.ilike.${searchPattern},roll_number.ilike.${searchPattern}`)
         .limit(5);
 
       if (studentsError) {
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
             id: student.id,
             type: 'student',
             title: student.name,
-            subtitle: `Register: ${student.register_number}`,
+            subtitle: `Roll No: ${student.roll_number}`,
             link: `/students/${student.id}`,
             icon: 'student',
           });

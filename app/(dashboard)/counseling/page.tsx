@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabase/client';
 import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
-import PageHeader from '@/components/ui/PageHeader';
 import HorizontalFilterBar from '@/components/filters/HorizontalFilterBar';
 import { useFilters } from '@/hooks/useFilters';
 import type { FilterConfig } from '@/lib/types/filters';
@@ -59,12 +58,14 @@ export default function CounselingSessionsPage() {
   const [mentorId, setMentorId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false); // Check if user is admin (not a mentor)
 
-  // Filter configuration - Student-focused filters (institution, department, program)
+  // Filter configuration - role-based visibility
+  // Institution: super_admin only | Department: super_admin, hod, mentor_incharge, principal | Program: all roles
   const filterConfigs: FilterConfig[] = [
-    {
+    // Institution filter - super_admin only
+    ...(user?.role === 'super_admin' ? [{
       key: 'institution',
       label: 'Institution',
-      type: 'dropdown',
+      type: 'dropdown' as const,
       options: async () => {
         try {
           const response = await fetch('/api/jkkn/institutions', {
@@ -74,7 +75,6 @@ export default function CounselingSessionsPage() {
           });
           if (response.ok) {
             const data = await response.json();
-            // Deduplicate institutions by name
             const uniqueInstitutions = new Map();
             (data.data || []).forEach((inst: any) => {
               const institutionName = inst.institution_name || inst.name;
@@ -94,11 +94,12 @@ export default function CounselingSessionsPage() {
       },
       placeholder: 'All institutions',
       width: 'w-56',
-    },
-    {
+    }] : []),
+    // Department filter - super_admin, hod, mentor_incharge, principal
+    ...(['super_admin', 'hod', 'mentor_incharge', 'principal'].includes(user?.role || '') ? [{
       key: 'department',
       label: 'Department',
-      type: 'dropdown',
+      type: 'dropdown' as const,
       options: async () => {
         try {
           const response = await fetch('/api/jkkn/departments', {
@@ -108,7 +109,6 @@ export default function CounselingSessionsPage() {
           });
           if (response.ok) {
             const data = await response.json();
-            // Deduplicate departments by name
             const uniqueDepartments = new Map();
             (data.data || []).forEach((dept: any) => {
               const departmentName = dept.department_name || dept.name;
@@ -128,11 +128,12 @@ export default function CounselingSessionsPage() {
       },
       placeholder: 'All departments',
       width: 'w-56',
-    },
+    }] : []),
+    // Program filter - all roles
     {
       key: 'program',
       label: 'Program',
-      type: 'dropdown',
+      type: 'dropdown' as const,
       options: async () => {
         try {
           const response = await fetch('/api/jkkn/programs', {
@@ -142,7 +143,6 @@ export default function CounselingSessionsPage() {
           });
           if (response.ok) {
             const data = await response.json();
-            // Deduplicate programs by name (multiple institutions may have same program name)
             const uniquePrograms = new Map();
             (data.data || []).forEach((prog: any) => {
               const programName = prog.program_name || prog.name;
@@ -592,27 +592,6 @@ export default function CounselingSessionsPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">
-      <PageHeader
-        variant="gradient"
-        title="Counseling Sessions"
-        description={isAdmin
-          ? 'View and monitor all counseling sessions across the institution'
-          : 'Manage and track your counseling sessions'}
-        actions={mentorId && !isAdmin ? (
-          <Button
-            onClick={openCreateModal}
-            variant="primary"
-            size="md"
-            className="w-full lg:w-auto flex items-center justify-center min-h-[44px] lg:min-h-0"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Session
-          </Button>
-        ) : undefined}
-      />
-
       {/* Filters & Search */}
       <div className="bg-white rounded-xl border border-neutral-200/50 p-4 lg:p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-3 lg:mb-4">

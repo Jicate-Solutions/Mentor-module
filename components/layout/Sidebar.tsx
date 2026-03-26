@@ -527,6 +527,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                 <p className="text-[11px] text-primary-600 truncate">
                   {user.email}
                 </p>
+                <span className="inline-block mt-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-brand-green/10 text-brand-green capitalize">
+                  {userRole.replace(/_/g, ' ')}
+                </span>
               </div>
               <button
                 onClick={handleLogout}

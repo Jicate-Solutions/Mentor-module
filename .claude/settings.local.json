@@ -125,10 +125,14 @@
       "Bash(sort -t: -k2 -n)",
       "Bash(wc -l /c/Users/Admin/Documents/GitHub/Mentor-module/app/\\\\\\(dashboard\\\\\\)/mentor/[id]/components/CounselingTab.tsx)",
       "Bash(grep -rn \"async function\" /c/Users/Admin/Documents/GitHub/Mentor-module/app/\\\\\\(dashboard\\\\\\)/mentor/[id]/components/CounselingTab.tsx)",
-      "Bash(grep -rn \"console\\\\.log\\\\|console\\\\.error\" /c/Users/Admin/Documents/GitHub/Mentor-module/app/\\\\\\(dashboard\\\\\\)/mentor/[id] --include=\"*.tsx\")"
+      "Bash(grep -rn \"console\\\\.log\\\\|console\\\\.error\" /c/Users/Admin/Documents/GitHub/Mentor-module/app/\\\\\\(dashboard\\\\\\)/mentor/[id] --include=\"*.tsx\")",
+      "Read(//c/Users/Admin/AppData/Local/Temp/claude/c--Users-Admin-Documents-GitHub-Mentor-module/5186f170-b5fa-496d-a5ad-02aaa93a9271/tasks/**)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "c:\\Users\\Admin\\Documents\\GitHub\\Mentor-module"
+    ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [

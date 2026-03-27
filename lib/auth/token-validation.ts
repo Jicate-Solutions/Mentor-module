@@ -1,5 +1,5 @@
 import { authConfig } from './config';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 
 export interface JKKNUser {
   id: string;
@@ -52,8 +52,13 @@ export async function validateToken(accessToken: string): Promise<ValidationResp
   // ── Fallback 1: Check user_sessions table in Supabase ──────────────
   // On Vercel serverless, in-memory cache is empty per invocation.
   // The session was stored in DB during login — use it to avoid auth server calls.
+  // Uses direct createClient() to avoid importing server.ts (which needs next/headers).
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (supabaseUrl && serviceRoleKey) {
   try {
-    const supabase = createAdminClient();
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
     const { data: session } = await supabase
       .from('user_sessions')
       .select('user:users(*)')
@@ -84,6 +89,7 @@ export async function validateToken(accessToken: string): Promise<ValidationResp
     }
   } catch (dbErr) {
     console.warn('[Token Validation] DB session lookup failed, falling back to auth server:', dbErr instanceof Error ? dbErr.message : dbErr);
+  }
   }
 
   // ── Fallback 2: Validate with JKKN auth server ───────────────────

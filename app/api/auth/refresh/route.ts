@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { seedValidationCache } from '@/lib/auth/token-validation';
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,6 +33,18 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
+
+    // Seed validation cache so API calls don't re-validate with auth server
+    if (data.access_token && data.user) {
+      seedValidationCache(data.access_token, {
+        id: data.user.id,
+        email: data.user.email,
+        full_name: data.user.full_name,
+        role: data.user.role,
+        institution_id: data.user.institution_id || undefined,
+        department_id: data.user.department_id || undefined,
+      });
+    }
 
     return NextResponse.json(data);
   } catch (error) {

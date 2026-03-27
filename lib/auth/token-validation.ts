@@ -139,6 +139,21 @@ export async function validateToken(accessToken: string): Promise<ValidationResp
 }
 
 /**
+ * Pre-populate validation cache after successful login or token refresh.
+ * This prevents unnecessary re-validation with the auth server when the token
+ * was just issued. Without this, a slow auth server causes 401s on all API
+ * calls even though the token is known-valid from the exchange.
+ */
+export function seedValidationCache(accessToken: string, user: JKKNUser): void {
+  const result: ValidationResponse = { valid: true, user };
+  validationCache.set(accessToken, {
+    result,
+    expiresAt: Date.now() + CACHE_DURATION,
+  });
+  console.log('[Token Validation] ✓ Cache seeded for token (user:', user.id, ')');
+}
+
+/**
  * Clear expired entries from validation cache
  * Called periodically to prevent memory leaks
  */

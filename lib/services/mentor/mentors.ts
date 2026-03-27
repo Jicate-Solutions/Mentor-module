@@ -370,7 +370,7 @@ export async function getMentorById(mentorJkknId: string): Promise<Mentor | null
     const { data: userByEmail } = await supabaseAdmin
       .from('users')
       .select('id, jkkn_user_id, department_id, institution_id')
-      .eq('email', staff.email)
+      .ilike('email', staff.email.toLowerCase())
       .maybeSingle();
 
     if (userByEmail) {

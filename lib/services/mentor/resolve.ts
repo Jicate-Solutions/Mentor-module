@@ -248,7 +248,7 @@ export async function resolveMentorByJkknId(
           const { data: userByEmail } = await supabase
             .from('users')
             .select('id, email, full_name')
-            .eq('email', email)
+            .ilike('email', email.toLowerCase())
             .maybeSingle();
 
           if (userByEmail) {

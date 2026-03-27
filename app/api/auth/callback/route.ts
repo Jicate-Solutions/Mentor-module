@@ -4,6 +4,7 @@ import { authConfig } from '@/lib/auth/config';
 import { upsertUser, createUserSession, isRoleAllowed, getDefaultRouteForRole } from '@/lib/supabase/auth';
 import { recordLogin } from '@/lib/services/mentor/activity';
 import { createAdminClient } from '@/lib/supabase/server';
+import { seedValidationCache } from '@/lib/auth/token-validation';
 
 /**
  * POST /api/auth/callback
@@ -70,6 +71,18 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    // ── Step 2b: Seed token validation cache ────────────────────────────
+    // The auth server just gave us this token — it's valid. Pre-cache so
+    // subsequent API calls don't re-validate (prevents 401s on slow auth server).
+    seedValidationCache(access_token, {
+      id: jkknUser.id,
+      email: jkknUser.email,
+      full_name: jkknUser.full_name,
+      role: jkknUser.role,
+      institution_id: jkknUser.institution_id || undefined,
+      department_id: jkknUser.department_id || undefined,
+    });
 
     // ── Step 3: Upsert user in Supabase ─────────────────────────────────
     const storedUser = await upsertUser({

@@ -214,8 +214,28 @@ export async function assignStudentsToMentor(
             const apiName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim();
             if (apiName) resolvedName = apiName;
           }
+        } catch (e) {
+          console.warn(`[assignStudentsToMentor] JKKN API email lookup failed for ${studentId}:`, e instanceof Error ? e.message : e);
+        }
+      }
+
+      // Fallback: check jkkn_students cache if still no real email
+      if (!resolvedEmail || resolvedEmail.includes('@student.jkkn.ac.in')) {
+        try {
+          const { data: cached } = await supabaseAdmin
+            .from('jkkn_students')
+            .select('email, name')
+            .eq('id', studentId)
+            .not('email', 'is', null)
+            .maybeSingle();
+
+          if (cached?.email && !cached.email.includes('@student.jkkn.ac.in')) {
+            resolvedEmail = cached.email;
+            console.log(`[assignStudentsToMentor] Resolved email from cache: ${resolvedEmail}`);
+          }
+          if (cached?.name && !resolvedName) resolvedName = cached.name;
         } catch {
-          // Non-critical, continue with existing email
+          // Non-critical
         }
       }
 
@@ -356,6 +376,7 @@ export async function assignStudentsToMentor(
       // ── Send assignment notification email (non-blocking) ────────────
       const finalEmail = resolvedEmail || studentInput.email || '';
       if (finalEmail && !finalEmail.includes('@student.jkkn.ac.in') && finalEmail.includes('@')) {
+        console.log(`[assignStudentsToMentor] Sending notification to ${finalEmail} for ${resolvedName || studentInput.name}`);
         sendMentorAssignmentEmail({
           studentEmail: finalEmail,
           studentName: resolvedName || studentInput.name,
@@ -363,6 +384,8 @@ export async function assignStudentsToMentor(
           mentorName: mentorDisplayName,
           mentorId,
         }).catch(e => console.error('[assignStudentsToMentor] Assignment email failed:', e));
+      } else {
+        console.warn(`[assignStudentsToMentor] ⚠ No valid email for ${studentInput.name} (email: "${finalEmail}") — notification skipped`);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -547,6 +570,59 @@ export async function bulkAssignStudents(
       .from('mentors')
       .update({ total_students: count || 0, updated_at: new Date().toISOString() })
       .eq('id', mentorId);
+
+    // ── Send email notifications for successfully assigned students (non-blocking) ──
+    // Fetch mentor display name
+    let mentorDisplayName = 'Your Mentor';
+    const { data: mentorUser } = await supabaseAdmin
+      .from('mentors')
+      .select('user_id')
+      .eq('id', mentorId)
+      .single();
+    if (mentorUser?.user_id) {
+      const { data: mu } = await supabaseAdmin
+        .from('users')
+        .select('full_name')
+        .eq('id', mentorUser.user_id)
+        .single();
+      if (mu?.full_name) mentorDisplayName = mu.full_name;
+    }
+
+    // Send emails in parallel (non-blocking, fire-and-forget)
+    const successStudents = students.filter(s => result.success.includes(s.rollNumber));
+    for (const student of successStudents) {
+      let email = student.email || '';
+
+      // Resolve real email from jkkn_students cache if placeholder
+      if (!email || email.includes('@student.jkkn.ac.in')) {
+        const { data: cached } = await supabaseAdmin
+          .from('jkkn_students')
+          .select('email')
+          .eq('id', student.id)
+          .not('email', 'is', null)
+          .maybeSingle();
+        if (cached?.email && !cached.email.includes('@student.jkkn.ac.in')) {
+          email = cached.email;
+          // Also update the student record with resolved email
+          await supabaseAdmin
+            .from('students')
+            .update({ email, updated_at: new Date().toISOString() })
+            .eq('id', student.id);
+        }
+      }
+
+      if (email && !email.includes('@student.jkkn.ac.in') && email.includes('@')) {
+        sendMentorAssignmentEmail({
+          studentEmail: email,
+          studentName: student.name,
+          studentId: student.id,
+          mentorName: mentorDisplayName,
+          mentorId,
+        }).catch(e => console.error(`[bulkAssignStudents] Email failed for ${student.name}:`, e));
+      } else {
+        console.warn(`[bulkAssignStudents] ⚠ No valid email for ${student.name} (email: "${email}") — notification skipped`);
+      }
+    }
   }
 
   return result;

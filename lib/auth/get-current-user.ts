@@ -72,15 +72,18 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
     // If not found by jkkn_user_id, try by email (handles JKKN ID changes)
     if (error || !user) {
+      // Normalize email to match the lowercase format used by upsertUser()
+      const normalizedEmail = validation.user.email.toLowerCase();
       console.log('[Auth] User not found by jkkn_user_id, trying email lookup...', {
-        searchingFor: validation.user.email,
+        searchingFor: normalizedEmail,
+        originalEmail: validation.user.email,
         originalError: error?.message || error?.code,
       });
 
       const { data: userByEmail, error: emailError } = await supabaseAdmin
         .from('users')
         .select('*')
-        .eq('email', validation.user.email)
+        .ilike('email', normalizedEmail)
         .single();
 
       if (userByEmail) {

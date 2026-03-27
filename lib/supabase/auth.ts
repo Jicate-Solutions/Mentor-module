@@ -279,6 +279,7 @@ export function mapJkknRoleToDbRole(jkknRole: string): string {
     // Institution level access
     'digital_coordinator': 'digital_coordinator',
     'principal': 'principal',
+    'coe': 'principal', // Controller of Examinations — institution-level access
     // Mentor access (faculty and HOD)
     'hod': 'hod',
     'faculty': 'faculty',
@@ -295,6 +296,7 @@ export function isRoleAllowed(role: string): boolean {
     'faculty',
     'hod',
     'principal',
+    'coe',
     'administrator',
     'digital_coordinator',
     'super_admin',
@@ -311,6 +313,7 @@ export function getDefaultRouteForRole(role: string): string {
     faculty: '/mentor',
     hod: '/dashboard',
     principal: '/dashboard',
+    coe: '/dashboard',
     administrator: '/dashboard',
     digital_coordinator: '/dashboard',
     super_admin: '/dashboard',

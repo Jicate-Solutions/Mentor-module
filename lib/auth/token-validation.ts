@@ -1,4 +1,5 @@
 import { authConfig } from './config';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export interface JKKNUser {
   id: string;
@@ -48,6 +49,44 @@ export async function validateToken(accessToken: string): Promise<ValidationResp
     return cached.result;
   }
 
+  // ── Fallback 1: Check user_sessions table in Supabase ──────────────
+  // On Vercel serverless, in-memory cache is empty per invocation.
+  // The session was stored in DB during login — use it to avoid auth server calls.
+  try {
+    const supabase = createAdminClient();
+    const { data: session } = await supabase
+      .from('user_sessions')
+      .select('user:users(*)')
+      .eq('access_token', accessToken)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+
+    if (session?.user) {
+      const user = session.user as any;
+      const result: ValidationResponse = {
+        valid: true,
+        user: {
+          id: user.jkkn_user_id || user.id,
+          email: user.email,
+          full_name: user.full_name,
+          role: user.role,
+          institution_id: user.institution_id || undefined,
+          department_id: user.department_id || undefined,
+        },
+      };
+      // Populate in-memory cache for subsequent calls in same instance
+      validationCache.set(accessToken, {
+        result,
+        expiresAt: Date.now() + CACHE_DURATION,
+      });
+      console.log('[Token Validation] ✓ Validated via DB session (user:', user.id, ')');
+      return result;
+    }
+  } catch (dbErr) {
+    console.warn('[Token Validation] DB session lookup failed, falling back to auth server:', dbErr instanceof Error ? dbErr.message : dbErr);
+  }
+
+  // ── Fallback 2: Validate with JKKN auth server ───────────────────
   try {
     console.log('[Token Validation] Validating token with auth server...');
 

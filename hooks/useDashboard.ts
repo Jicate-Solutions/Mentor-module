@@ -136,9 +136,12 @@ export function useDashboard() {
           if (res.ok) {
             statsData = await res.json();
             setStats(statsData!);
+          } else {
+            const text = await res.text().catch(() => '');
+            console.error(`[Dashboard] Stats API failed: ${res.status}`, text);
           }
         })
-        .catch(() => {})
+        .catch((e) => console.error('[Dashboard] Stats fetch error:', e))
         .finally(() => setStatsLoading(false))
     );
 
@@ -150,9 +153,11 @@ export function useDashboard() {
             const json = await res.json();
             activitiesData = json.activities || [];
             setActivities(activitiesData);
+          } else {
+            console.error(`[Dashboard] Activity API failed: ${res.status}`);
           }
         })
-        .catch(() => {})
+        .catch((e) => console.error('[Dashboard] Activity fetch error:', e))
         .finally(() => setActivityLoading(false))
     );
 
@@ -175,9 +180,11 @@ export function useDashboard() {
               color: colors[index % colors.length],
             }));
             setDepartmentProgress(departmentProgressResult);
+          } else {
+            console.error(`[Dashboard] Trends API failed: ${res.status}`);
           }
         })
-        .catch(() => {})
+        .catch((e) => console.error('[Dashboard] Trends fetch error:', e))
         .finally(() => setTrendsLoading(false))
     );
 
@@ -189,9 +196,11 @@ export function useDashboard() {
             sessionsRaw = await res.json();
             upcomingSessionsData = sessionsRaw!.sessions || [];
             setUpcomingSessions(upcomingSessionsData);
+          } else {
+            console.error(`[Dashboard] Sessions API failed: ${res.status}`);
           }
         })
-        .catch(() => {})
+        .catch((e) => console.error('[Dashboard] Sessions fetch error:', e))
         .finally(() => setSessionsLoading(false))
     );
 

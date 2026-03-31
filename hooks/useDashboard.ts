@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { readCache, writeCache } from '@/lib/utils/session-cache';
 
 interface DashboardStats {
@@ -86,6 +87,8 @@ const DEFAULT_STATS: DashboardStats = {
 };
 
 export function useDashboard() {
+  const router = useRouter();
+  const redirecting = useRef(false);
   const cachedData = useRef(readCache<DashboardData>(CACHE_KEY, CACHE_TTL));
   const isColdLoad = !cachedData.current;
 
@@ -106,6 +109,13 @@ export function useDashboard() {
   const fetchDashboardData = useCallback(async () => {
     const token = localStorage.getItem('access_token');
     if (!token) return;
+
+    const handleUnauthorized = () => {
+      if (redirecting.current) return;
+      redirecting.current = true;
+      localStorage.removeItem('access_token');
+      router.push('/login');
+    };
 
     const authHeaders = { Authorization: `Bearer ${token}` };
 
@@ -136,6 +146,8 @@ export function useDashboard() {
           if (res.ok) {
             statsData = await res.json();
             setStats(statsData!);
+          } else if (res.status === 401) {
+            handleUnauthorized();
           } else {
             const text = await res.text().catch(() => '');
             console.error(`[Dashboard] Stats API failed: ${res.status}`, text);
@@ -153,6 +165,8 @@ export function useDashboard() {
             const json = await res.json();
             activitiesData = json.activities || [];
             setActivities(activitiesData);
+          } else if (res.status === 401) {
+            handleUnauthorized();
           } else {
             console.error(`[Dashboard] Activity API failed: ${res.status}`);
           }
@@ -180,6 +194,8 @@ export function useDashboard() {
               color: colors[index % colors.length],
             }));
             setDepartmentProgress(departmentProgressResult);
+          } else if (res.status === 401) {
+            handleUnauthorized();
           } else {
             console.error(`[Dashboard] Trends API failed: ${res.status}`);
           }
@@ -196,6 +212,8 @@ export function useDashboard() {
             sessionsRaw = await res.json();
             upcomingSessionsData = sessionsRaw!.sessions || [];
             setUpcomingSessions(upcomingSessionsData);
+          } else if (res.status === 401) {
+            handleUnauthorized();
           } else {
             console.error(`[Dashboard] Sessions API failed: ${res.status}`);
           }
@@ -239,7 +257,7 @@ export function useDashboard() {
       });
       cachedData.current = null;
     });
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');

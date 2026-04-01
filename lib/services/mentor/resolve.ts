@@ -228,6 +228,22 @@ export async function resolveMentorByJkknId(
     }
   }
 
+  // Step 1c: Fallback — resolve via mentors.id → users.
+  // getMentorById fallback 2 can match on mentors.id directly; mirror that here
+  // so the authorization check can succeed when the URL contains a mentors.id UUID.
+  if (!user) {
+    const { data: mentorRow } = await supabase
+      .from('mentors')
+      .select('users!inner(id, email, full_name)')
+      .eq('id', jkknUserId)
+      .maybeSingle();
+    const mentorUser = (mentorRow?.users as unknown) as { id: string; email: string; full_name: string | null } | null;
+    if (mentorUser) {
+      console.log(`[resolveMentorByJkknId] Found by mentors.id fallback for: ${jkknUserId}`);
+      user = mentorUser;
+    }
+  }
+
   // Step 2: If not found, try JKKN API + email fallback
   if (!user && apiKey) {
     console.log(`[resolveMentorByJkknId] No user found by jkkn_user_id=${jkknUserId}, trying JKKN API + email lookup...`);

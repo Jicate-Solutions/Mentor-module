@@ -30,7 +30,7 @@ export async function GET(
     const canAccess = await canManageMentor(
       userAccess,
       resolved.mentor.id,
-      resolved.mentor.institution_id || ''
+      resolved.mentor.institution_id || userAccess.institutionId || ''
     );
     if (!canAccess) {
       return err('Forbidden', 403);
@@ -81,7 +81,7 @@ export async function POST(
     const canManage = await canManageMentor(
       userAccess,
       resolved.mentor.id,
-      resolved.mentor.institution_id || ''
+      resolved.mentor.institution_id || userAccess.institutionId || ''
     );
 
     if (!canManage) {

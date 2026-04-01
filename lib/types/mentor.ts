@@ -219,3 +219,28 @@ export interface NotAttendedStudent {
   sessionDate: string;
   sessionId: string;
 }
+
+// ============ Session Grouping Types ============
+
+/**
+ * Groups multiple per-student CounselingSession rows that share the same
+ * date + sessionName into a single logical "session day" for UI rendering.
+ */
+export interface SessionGroup {
+  date: string;
+  sessionName: string;
+  sessionTime: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  sessions: CounselingSession[]; // one entry per student
+}
+
+/**
+ * Payload for adding a student to an already-scheduled session day.
+ * The referenceSessionId identifies any existing row for that day so the
+ * API can clone its date/time/sessionName metadata.
+ */
+export interface AddStudentToSessionDayPayload {
+  referenceSessionId: string;
+  studentJkknId: string;
+  notes?: string;
+}

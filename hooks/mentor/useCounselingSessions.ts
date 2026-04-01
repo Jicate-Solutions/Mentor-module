@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import { readCache, writeCache, clearCache } from '@/lib/utils/session-cache';
-import type { CounselingSession, Student } from '@/lib/types/mentor';
+import { groupSessionsByDate } from '@/lib/utils/session-grouping';
+import type { CounselingSession, SessionGroup, Student } from '@/lib/types/mentor';
 
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -206,12 +207,55 @@ export function useCounselingSessions(mentorId: string) {
     [mentorId, cacheKey]
   );
 
+  /**
+   * POST /api/mentor/{mentorId}/counseling/{referenceSessionId}/add-student
+   * Adds a new student to an existing session day by cloning the metadata
+   * of the referenced session row.  On success the full session list is
+   * re-fetched so `sessions` (and `sessionGroups`) stay in sync.
+   */
+  const addStudentToSession = useCallback(
+    async (
+      referenceSessionId: string,
+      studentJkknId: string,
+      notes?: string
+    ): Promise<void> => {
+      const res = await fetchWithAuthRetry(
+        `/api/mentor/${mentorId}/counseling/${referenceSessionId}/add-student`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentJkknId, notes }),
+        }
+      );
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || 'Failed to add student to session');
+      }
+
+      // Invalidate cache then re-fetch so state is authoritative.
+      clearCache(cacheKey);
+      await fetchData();
+    },
+    [mentorId, cacheKey, fetchData]
+  );
+
+  /**
+   * Derived view of `sessions` grouped by date + sessionName.
+   * Re-computed only when `sessions` changes — no extra network call needed.
+   */
+  const sessionGroups: SessionGroup[] = useMemo(
+    () => groupSessionsByDate(sessions),
+    [sessions]
+  );
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   return {
     sessions,
+    sessionGroups,
     students,
     loading,
     error,
@@ -220,5 +264,6 @@ export function useCounselingSessions(mentorId: string) {
     updateSession,
     deleteSession,
     submitFeedback,
+    addStudentToSession,
   };
 }

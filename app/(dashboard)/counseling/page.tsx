@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { CounselingSession } from '@/lib/types/mentor';
+import { CounselingSession, SessionGroup } from '@/lib/types/mentor';
 import { supabase } from '@/lib/supabase/client';
 import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import SearchInput from '@/components/ui/SearchInput';
@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button';
 import HorizontalFilterBar from '@/components/filters/HorizontalFilterBar';
 import { useFilters } from '@/hooks/useFilters';
 import type { FilterConfig } from '@/lib/types/filters';
+import SessionDayCard from '@/app/(dashboard)/components/SessionDayCard';
 
 type TabType = 'all' | 'upcoming' | 'completed';
 
@@ -698,119 +699,49 @@ export default function CounselingSessionsPage() {
 
         {!loading && !error && filteredSessions.length > 0 && (
           <div className="space-y-4">
-            {filteredSessions.map(session => (
-              <div
-                key={session.id}
-                className="border border-neutral-200 rounded-xl p-5 hover:border-brand-green/30 hover:shadow-md transition-all bg-white"
-              >
-                {/* Session Header */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-neutral-800 text-lg mb-2">
-                      {session.sessionName}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm text-neutral-600">
-                      <div className="flex items-center gap-1.5 whitespace-nowrap">
-                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="truncate">
-                          {new Date(session.date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 whitespace-nowrap">
-                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {session.time}
-                      </div>
-                      <div className="flex items-center gap-1.5 whitespace-nowrap">
-                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        {session.students.length} {session.students.length === 1 ? 'Learner' : 'Learners'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span
-                      className={`
-                        px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap
-                        ${session.status === 'completed'
-                          ? 'bg-green-100 text-green-700'
-                          : session.status === 'scheduled'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-gray-100 text-gray-700'
-                        }
-                      `}
-                    >
-                      {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
-                    </span>
-                    {/* Edit/Delete buttons removed for grouped view - grouped sessions represent multiple DB records */}
-                  </div>
-                </div>
-
-                {/* Students List */}
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium text-neutral-700 mb-2">Learners:</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {session.students.map((student, index) => (
-                      <div
-                        key={student.id || index}
-                        className="flex items-center gap-2 p-2 bg-neutral-50 rounded-lg border border-neutral-200"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-brand-green/10 flex items-center justify-center text-brand-green font-medium text-sm">
-                          {student.name?.charAt(0).toUpperCase() || '?'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-neutral-800 truncate">
-                            {student.name}
-                          </p>
-                          {student.rollNumber && (
-                            <p className="text-xs text-neutral-500">
-                              {student.rollNumber}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Notes */}
-                {session.notes && (
-                  <div className="mt-4 pt-4 border-t border-neutral-200">
-                    <h4 className="text-sm font-medium text-neutral-700 mb-1">Notes:</h4>
-                    <p className="text-sm text-neutral-600 bg-neutral-50 rounded p-3">
-                      {session.notes}
-                    </p>
-                  </div>
-                )}
-
-                {/* Attachment / Link */}
-                {session.attachment && (
-                  <div className="mt-3 flex items-center gap-2">
-                    <svg className="w-4 h-4 text-brand-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                    </svg>
-                    <a
-                      href={session.attachment}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-brand-green hover:text-primary-700 hover:underline font-medium truncate"
-                    >
-                      {session.attachment.includes('forms.gle') || session.attachment.includes('forms.google')
-                        ? 'Open Google Form'
-                        : 'View Attachment'}
-                    </a>
-                  </div>
-                )}
-              </div>
-            ))}
+            {filteredSessions.map((session, index) => {
+              // Convert the page's local GroupedSession shape to the shared SessionGroup
+              // type so SessionDayCard can render it. Actions are disabled here because
+              // this page is an admin overview without per-student session IDs needed
+              // to call deleteSession/addStudentToSession.
+              const group: SessionGroup = {
+                date: session.date,
+                sessionName: session.sessionName,
+                sessionTime: session.time,
+                status: session.status,
+                sessions: session.students.map((student: any) => ({
+                  id: session.id, // group-level ID (best available without per-student rows)
+                  mentorId: session.mentorId,
+                  studentId: student.id,
+                  studentName: student.name,
+                  student: {
+                    id: student.id,
+                    name: student.name,
+                    email: student.email || '',
+                    rollNumber: student.rollNumber || '',
+                    department: '',
+                    year: '',
+                    avatar: student.avatar,
+                  },
+                  sessionName: session.sessionName,
+                  date: session.date,
+                  time: session.time,
+                  notes: session.notes,
+                  status: session.status,
+                  createdAt: session.createdAt,
+                })),
+              };
+              return (
+                <SessionDayCard
+                  key={`${session.id}-${index}`}
+                  group={group}
+                  assignedStudents={[]}
+                  onRemoveStudent={() => {}}
+                  onAddStudent={() => {}}
+                  disabled={true}
+                />
+              );
+            })}
           </div>
         )}
       </div>

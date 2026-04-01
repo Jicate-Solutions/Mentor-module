@@ -132,7 +132,8 @@
     "deny": [],
     "ask": [],
     "additionalDirectories": [
-      "c:\\Users\\Admin\\Documents\\GitHub\\Mentor-module"
+      "c:\\Users\\Admin\\Documents\\GitHub\\Mentor-module",
+      "c:\\Users\\Admin\\Documents\\GitHub\\mentor -jicate\\Mentor-module\\app\\api\\mentor\\[id]\\counseling\\[sessionId]"
     ]
   },
   "enableAllProjectMcpServers": true,

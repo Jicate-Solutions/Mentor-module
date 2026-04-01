@@ -843,6 +843,258 @@ export async function submitSessionFeedback(
   })();
 }
 
+// ── addStudentToExistingSession ───────────────────────────────────────────────
+
+/**
+ * Add a new student to a pre-scheduled counseling session day without affecting
+ * other students already enrolled on that day.
+ *
+ * The `referenceSessionId` is any existing counseling_sessions row on the target
+ * day — the function copies session_name, date, time, and mentor_id from it,
+ * then creates a fresh row for the new student.
+ *
+ * Flow:
+ *  1. Fetch the reference session to extract session metadata + ownership check
+ *  2. Resolve studentJkknId → real email via JKKN Learners API
+ *  3. Upsert the student row in `students` (same logic as createSession)
+ *  4. Insert a new counseling_sessions row for this student
+ *  5. Log activity (session_created)
+ *  6. Send session-created notification email (non-blocking)
+ *  7. Return the transformed CounselingSession
+ */
+export async function addStudentToExistingSession(
+  mentorJkknId: string,
+  referenceSessionId: string,
+  studentJkknId: string,
+  notes: string | undefined,
+  createdBy: string
+): Promise<CounselingSession> {
+  const supabaseAdmin = createAdminClient();
+  const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
+  const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
+
+  // ── Step 1: Resolve mentor and fetch reference session ────────────────────
+  const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
+  if (!resolved) {
+    throw new Error('Mentor not found. Please ensure the mentor has been set up correctly.');
+  }
+
+  const { data: refSession, error: refError } = await supabaseAdmin
+    .from('counseling_sessions')
+    .select('id, mentor_id, session_name, date, time')
+    .eq('id', referenceSessionId)
+    .eq('mentor_id', resolved.mentor.id)
+    .single();
+
+  if (refError || !refSession) {
+    throw new Error('Reference session not found or does not belong to this mentor');
+  }
+
+  const { session_name: sessionName, date, time } = refSession;
+
+  // ── Step 2: Fetch real student profile from JKKN Learners API ─────────────
+  let realStudentEmail = '';
+  let realStudentData: any = null;
+
+  if (apiKey) {
+    try {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 5000);
+      const jkknResponse = await fetch(
+        `${baseUrl}/api-management/learners/profiles/${studentJkknId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store',
+          signal: ctrl.signal,
+        }
+      );
+      clearTimeout(timeout);
+      if (jkknResponse.ok) {
+        const jkknData = await jkknResponse.json();
+        realStudentData = jkknData.data || jkknData;
+        realStudentEmail =
+          realStudentData?.college_email || realStudentData?.student_email || '';
+        console.log('[addStudentToExistingSession] Got real student email:', realStudentEmail);
+      }
+    } catch (jkknError) {
+      console.error('[addStudentToExistingSession] Error fetching student from JKKN Learners API:', jkknError);
+    }
+  }
+
+  // ── Step 3: Upsert student in Supabase (mirrors createSession logic) ───────
+  const departmentId = resolved.mentor.department_id || '00000000-0000-0000-0000-000000000001';
+  const institutionId = resolved.mentor.institution_id || '00000000-0000-0000-0000-000000000001';
+
+  let { data: studentData, error: studentError } = await supabaseAdmin
+    .from('students')
+    .select('id, name, roll_number, email')
+    .eq('id', studentJkknId)
+    .single();
+
+  // Update placeholder email with real email if available
+  if (studentData && realStudentEmail && studentData.email?.includes('@student.jkkn.ac.in')) {
+    const jkknName = realStudentData
+      ? `${realStudentData.first_name || ''} ${realStudentData.last_name || ''}`.trim()
+      : '';
+    const { data: updatedStudent } = await supabaseAdmin
+      .from('students')
+      .update({
+        email: realStudentEmail,
+        name: jkknName || studentData.name,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', studentJkknId)
+      .select('id, name, roll_number, email')
+      .single();
+    if (updatedStudent) studentData = updatedStudent;
+  }
+
+  if (studentError || !studentData) {
+    const jkknStudentName = realStudentData
+      ? `${realStudentData.first_name || ''} ${realStudentData.last_name || ''}`.trim()
+      : '';
+
+    const rollNum = String(
+      realStudentData?.roll_number ||
+      realStudentData?.register_number ||
+      `JKKN-${studentJkknId.substring(0, 8)}`
+    );
+
+    // Check if student already exists by roll_number under a different UUID
+    const { data: existingByRoll } = await supabaseAdmin
+      .from('students')
+      .select('id, name, roll_number, email')
+      .eq('roll_number', rollNum)
+      .maybeSingle();
+
+    if (existingByRoll && existingByRoll.id !== studentJkknId) {
+      console.log(`[addStudentToExistingSession] Student found by roll_number (id=${existingByRoll.id}), updating in-place`);
+      await supabaseAdmin
+        .from('students')
+        .update({
+          name: jkknStudentName || existingByRoll.name,
+          email: realStudentEmail || existingByRoll.email,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingByRoll.id);
+      studentData = existingByRoll;
+    } else {
+      const { error: createError } = await supabaseAdmin
+        .from('students')
+        .upsert(
+          {
+            id: studentJkknId,
+            name: jkknStudentName || 'Unknown Student',
+            email: realStudentEmail || `${studentJkknId}@student.jkkn.ac.in`,
+            roll_number: rollNum,
+            department_id: departmentId,
+            institution_id: institutionId,
+            year: realStudentData?.admission_year
+              ? String(realStudentData.admission_year)
+              : null,
+            is_active: true,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
+
+      if (createError) {
+        throw new Error(`Failed to store student data: ${createError.message}`);
+      }
+
+      const { data: refetched } = await supabaseAdmin
+        .from('students')
+        .select('id, name, roll_number, email')
+        .eq('id', studentJkknId)
+        .single();
+      studentData = refetched;
+    }
+  }
+
+  // ── Step 4: Insert new counseling_sessions row ────────────────────────────
+  const { data: newSession, error: insertError } = await supabaseAdmin
+    .from('counseling_sessions')
+    .insert({
+      mentor_id: resolved.mentor.id,
+      student_id: studentData?.id || studentJkknId,
+      session_name: sessionName,
+      date,
+      time,
+      notes: notes || null,
+      status: 'scheduled',
+      created_by: createdBy,
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    throw new Error(`Failed to add student to session: ${insertError.message}`);
+  }
+
+  console.log(`[addStudentToExistingSession] Created session ${newSession.id} for student ${studentJkknId}`);
+
+  // ── Step 5: Log activity (non-blocking) ───────────────────────────────────
+  ActivityLogger.sessionCreated(
+    resolved.mentor.id,
+    newSession.id,
+    sessionName,
+    studentData?.id || studentJkknId,
+    createdBy
+  ).catch(e => console.error('[addStudentToExistingSession] Activity log failed:', e));
+
+  // ── Step 6: Send email notification (non-blocking) ────────────────────────
+  const { data: mentorUserData } = await supabaseAdmin
+    .from('users')
+    .select('full_name')
+    .eq('id', resolved.user.id)
+    .single();
+  const mentorName = mentorUserData?.full_name || 'Your Mentor';
+
+  const supabaseEmail = studentData?.email;
+  const finalStudentEmail =
+    realStudentEmail ||
+    (supabaseEmail && !isPlaceholderEmail(supabaseEmail) ? supabaseEmail : '') ||
+    '';
+
+  if (isValidStudentEmail(finalStudentEmail)) {
+    sendSessionCreatedEmail({
+      studentEmail: finalStudentEmail,
+      studentName: studentData?.name || 'Student',
+      studentId: studentData?.id || studentJkknId,
+      mentorName,
+      mentorId: resolved.mentor.id,
+      sessionId: newSession.id,
+      sessionName,
+      sessionDate: date,
+      sessionTime: time,
+      sessionNotes: notes,
+      sessionStatus: 'scheduled',
+    }).catch(e => console.error('[addStudentToExistingSession] Session email failed:', e));
+  } else {
+    console.warn(`[addStudentToExistingSession] Skipping email — no valid address for student ${studentJkknId}`);
+  }
+
+  // ── Step 7: Transform and return ──────────────────────────────────────────
+  return {
+    id: newSession.id,
+    mentorId: newSession.mentor_id,
+    studentId: newSession.student_id,
+    studentName: studentData?.name || 'Unknown Student',
+    sessionName: newSession.session_name,
+    date: newSession.date,
+    time: newSession.time,
+    notes: newSession.notes || undefined,
+    attachment: newSession.attachment_url || undefined,
+    status: newSession.status,
+    createdAt: newSession.created_at,
+    updatedAt: newSession.updated_at,
+  };
+}
+
 // ── resendSessionNotification ─────────────────────────────────────────────────
 
 /**

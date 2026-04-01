@@ -358,18 +358,30 @@ export async function canManageMentor(
   targetMentorId: string,
   targetMentorInstitutionId: string
 ): Promise<boolean> {
-  // Super admin can manage anyone
-  if (userAccess.isSuperAdmin) {
+  // Super admin / legacy 'administrator' role can manage anyone
+  if (userAccess.isSuperAdmin || (userAccess.role as string) === 'administrator') {
     return true;
   }
 
-  // Institution admin can manage mentors in their institution
-  if (userAccess.role === 'institution_admin' && userAccess.institutionId === targetMentorInstitutionId) {
-    return true;
+  // Institution-level roles: institution_admin, admin, principal, digital_coordinator
+  // Also handles the case where the mentor's institution_id is null (data gap) by
+  // falling back to the caller-supplied institution so admins aren't locked out.
+  const isInstitutionLevelRole = ['institution_admin', 'admin', 'principal', 'digital_coordinator'].includes(userAccess.role);
+  if (isInstitutionLevelRole) {
+    // Allow when institutions match, OR when target institution is unknown (null/empty)
+    // and we're within the same institution context (avoids locking out admins on
+    // mentors whose institution_id was not yet populated).
+    const institutionMatches =
+      !targetMentorInstitutionId ||
+      userAccess.institutionId === targetMentorInstitutionId;
+    if (institutionMatches) return true;
   }
 
   // Mentor in-charge can manage mentors in their assigned institution
-  if (userAccess.isMentorIncharge && userAccess.mentorInchargeInstitutionId === targetMentorInstitutionId) {
+  if (userAccess.isMentorIncharge && (
+    userAccess.mentorInchargeInstitutionId === targetMentorInstitutionId ||
+    !targetMentorInstitutionId
+  )) {
     return true;
   }
 
@@ -406,18 +418,25 @@ export async function canAssignStudents(
   targetMentorId: string,
   targetMentorInstitutionId: string
 ): Promise<boolean> {
-  // Super admin can assign to anyone
-  if (userAccess.isSuperAdmin) {
+  // Super admin / legacy 'administrator' role can assign to anyone
+  if (userAccess.isSuperAdmin || (userAccess.role as string) === 'administrator') {
     return true;
   }
 
-  // Institution admin can assign students in their institution
-  if (userAccess.role === 'institution_admin' && userAccess.institutionId === targetMentorInstitutionId) {
-    return true;
+  // Institution-level roles
+  const isInstitutionLevelRole = ['institution_admin', 'admin', 'principal', 'digital_coordinator'].includes(userAccess.role);
+  if (isInstitutionLevelRole) {
+    const institutionMatches =
+      !targetMentorInstitutionId ||
+      userAccess.institutionId === targetMentorInstitutionId;
+    if (institutionMatches) return true;
   }
 
   // Mentor in-charge can assign students to mentors in their institution
-  if (userAccess.isMentorIncharge && userAccess.mentorInchargeInstitutionId === targetMentorInstitutionId) {
+  if (userAccess.isMentorIncharge && (
+    userAccess.mentorInchargeInstitutionId === targetMentorInstitutionId ||
+    !targetMentorInstitutionId
+  )) {
     return true;
   }
 

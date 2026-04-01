@@ -7,6 +7,20 @@ import IDPForm from './IDPForm';
 import { useIDPPlans } from '@/hooks/mentor/useIDPPlans';
 import type { Student, IDPPlan } from '@/lib/types/mentor';
 
+/** Renders rich text HTML from TipTap, falls back gracefully for plain text */
+const RichContent = ({ html }: { html: string }) => {
+  const isHtml = html?.startsWith('<');
+  if (isHtml) {
+    return (
+      <div
+        className="text-[14px] text-neutral-600 leading-relaxed rich-content"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  }
+  return <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{html}</p>;
+};
+
 interface IDPTabProps {
   mentorId: string;
   students: Student[];
@@ -199,13 +213,13 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
               {/* Area of Focus */}
               <div className="bg-brand-yellow/10 rounded-lg border-l-2 border-brand-yellow p-3 mb-3">
                 <p className="text-[13px] font-medium text-neutral-900 mb-1">Area of Focus</p>
-                <p className="text-[14px] text-neutral-700 leading-relaxed whitespace-pre-wrap">{plan.area_of_focus}</p>
+                <p className="text-[14px] text-neutral-700 leading-relaxed">{plan.area_of_focus}</p>
               </div>
 
               {/* SMART Goal */}
               <div className="mb-3">
                 <p className="text-[13px] font-medium text-neutral-900 mb-1">SMART Goal</p>
-                <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.smart_goal_statement}</p>
+                <RichContent html={plan.smart_goal_statement} />
               </div>
 
               {/* Expanded Details */}
@@ -217,13 +231,13 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                       {plan.knowledge_to_develop && (
                         <div>
                           <p className="text-[13px] font-medium text-neutral-900 mb-1">Knowledge to Develop</p>
-                          <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.knowledge_to_develop}</p>
+                          <RichContent html={plan.knowledge_to_develop} />
                         </div>
                       )}
                       {plan.knowledge_development_how && (
                         <div>
                           <p className="text-[13px] font-medium text-neutral-900 mb-1">How to Develop</p>
-                          <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.knowledge_development_how}</p>
+                          <RichContent html={plan.knowledge_development_how} />
                         </div>
                       )}
                     </div>
@@ -235,13 +249,13 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                       {plan.skills_to_gain && (
                         <div>
                           <p className="text-[13px] font-medium text-neutral-900 mb-1">Skills to Gain</p>
-                          <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.skills_to_gain}</p>
+                          <RichContent html={plan.skills_to_gain} />
                         </div>
                       )}
                       {plan.skills_development_how && (
                         <div>
                           <p className="text-[13px] font-medium text-neutral-900 mb-1">How to Develop</p>
-                          <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.skills_development_how}</p>
+                          <RichContent html={plan.skills_development_how} />
                         </div>
                       )}
                     </div>
@@ -251,7 +265,7 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                   <div>
                     <p className="text-[13px] font-medium text-neutral-900 mb-1">Detailed Action Plan</p>
                     <div className="bg-neutral-50 rounded-lg p-3">
-                      <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.detailed_action_plan}</p>
+                      <RichContent html={plan.detailed_action_plan} />
                     </div>
                   </div>
 
@@ -260,7 +274,7 @@ export default function IDPTab({ mentorId, students }: IDPTabProps) {
                     <div>
                       <p className="text-[13px] font-medium text-neutral-900 mb-1">Mentor Notes</p>
                       <div className="bg-blue-50 rounded-lg p-3">
-                        <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-wrap">{plan.mentor_notes}</p>
+                        <RichContent html={plan.mentor_notes} />
                       </div>
                     </div>
                   )}

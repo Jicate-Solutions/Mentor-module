@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import type { Student, IDPPlan } from '@/lib/types/mentor';
 
@@ -41,6 +42,10 @@ export default function IDPForm({
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleRichChange = (field: keyof typeof formData) => (value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -175,14 +180,11 @@ export default function IDPForm({
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               SMART Goal Statement <span className="text-red-500">*</span>
             </label>
-            <textarea
-              name="smart_goal_statement"
+            <RichTextEditor
               value={formData.smart_goal_statement}
-              onChange={handleChange}
+              onChange={handleRichChange('smart_goal_statement')}
               placeholder="Write a Specific, Measurable, Achievable, Relevant, and Time-bound goal..."
-              required
-              rows={4}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent resize-none"
+              minHeight="100px"
             />
             <p className="text-xs text-neutral-500 mt-1">
               Ensure your goal is SMART: Specific, Measurable, Achievable, Relevant, Time-bound
@@ -195,13 +197,11 @@ export default function IDPForm({
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Knowledge to be Developed (What)
               </label>
-              <textarea
-                name="knowledge_to_develop"
+              <RichTextEditor
                 value={formData.knowledge_to_develop}
-                onChange={handleChange}
+                onChange={handleRichChange('knowledge_to_develop')}
                 placeholder="What knowledge areas need development?"
-                rows={5}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent resize-none"
+                minHeight="120px"
               />
             </div>
 
@@ -209,13 +209,11 @@ export default function IDPForm({
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Knowledge Development (How)
               </label>
-              <textarea
-                name="knowledge_development_how"
+              <RichTextEditor
                 value={formData.knowledge_development_how}
-                onChange={handleChange}
+                onChange={handleRichChange('knowledge_development_how')}
                 placeholder="How will this knowledge be acquired?"
-                rows={5}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent resize-none"
+                minHeight="120px"
               />
             </div>
           </div>
@@ -226,13 +224,11 @@ export default function IDPForm({
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Skills to be Gained (What)
               </label>
-              <textarea
-                name="skills_to_gain"
+              <RichTextEditor
                 value={formData.skills_to_gain}
-                onChange={handleChange}
+                onChange={handleRichChange('skills_to_gain')}
                 placeholder="What skills need to be developed?"
-                rows={5}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent resize-none"
+                minHeight="120px"
               />
             </div>
 
@@ -240,13 +236,11 @@ export default function IDPForm({
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Skills Development (How)
               </label>
-              <textarea
-                name="skills_development_how"
+              <RichTextEditor
                 value={formData.skills_development_how}
-                onChange={handleChange}
+                onChange={handleRichChange('skills_development_how')}
                 placeholder="How will these skills be developed?"
-                rows={5}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent resize-none"
+                minHeight="120px"
               />
             </div>
           </div>
@@ -256,14 +250,11 @@ export default function IDPForm({
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               Detailed Action Plan <span className="text-red-500">*</span>
             </label>
-            <textarea
-              name="detailed_action_plan"
+            <RichTextEditor
               value={formData.detailed_action_plan}
-              onChange={handleChange}
+              onChange={handleRichChange('detailed_action_plan')}
               placeholder="Outline specific steps, milestones, and timeline for achieving this goal..."
-              required
-              rows={6}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent resize-none"
+              minHeight="150px"
             />
           </div>
 

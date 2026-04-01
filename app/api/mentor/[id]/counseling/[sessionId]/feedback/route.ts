@@ -32,10 +32,11 @@ export async function POST(
     const resolved = await resolveMentorByJkknId(mentorId, supabase);
     if (!resolved) return err('Mentor not found', 404);
 
+    const effectiveInstitutionId = resolved.mentor.institution_id || userAccess.institutionId || '';
     const canManage = await canManageMentor(
       userAccess,
       resolved.mentor.id,
-      resolved.mentor.institution_id || ''
+      effectiveInstitutionId
     );
     if (!canManage) return err('Permission denied', 403);
 

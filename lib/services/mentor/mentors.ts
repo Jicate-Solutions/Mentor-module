@@ -668,7 +668,11 @@ export async function getMentorList(
     const localIds = mentorId ? mentorLocalIdsMap.get(mentorId) : undefined;
 
     return {
-      id: staff.id,
+      // Prefer Supabase users.id over JKKN HR staff UUID.
+      // The HR API staff.id and the auth-token jkkn_user_id are different UUID namespaces,
+      // so Supabase fallbacks (mentors.user_id, users.id) can't resolve a raw staff.id
+      // when the JKKN API is unavailable. userId is resolved via emailToUserMap above.
+      id: userId || staff.id,
       name: finalName,
       email: staff.email || staff.institution_email,
       department: getDepartmentName(staff.department),

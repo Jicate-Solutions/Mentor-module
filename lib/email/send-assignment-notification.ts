@@ -93,14 +93,28 @@ export async function sendMentorAssignmentEmail(
         text: textContent,
       });
 
+      // Resend SDK returns { data, error } — it does NOT throw on API errors.
+      // Without this check, a quota/domain/auth failure would still stamp
+      // status='sent' with provider_message_id=null.
+      if (result.error || !result.data?.id) {
+        const errMsg =
+          result.error?.message ||
+          (result.error as any)?.name ||
+          'Resend returned no data and no error';
+        console.error('[Assignment Email] ❌ Resend rejected send:', errMsg);
+        if (notificationLogId) {
+          await markEmailFailed(notificationLogId, errMsg);
+        }
+        return false;
+      }
+
       console.log('[Assignment Email] Notification sent via Resend successfully!');
-      console.log('[Assignment Email] Resend response:', JSON.stringify(result, null, 2));
 
       // Update log with success
       if (notificationLogId) {
         await markEmailSent(
           notificationLogId,
-          result.data?.id,
+          result.data.id,
           result as any
         );
       }

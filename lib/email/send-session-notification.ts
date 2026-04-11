@@ -175,14 +175,29 @@ async function sendSessionNotificationEmail(
         text: textContent,
       });
 
+      // Resend SDK returns { data, error } — it does NOT throw on API errors
+      // (quota exceeded, domain unverified, invalid recipient, etc.). Treating
+      // every non-throw as success was the root cause of rows with
+      // status='sent' but provider_message_id=null.
+      if (result.error || !result.data?.id) {
+        const errMsg =
+          result.error?.message ||
+          (result.error as any)?.name ||
+          'Resend returned no data and no error';
+        console.error('[Session Email] ❌ Resend rejected send:', errMsg);
+        if (notificationLogId) {
+          await markEmailFailed(notificationLogId, errMsg);
+        }
+        return false;
+      }
+
       console.log('[Session Email] ✅ Notification sent via Resend successfully!');
-      console.log('[Session Email] Resend response:', JSON.stringify(result, null, 2));
 
       // Update log with success
       if (notificationLogId) {
         await markEmailSent(
           notificationLogId,
-          result.data?.id,
+          result.data.id,
           result as any
         );
       }

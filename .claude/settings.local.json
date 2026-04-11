@@ -127,7 +127,15 @@
       "Bash(grep -rn \"async function\" /c/Users/Admin/Documents/GitHub/Mentor-module/app/\\\\\\(dashboard\\\\\\)/mentor/[id]/components/CounselingTab.tsx)",
       "Bash(grep -rn \"console\\\\.log\\\\|console\\\\.error\" /c/Users/Admin/Documents/GitHub/Mentor-module/app/\\\\\\(dashboard\\\\\\)/mentor/[id] --include=\"*.tsx\")",
       "Read(//c/Users/Admin/AppData/Local/Temp/claude/c--Users-Admin-Documents-GitHub-Mentor-module/5186f170-b5fa-496d-a5ad-02aaa93a9271/tasks/**)",
-      "Bash(find /c/Users/Admin/Documents/GitHub/mentor -jicate/Mentor-module/app -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))"
+      "Bash(find /c/Users/Admin/Documents/GitHub/mentor -jicate/Mentor-module/app -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))",
+      "mcp__stitch__create_project",
+      "mcp__stitch__create_design_system",
+      "mcp__stitch__update_design_system",
+      "mcp__stitch__generate_screen_from_text",
+      "mcp__stitch__list_screens",
+      "mcp__stitch__get_project",
+      "mcp__stitch__get_screen",
+      "Bash(gh pr:*)"
     ],
     "deny": [],
     "ask": [],

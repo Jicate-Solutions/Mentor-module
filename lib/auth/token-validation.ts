@@ -5,8 +5,10 @@ export interface JKKNUser {
   id: string;
   email: string;
   full_name: string;
-  // JKKN may return a single role string, a comma-separated string, or an array
-  role: string | string[];
+  // Resolved primary role (always a single string after resolvePrimaryRole).
+  // Raw JKKN tokens may send string|string[], but callers must resolve before
+  // constructing a JKKNUser.
+  role: string;
   // JKKN may also send all assigned roles in a separate plural field
   roles?: string[];
   institution_id?: string;

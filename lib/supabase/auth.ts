@@ -66,23 +66,38 @@ export async function upsertUser(jkknUser: JKKNUser & {
 
   // Ensure mentor record for faculty — wrapped in try/catch so login never fails
   // just because mentor record creation has an issue
-  if (jkknUser.role === 'faculty' || jkknUser.role === 'hod') {
+  const primaryRole = resolvePrimaryRole(jkknUser.role);
+  if (primaryRole === 'faculty' || primaryRole === 'hod') {
     try {
       let deptId = jkknUser.department_id;
       let instId = jkknUser.institution_id;
 
-      // If OAuth didn't include institution/department, try JKKN Staff API
+      // If OAuth didn't include institution/department, run the multi-tier
+      // JKKN lookup. Passing email lets the Tier 2 fallback find arts college
+      // staff that the single-staff endpoint doesn't return.
       if (!deptId || !instId) {
-        const enriched = await fetchAndBackfillInstitutionDepartment(data.id, jkknUser.id);
+        const enriched = await fetchAndBackfillInstitutionDepartment(
+          data.id,
+          jkknUser.id,
+          jkknUser.email
+        );
         if (enriched) {
           deptId = deptId || enriched.department_id;
           instId = instId || enriched.institution_id;
         }
       }
 
-      if (deptId && instId) {
-        await ensureMentorRecord(data.id, deptId, instId, jkknUser.designation);
-      }
+      // Always create the mentor record, even with empty strings. A hollow row
+      // lets Tier 4 lookups succeed and lets later self-heal (on every mentor
+      // API hit) backfill institution/department as data becomes available.
+      // Previously we skipped creation if either was missing, which permanently
+      // locked out arts college faculty whose staff-API record is unavailable.
+      await ensureMentorRecord(
+        data.id,
+        deptId || '',
+        instId || '',
+        jkknUser.designation
+      );
     } catch (mentorErr) {
       // Log but don't block login — mentor record can be created later via self-heal
       console.warn('Non-blocking: failed to ensure mentor record during login:', mentorErr);
@@ -267,11 +282,76 @@ export async function logoutUser(userId: string) {
 }
 
 /**
- * Map MyJKKN roles to our internal database roles
+ * Priority order for picking a primary role when a user has multiple.
+ * Higher-privilege roles appear first so we promote to the most powerful
+ * role the user holds.
+ */
+const ROLE_PRIORITY = [
+  'super_admin',
+  'administrator',
+  'principal',
+  'coe',
+  'digital_coordinator',
+  'hod',
+  'faculty',
+  'coe_office',
+];
+
+/**
+ * Map unknown/alias JKKN roles to their internal equivalents.
+ * Add new role aliases here as JKKN introduces them.
+ */
+const ROLE_ALIASES: Record<string, string> = {
+  'coe_office': 'faculty',  // COE office staff — treated as faculty
+};
+
+/**
+ * Merge the role and roles fields from a JKKN token into a single flat
+ * string array. JKKN may send role as a string/array and additionally
+ * include all assigned roles in a separate `roles` array field.
+ */
+export function mergeJkknRoles(
+  role: string | string[],
+  roles?: string[]
+): string[] {
+  const fromRole = Array.isArray(role)
+    ? role.map(r => r.trim()).filter(Boolean)
+    : role.split(',').map(r => r.trim()).filter(Boolean);
+
+  const fromRoles = (roles ?? []).map(r => r.trim()).filter(Boolean);
+
+  // Deduplicate, then expand any aliases to their canonical equivalents
+  const merged = [...new Set([...fromRole, ...fromRoles])];
+  return merged.flatMap(r => {
+    const alias = ROLE_ALIASES[r];
+    return alias ? [r, alias] : [r];
+  });
+}
+
+/**
+ * Resolve a single primary role from a merged role list.
+ * Picks the highest-priority known role; if no known role found,
+ * falls back to the first value.
+ */
+export function resolvePrimaryRole(role: string | string[], roles?: string[]): string {
+  const all = mergeJkknRoles(role, roles);
+
+  if (all.length === 0) return '';
+
+  for (const priority of ROLE_PRIORITY) {
+    if (all.includes(priority)) return priority;
+  }
+  return all[0];
+}
+
+/**
+ * Map MyJKKN roles to our internal database roles.
+ * Accepts role + optional roles array — resolves to the primary role first.
  * JKKN Roles: super_admin, administrator, digital_coordinator, principal, hod, faculty
  * Blocked: staff, student (handled by isRoleAllowed)
  */
-export function mapJkknRoleToDbRole(jkknRole: string): string {
+export function mapJkknRoleToDbRole(jkknRole: string | string[], roles?: string[]): string {
+  const primary = resolvePrimaryRole(jkknRole, roles);
   const roleMapping: Record<string, string> = {
     // Full admin access
     'super_admin': 'super_admin',
@@ -283,34 +363,43 @@ export function mapJkknRoleToDbRole(jkknRole: string): string {
     // Mentor access (faculty and HOD)
     'hod': 'hod',
     'faculty': 'faculty',
+    'coe_office': 'faculty', // COE office staff — treated as faculty
   };
 
-  return roleMapping[jkknRole] || jkknRole; // Keep original if not mapped
+  return roleMapping[primary] || primary;
 }
 
 /**
- * Check if user role is allowed to access the system
+ * Check if a user's role(s) are allowed to access the system.
+ * Accepts role + optional roles array — allows access if ANY resolved role
+ * is in the allowed list (including alias expansion, e.g. coe_office → faculty).
  */
-export function isRoleAllowed(role: string): boolean {
+export function isRoleAllowed(role: string | string[], roles?: string[]): boolean {
   const allowedRoles = [
     'faculty',
     'hod',
     'principal',
     'coe',
+    'coe_office',
     'administrator',
     'digital_coordinator',
     'super_admin',
   ];
 
-  return allowedRoles.includes(role);
+  const all = mergeJkknRoles(role, roles);
+  return all.some(r => allowedRoles.includes(r));
 }
 
 /**
- * Get default route for user role
+ * Get default route for user role.
+ * Resolves aliases first (e.g. coe_office → faculty) so unknown/alias roles
+ * still land on the right page instead of falling back to '/'.
  */
-export function getDefaultRouteForRole(role: string): string {
+export function getDefaultRouteForRole(role: string | string[], roles?: string[]): string {
+  const primary = resolvePrimaryRole(role, roles);
   const roleRoutes: Record<string, string> = {
     faculty: '/mentor',
+    coe_office: '/mentor',
     hod: '/dashboard',
     principal: '/dashboard',
     coe: '/dashboard',
@@ -319,7 +408,7 @@ export function getDefaultRouteForRole(role: string): string {
     super_admin: '/dashboard',
   };
 
-  return roleRoutes[role] || '/';
+  return roleRoutes[primary] || '/mentor';
 }
 
 /**
@@ -333,7 +422,7 @@ export function canAccessRoute(role: string, route: string): boolean {
 
   const routePermissions: Record<string, string[]> = {
     '/admin': ['super_admin', 'administrator', 'digital_coordinator'],
-    '/mentor': ['faculty', 'hod', 'principal', 'administrator', 'digital_coordinator', 'super_admin'],
+    '/mentor': ['faculty', 'coe_office', 'hod', 'principal', 'administrator', 'digital_coordinator', 'super_admin'],
     '/dashboard': ['hod', 'principal', 'administrator', 'digital_coordinator', 'super_admin'],
   };
 

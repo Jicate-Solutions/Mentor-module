@@ -5,7 +5,10 @@ export interface JKKNUser {
   id: string;
   email: string;
   full_name: string;
-  role: string;
+  // JKKN may return a single role string, a comma-separated string, or an array
+  role: string | string[];
+  // JKKN may also send all assigned roles in a separate plural field
+  roles?: string[];
   institution_id?: string;
   department_id?: string;
 }

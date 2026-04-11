@@ -7,79 +7,183 @@ export interface ResolvedMentor {
 }
 
 /**
- * Fetches institution_id and department_id from the JKKN Staff API for a user
- * whose local records are missing this data. Updates both `users` and `mentors`
- * tables as a side-effect. Returns the enriched IDs or null on failure.
+ * Extract institution_id from a JKKN staff record in any of the several shapes
+ * the API returns it (nested object, string id, or flat institution_id field).
+ */
+function extractInstitutionIdFromStaff(staff: any): string {
+  if (typeof staff.institution === 'object' && staff.institution !== null) {
+    return staff.institution.id || staff.institution.institution_id || '';
+  }
+  if (typeof staff.institution === 'string') return staff.institution;
+  if (staff.institution_id) return staff.institution_id;
+  return '';
+}
+
+/**
+ * Extract department_id from a JKKN staff record (mirrors institution extraction).
+ */
+function extractDepartmentIdFromStaff(staff: any): string {
+  if (typeof staff.department === 'object' && staff.department !== null) {
+    return staff.department.id || staff.department.department_id || '';
+  }
+  if (typeof staff.department === 'string') return staff.department;
+  if (staff.department_id) return staff.department_id;
+  return '';
+}
+
+/**
+ * Fetches institution_id and department_id for a user whose local records are
+ * missing this data and backfills both `users` and `mentors` tables as a
+ * side-effect.
+ *
+ * Tries multiple sources in order because JKKN's `/api-management/staff/{id}`
+ * endpoint is NOT reliable for every institution (notably arts college staff
+ * are frequently missing — see scripts/sync-arts-college-students.ts):
+ *   Tier 1 — JKKN staff by JKKN user id (fastest, works for most staff)
+ *   Tier 2 — JKKN staff list, filter by email (slower but covers arts college)
+ *   Tier 3 — local `jkkn_institutions` + `jkkn_departments` cache scan by email
+ *            domain heuristic (last-resort; only runs when Tiers 1 & 2 failed)
+ *
+ * Returns the enriched IDs or null if nothing could be resolved.
  */
 export async function fetchAndBackfillInstitutionDepartment(
   userId: string,
-  jkknUserId: string | null
+  jkknUserId: string | null,
+  userEmail?: string | null
 ): Promise<{ institution_id: string; department_id: string } | null> {
-  if (!jkknUserId) return null;
-
   const apiKey = process.env.NEXT_PUBLIC_MYJKKN_API_KEY;
   const baseUrl = process.env.NEXT_PUBLIC_MYJKKN_BASE_URL || 'https://www.jkkn.ai/api';
-  if (!apiKey) return null;
+  const adminClient = createAdminClient();
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000); // 5s max
-    const res = await fetch(`${baseUrl}/api-management/staff/${jkknUserId}`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!res.ok) return null;
+  let institution_id = '';
+  let department_id = '';
+  let source = '';
 
-    const json = await res.json();
-    const staff = json.data || json;
+  // ── Tier 1: JKKN staff by id ────────────────────────────────────────────
+  if (apiKey && jkknUserId) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`${baseUrl}/api-management/staff/${jkknUserId}`, {
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
 
-    // Extract institution_id (same pattern as app/api/jkkn/staff/route.ts)
-    let institution_id = '';
-    if (typeof staff.institution === 'object' && staff.institution !== null) {
-      institution_id = staff.institution.id || staff.institution.institution_id || '';
-    } else if (typeof staff.institution === 'string') {
-      institution_id = staff.institution;
-    } else if (staff.institution_id) {
-      institution_id = staff.institution_id;
+      if (res.ok) {
+        const json = await res.json();
+        const staff = json.data || json;
+        institution_id = extractInstitutionIdFromStaff(staff);
+        department_id = extractDepartmentIdFromStaff(staff);
+        if (institution_id || department_id) source = 'jkkn_staff_by_id';
+      }
+    } catch (e) {
+      console.warn('[Self-Heal] Tier 1 (staff-by-id) failed:', e instanceof Error ? e.message : e);
     }
+  }
 
-    // Extract department_id
-    let department_id = '';
-    if (typeof staff.department === 'object' && staff.department !== null) {
-      department_id = staff.department.id || staff.department.department_id || '';
-    } else if (typeof staff.department === 'string') {
-      department_id = staff.department;
-    } else if (staff.department_id) {
-      department_id = staff.department_id;
+  // ── Tier 2: JKKN staff list, filter by email ────────────────────────────
+  // Arts college staff aren't returned by the single-staff endpoint but DO
+  // appear in the paginated list. We walk up to 10 pages (≈1000 staff) which
+  // is enough for JKKN's current directory.
+  if (apiKey && userEmail && (!institution_id || !department_id)) {
+    try {
+      const email = userEmail.toLowerCase();
+      const maxPages = 10;
+      const perPage = 100;
+      for (let page = 1; page <= maxPages; page++) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(
+          `${baseUrl}/api-management/staff?page=${page}&limit=${perPage}`,
+          { headers: { 'Authorization': `Bearer ${apiKey}` }, signal: controller.signal }
+        );
+        clearTimeout(timeout);
+        if (!res.ok) break;
+
+        const json = await res.json();
+        const list: any[] = json.data || [];
+        if (list.length === 0) break;
+
+        const match = list.find((s: any) => {
+          const candidates = [s.email, s.institution_email, s.personal_email]
+            .filter(Boolean)
+            .map((v: string) => v.toLowerCase());
+          return candidates.includes(email);
+        });
+
+        if (match) {
+          const mInst = extractInstitutionIdFromStaff(match);
+          const mDept = extractDepartmentIdFromStaff(match);
+          if (mInst && !institution_id) institution_id = mInst;
+          if (mDept && !department_id) department_id = mDept;
+          if (institution_id || department_id) source = source || 'jkkn_staff_by_email';
+          break;
+        }
+
+        // If this page was shorter than perPage, we've reached the end.
+        if (list.length < perPage) break;
+      }
+    } catch (e) {
+      console.warn('[Self-Heal] Tier 2 (staff-by-email) failed:', e instanceof Error ? e.message : e);
     }
+  }
 
-    if (!institution_id && !department_id) return null;
-
-    const adminClient = createAdminClient();
-
-    // Backfill users table
-    const userUpdates: Record<string, string> = {};
-    if (institution_id) userUpdates.institution_id = institution_id;
-    if (department_id) userUpdates.department_id = department_id;
-    if (Object.keys(userUpdates).length > 0) {
-      await adminClient.from('users').update(userUpdates).eq('id', userId);
+  // ── Tier 3: local jkkn cache scan by email domain ──────────────────────
+  // Arts college / pharmacy / etc. staff often share an email domain with
+  // an institution that already has students synced into `jkkn_students`.
+  // Borrowing the majority institution for that domain is a last-resort hint.
+  if (userEmail && !institution_id) {
+    try {
+      const domain = userEmail.split('@')[1]?.toLowerCase();
+      if (domain) {
+        // Try matching an institution name/email pattern in the cached list
+        const { data: instMatch } = await adminClient
+          .from('jkkn_institutions')
+          .select('id, name')
+          .ilike('name', `%${domain.split('.')[0]}%`)
+          .limit(1)
+          .maybeSingle();
+        if (instMatch?.id) {
+          institution_id = instMatch.id;
+          source = source || 'jkkn_institutions_cache';
+          console.log(`[Self-Heal] Tier 3 matched institution "${instMatch.name}" for domain ${domain}`);
+        }
+      }
+    } catch (e) {
+      console.warn('[Self-Heal] Tier 3 (cache scan) failed:', e instanceof Error ? e.message : e);
     }
+  }
 
-    // Backfill mentors table (if row exists)
-    const mentorUpdates: Record<string, string> = {};
-    if (institution_id) mentorUpdates.institution_id = institution_id;
-    if (department_id) mentorUpdates.department_id = department_id;
-    if (Object.keys(mentorUpdates).length > 0) {
-      await adminClient.from('mentors').update(mentorUpdates).eq('user_id', userId);
-    }
-
-    console.log(`[Self-Heal] Backfilled inst/dept for user ${userId}: inst=${institution_id}, dept=${department_id}`);
-    return { institution_id, department_id };
-  } catch (e) {
-    console.error('[Self-Heal] Failed to backfill institution/department:', e);
+  if (!institution_id && !department_id) {
+    console.warn(
+      `[Self-Heal] ALL tiers failed for user=${userId} jkkn=${jkknUserId} email=${userEmail ?? '(none)'}. ` +
+      `This is the arts-college / missing-staff scenario — user will need manual institution sync.`
+    );
     return null;
   }
+
+  // Backfill users table
+  const userUpdates: Record<string, string> = {};
+  if (institution_id) userUpdates.institution_id = institution_id;
+  if (department_id) userUpdates.department_id = department_id;
+  if (Object.keys(userUpdates).length > 0) {
+    await adminClient.from('users').update(userUpdates).eq('id', userId);
+  }
+
+  // Backfill mentors table (if row exists)
+  const mentorUpdates: Record<string, string> = {};
+  if (institution_id) mentorUpdates.institution_id = institution_id;
+  if (department_id) mentorUpdates.department_id = department_id;
+  if (Object.keys(mentorUpdates).length > 0) {
+    await adminClient.from('mentors').update(mentorUpdates).eq('user_id', userId);
+  }
+
+  console.log(
+    `[Self-Heal] Backfilled inst/dept for user ${userId} via ${source}: ` +
+    `inst=${institution_id || '(none)'}, dept=${department_id || '(none)'}`
+  );
+  return { institution_id, department_id };
 }
 
 /**
@@ -98,22 +202,25 @@ export async function ensureMentorRecord(
     .maybeSingle();
 
   if (existingMentor) {
-    // Self-heal: if mentor exists but has empty institution/department, try JKKN API
+    // Self-heal: if mentor exists but has empty institution/department, run
+    // the multi-tier backfill. This is idempotent — safe to run on every call.
     if (!existingMentor.institution_id || !existingMentor.department_id) {
       const { data: userForBackfill } = await supabase
         .from('users')
-        .select('jkkn_user_id')
+        .select('jkkn_user_id, email')
         .eq('id', userId)
         .maybeSingle();
-      if (userForBackfill?.jkkn_user_id) {
-        const enriched = await fetchAndBackfillInstitutionDepartment(userId, userForBackfill.jkkn_user_id);
-        if (enriched) {
-          return {
-            id: existingMentor.id,
-            institution_id: enriched.institution_id || existingMentor.institution_id,
-            department_id: enriched.department_id || existingMentor.department_id,
-          };
-        }
+      const enriched = await fetchAndBackfillInstitutionDepartment(
+        userId,
+        userForBackfill?.jkkn_user_id ?? null,
+        userForBackfill?.email ?? null
+      );
+      if (enriched) {
+        return {
+          id: existingMentor.id,
+          institution_id: enriched.institution_id || existingMentor.institution_id,
+          department_id: enriched.department_id || existingMentor.department_id,
+        };
       }
     }
     return existingMentor;
@@ -122,7 +229,7 @@ export async function ensureMentorRecord(
   // No mentors row — fetch user's department/institution for the insert
   const { data: userRecord } = await supabase
     .from('users')
-    .select('department_id, institution_id, designation')
+    .select('department_id, institution_id, designation, jkkn_user_id, email')
     .eq('id', userId)
     .single();
 
@@ -135,19 +242,16 @@ export async function ensureMentorRecord(
   let departmentId = userRecord.department_id || '';
   let institutionId = userRecord.institution_id || '';
 
-  // Self-heal: if user has no institution/department, try JKKN Staff API
+  // Self-heal via multi-tier backfill when either is missing
   if (!departmentId || !institutionId) {
-    const { data: userJkkn } = await supabase
-      .from('users')
-      .select('jkkn_user_id')
-      .eq('id', userId)
-      .maybeSingle();
-    if (userJkkn?.jkkn_user_id) {
-      const enriched = await fetchAndBackfillInstitutionDepartment(userId, userJkkn.jkkn_user_id);
-      if (enriched) {
-        departmentId = enriched.department_id || departmentId;
-        institutionId = enriched.institution_id || institutionId;
-      }
+    const enriched = await fetchAndBackfillInstitutionDepartment(
+      userId,
+      userRecord.jkkn_user_id ?? null,
+      userRecord.email ?? null
+    );
+    if (enriched) {
+      departmentId = enriched.department_id || departmentId;
+      institutionId = enriched.institution_id || institutionId;
     }
   }
 

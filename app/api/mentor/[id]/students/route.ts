@@ -74,7 +74,12 @@ export async function POST(
     const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
 
     if (!resolved) {
-      return err(`Mentor not found for JKKN ID ${mentorJkknId}`, 404);
+      return err(
+        `Mentor profile not yet synced with JKKN (id: ${mentorJkknId}). ` +
+        `This usually self-heals on the next page load. If it persists, contact ` +
+        `your digital coordinator to sync the staff record from JKKN.`,
+        404
+      );
     }
 
     // Authorization: can the current user assign students to this mentor?

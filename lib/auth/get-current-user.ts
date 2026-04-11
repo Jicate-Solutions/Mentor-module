@@ -5,6 +5,7 @@
 import { cookies, headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { validateToken } from './token-validation';
+import { fetchAndBackfillInstitutionDepartment } from '@/lib/services/mentor/resolve';
 
 export interface CurrentUser {
   id: string; // Supabase users table ID
@@ -138,6 +139,26 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       if (mentorRecord) {
         resolvedInstitutionId = resolvedInstitutionId || mentorRecord.institution_id;
         resolvedDepartmentId  = resolvedDepartmentId  || mentorRecord.department_id;
+      }
+    }
+
+    // Last-resort self-heal: if still missing (arts college faculty whose
+    // JKKN Staff API record isn't returned by /staff/{id}), run the multi-tier
+    // backfill with email as the fallback key. Runs on every request that
+    // doesn't already have resolved data, so profiles eventually heal.
+    if (!resolvedInstitutionId || !resolvedDepartmentId) {
+      try {
+        const enriched = await fetchAndBackfillInstitutionDepartment(
+          user.id,
+          user.jkkn_user_id ?? null,
+          user.email ?? null
+        );
+        if (enriched) {
+          resolvedInstitutionId = resolvedInstitutionId || enriched.institution_id;
+          resolvedDepartmentId  = resolvedDepartmentId  || enriched.department_id;
+        }
+      } catch (healErr) {
+        console.warn('[Auth] Self-heal backfill failed (non-blocking):', healErr instanceof Error ? healErr.message : healErr);
       }
     }
 

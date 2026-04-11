@@ -43,11 +43,18 @@ function CallbackContent() {
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       try {
-        // Single API call: exchange code + store session + set cookies
+        // Single API call: exchange code + store session + set cookies.
+        // Pass the redirect_uri that was used in the authorization request so the
+        // server sends the identical value during token exchange (prevents 400 mismatch).
+        const redirectUri =
+          localStorage.getItem('oauth_redirect_uri') ||
+          process.env.NEXT_PUBLIC_REDIRECT_URI ||
+          `${window.location.origin}/callback`;
+
         const response = await fetch('/api/auth/callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, redirect_uri: redirectUri }),
           signal: controller.signal,
         });
 
@@ -74,6 +81,7 @@ function CallbackContent() {
         localStorage.setItem('token_expires_at', tokenExpiresAt.toString());
         localStorage.setItem('session_id', data.session_id);
         localStorage.removeItem('oauth_state');
+        localStorage.removeItem('oauth_redirect_uri');
 
         // Full page reload so AuthProvider re-initializes from localStorage
         window.location.href = data.redirect_url || '/';
@@ -123,6 +131,7 @@ function CallbackContent() {
               onClick={() => {
                 // Clear stale auth state before retry
                 localStorage.removeItem('oauth_state');
+                localStorage.removeItem('oauth_redirect_uri');
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('refresh_token');
                 localStorage.removeItem('user');

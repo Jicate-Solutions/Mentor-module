@@ -58,11 +58,17 @@ export async function getUserAccess(): Promise<UserAccess | null> {
       isMentorIncharge: !!inchargeAssignment,
     });
 
+    // Normalize alias roles to their canonical downstream role so every
+    // permission check, filter, and hardcoded `role === 'faculty'` branch
+    // treats them identically. Keeping this at the auth boundary means no
+    // downstream code needs to know about alias names like 'coe_office'.
+    const normalizedRole = (user.role === 'coe_office' ? 'faculty' : user.role) as AccessLevel;
+
     return {
       userId: user.id,
       jkknUserId: user.jkkn_user_id || null,
       email: user.email || null,
-      role: user.role as AccessLevel,
+      role: normalizedRole,
       institutionId: user.institution_id,
       departmentId: user.department_id,
       isSuperAdmin: user.is_super_admin || user.role === 'super_admin',

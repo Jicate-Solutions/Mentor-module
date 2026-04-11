@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { authConfig } from '@/lib/auth/config';
-import { upsertUser, createUserSession, isRoleAllowed, getDefaultRouteForRole } from '@/lib/supabase/auth';
+import { upsertUser, createUserSession, isRoleAllowed, getDefaultRouteForRole, resolvePrimaryRole } from '@/lib/supabase/auth';
 import { recordLogin } from '@/lib/services/mentor/activity';
 import { createAdminClient } from '@/lib/supabase/server';
 import { seedValidationCache } from '@/lib/auth/token-validation';
@@ -13,7 +13,7 @@ import { seedValidationCache } from '@/lib/auth/token-validation';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { code } = await req.json();
+    const { code, redirect_uri: clientRedirectUri } = await req.json();
 
     if (!code) {
       return NextResponse.json(
@@ -21,6 +21,12 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Prefer the redirect_uri the client actually used in the authorization request.
+    // This guarantees both legs of the OAuth flow send the identical string to JKKN,
+    // preventing "redirect_uri mismatch" 400 errors when env vars differ between
+    // client bundle and server runtime.
+    const redirectUri = clientRedirectUri || authConfig.redirectUri;
 
     // ── Step 1: Exchange code for tokens with JKKN Auth Server ──────────
     const tokenResponse = await fetch(
@@ -33,14 +39,19 @@ export async function POST(req: NextRequest) {
           code,
           app_id: authConfig.clientId,
           api_key: authConfig.apiKey,
-          redirect_uri: authConfig.redirectUri,
+          redirect_uri: redirectUri,
         }),
       }
     );
 
     if (!tokenResponse.ok) {
       const error = await tokenResponse.json().catch(() => ({ error: 'Token exchange failed' }));
-      console.error('Token exchange failed:', tokenResponse.status, error);
+      console.error('Token exchange failed:', {
+        status: tokenResponse.status,
+        redirect_uri_used: redirectUri,
+        app_id: authConfig.clientId,
+        jkkn_error: error,
+      });
       return NextResponse.json(
         {
           error: error.error || 'Token exchange failed',
@@ -52,21 +63,33 @@ export async function POST(req: NextRequest) {
     }
 
     const tokenData = await tokenResponse.json();
-    const { user: jkknUser, access_token, refresh_token, expires_in } = tokenData;
+    const { user: jkknUserRaw, access_token, refresh_token, expires_in } = tokenData;
 
-    if (!jkknUser || !access_token || !refresh_token || !expires_in) {
+    if (!jkknUserRaw || !access_token || !refresh_token || !expires_in) {
       return NextResponse.json(
         { error: 'Invalid response from auth server' },
         { status: 502 }
       );
     }
 
+    // Normalize role: merge the singular `role` field with the optional plural
+    // `roles` array JKKN may send, expand aliases (e.g. coe_office → faculty),
+    // then resolve to the single highest-priority known role.
+    const jkknUser = {
+      ...jkknUserRaw,
+      role: resolvePrimaryRole(jkknUserRaw.role, jkknUserRaw.roles),
+    };
+
     // ── Step 2: Check role access ───────────────────────────────────────
-    if (!isRoleAllowed(jkknUser.role)) {
+    if (!isRoleAllowed(jkknUserRaw.role, jkknUserRaw.roles)) {
+      const displayRoles = [
+        ...(Array.isArray(jkknUserRaw.role) ? jkknUserRaw.role : [jkknUserRaw.role]),
+        ...(jkknUserRaw.roles ?? []),
+      ].join(', ');
       return NextResponse.json(
         {
           error: 'access_denied',
-          message: `Access denied. Only staff members can access the Mentor Module. Your role: ${jkknUser.role}`,
+          message: `Access denied. Only staff members can access the Mentor Module. Your role: ${displayRoles}`,
         },
         { status: 403 }
       );

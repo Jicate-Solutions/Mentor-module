@@ -138,7 +138,12 @@ export async function POST(request: NextRequest) {
     const resolved = await resolveMentorByJkknId(jkkn_mentor_id, supabase);
 
     if (!resolved) {
-      return err('Mentor not found. Visit the mentor profile page first to sync data.', 404);
+      return err(
+        'Your mentor profile is not yet synced with JKKN. This usually resolves ' +
+        'automatically on your next page refresh — try again in a minute. If it ' +
+        'persists, contact your digital coordinator to sync your staff record.',
+        404
+      );
     }
 
     // Authorization: must be allowed to manage this mentor

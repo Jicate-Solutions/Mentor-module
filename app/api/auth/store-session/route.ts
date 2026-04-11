@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { upsertUser, createUserSession, isRoleAllowed, getDefaultRouteForRole } from '@/lib/supabase/auth';
+import { upsertUser, createUserSession, isRoleAllowed, getDefaultRouteForRole, resolvePrimaryRole } from '@/lib/supabase/auth';
 import { recordLogin } from '@/lib/services/mentor/activity';
 import { createAdminClient } from '@/lib/supabase/server';
 
@@ -20,23 +20,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if user role is allowed to access the system
-    if (!isRoleAllowed(jkknUser.role)) {
+    // Check if user role is allowed to access the system.
+    // Checks both the singular `role` field and the optional plural `roles`
+    // array JKKN may send, with alias expansion (e.g. coe_office → faculty).
+    if (!isRoleAllowed(jkknUser.role, jkknUser.roles)) {
+      const displayRoles = [
+        ...(Array.isArray(jkknUser.role) ? jkknUser.role : [jkknUser.role]),
+        ...(jkknUser.roles ?? []),
+      ].join(', ');
       return NextResponse.json(
         {
           error: 'access_denied',
-          message: `Access denied. Only staff members (faculty, HOD, administrators) can access the Mentor Module. Your role: ${jkknUser.role}`,
+          message: `Access denied. Only staff members (faculty, HOD, administrators) can access the Mentor Module. Your role: ${displayRoles}`,
         },
         { status: 403 }
       );
     }
+
+    // Resolve to a single primary role string, merging role + roles fields
+    const primaryRole = resolvePrimaryRole(jkknUser.role, jkknUser.roles);
 
     // Store/update user in Supabase
     const storedUser = await upsertUser({
       id: jkknUser.id,
       email: jkknUser.email,
       full_name: jkknUser.full_name,
-      role: jkknUser.role,
+      role: primaryRole,
       department_id: jkknUser.department_id || null,
       institution_id: jkknUser.institution_id || null,
       phone_number: jkknUser.phone_number || null,
@@ -73,8 +82,9 @@ export async function POST(req: NextRequest) {
       console.warn('Failed to record login (non-blocking):', loginErr);
     }
 
-    // Get default route for user role
-    const redirectUrl = getDefaultRouteForRole(jkknUser.role);
+    // Get default route for user role — use resolved primary role so alias
+    // roles (e.g. coe_office → faculty) land on the correct page instead of '/'.
+    const redirectUrl = getDefaultRouteForRole(primaryRole);
 
     // Set HTTP-only cookies for server-side authentication
     const cookieStore = await cookies();

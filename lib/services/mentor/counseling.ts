@@ -231,7 +231,11 @@ export async function createSession(
   // Resolve JKKN ID → user + mentor
   const resolved = await resolveMentorByJkknId(mentorJkknId, supabaseAdmin);
   if (!resolved) {
-    throw new Error('Mentor not found. Please ensure the mentor has been set up correctly.');
+    throw new Error(
+      'Your mentor profile is not yet synced with JKKN. Try refreshing the page ' +
+      'in a minute — self-heal runs on every request. If the problem persists, ' +
+      'contact your digital coordinator to sync your staff record from JKKN.'
+    );
   }
 
   const { student, session_name: sessionName, date, time: rawTime, notes } = data as any;

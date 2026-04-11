@@ -149,9 +149,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const state = Math.random().toString(36).substring(7);
     localStorage.setItem('oauth_state', state);
 
+    // Compute redirect_uri with the same fallback chain as lib/auth/config.ts so
+    // both legs of the OAuth flow (authorization request + token exchange) always
+    // send the identical string.  window.location.origin is the final backstop so
+    // it always resolves to the correct production domain even if env vars are unset.
+    const redirectUri =
+      process.env.NEXT_PUBLIC_REDIRECT_URI ||
+      (process.env.NEXT_PUBLIC_APP_URL
+        ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/callback`
+        : `${window.location.origin}/callback`);
+
+    // Persist so the callback page can pass the same value to the server
+    localStorage.setItem('oauth_redirect_uri', redirectUri);
+
     const params = new URLSearchParams({
       client_id: process.env.NEXT_PUBLIC_APP_ID!,
-      redirect_uri: process.env.NEXT_PUBLIC_REDIRECT_URI!,
+      redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'read write profile',
       state: state,
@@ -164,7 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('OAuth Authorization Request:');
     console.log('========================================');
     console.log('Client ID:', process.env.NEXT_PUBLIC_APP_ID);
-    console.log('Redirect URI:', process.env.NEXT_PUBLIC_REDIRECT_URI);
+    console.log('Redirect URI:', redirectUri);
     console.log('Full Auth URL:', authUrl);
     console.log('========================================');
 

@@ -2,6 +2,17 @@ import { createAdminClient } from './server';
 import type { JKKNUser } from '../auth/token-validation';
 import { fetchAndBackfillInstitutionDepartment } from '@/lib/services/mentor/resolve';
 
+// Emails that must receive super_admin regardless of the role JKKN returns.
+// Matched case-insensitively after normalization.
+export const SUPER_ADMIN_EMAIL_OVERRIDES = new Set<string>([
+  'ceo@jkkn.ac.in',
+]);
+
+export function isSuperAdminEmailOverride(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return SUPER_ADMIN_EMAIL_OVERRIDES.has(email.toLowerCase());
+}
+
 /**
  * Store or update user in Supabase after JKKN authentication
  */
@@ -14,10 +25,14 @@ export async function upsertUser(jkknUser: JKKNUser & {
   profile_completed?: boolean;
 }) {
   const supabaseAdmin = createAdminClient();
-  const dbRole = mapJkknRoleToDbRole(jkknUser.role);
 
   // Normalize email to lowercase to prevent case-sensitive duplicates
   const normalizedEmail = jkknUser.email.toLowerCase();
+
+  const isEmailOverrideSuperAdmin = SUPER_ADMIN_EMAIL_OVERRIDES.has(normalizedEmail);
+  const dbRole = isEmailOverrideSuperAdmin
+    ? 'super_admin'
+    : mapJkknRoleToDbRole(jkknUser.role);
 
   const userData = {
     jkkn_user_id: jkknUser.id,

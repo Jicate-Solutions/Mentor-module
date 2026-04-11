@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { upsertUser, createUserSession, isRoleAllowed, getDefaultRouteForRole, resolvePrimaryRole } from '@/lib/supabase/auth';
+import { upsertUser, createUserSession, isRoleAllowed, getDefaultRouteForRole, resolvePrimaryRole, isSuperAdminEmailOverride } from '@/lib/supabase/auth';
 import { recordLogin } from '@/lib/services/mentor/activity';
 import { createAdminClient } from '@/lib/supabase/server';
 
@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
     // Check if user role is allowed to access the system.
     // Checks both the singular `role` field and the optional plural `roles`
     // array JKKN may send, with alias expansion (e.g. coe_office → faculty).
-    if (!isRoleAllowed(jkknUser.role, jkknUser.roles)) {
+    // Email overrides (e.g. CEO) bypass the role gate entirely.
+    if (!isSuperAdminEmailOverride(jkknUser.email) && !isRoleAllowed(jkknUser.role, jkknUser.roles)) {
       const displayRoles = [
         ...(Array.isArray(jkknUser.role) ? jkknUser.role : [jkknUser.role]),
         ...(jkknUser.roles ?? []),

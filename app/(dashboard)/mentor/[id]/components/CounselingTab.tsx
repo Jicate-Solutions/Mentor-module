@@ -608,6 +608,9 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               assignedStudents={students}
               onRemoveStudent={handleRemoveStudent}
               onAddStudent={handleAddStudentToSession}
+              onViewSession={handleViewSession}
+              onEditSession={handleEditSession}
+              onDeleteSession={handleDeleteClick}
             />
           ))}
         </div>

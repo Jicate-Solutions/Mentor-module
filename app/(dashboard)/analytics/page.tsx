@@ -11,6 +11,7 @@ import type {
   SessionCompletionSummary,
   PerMentorRow,
   PairingRow,
+  InstitutionSummaryRow,
 } from '@/lib/types/session-analytics';
 import AnalyticsFilters, {
   type FilterState,
@@ -22,6 +23,7 @@ import CompletionDonutChart from './components/CompletionDonutChart';
 import MentorCompletionTable from './components/MentorCompletionTable';
 import MenteeCoverageGrid from './components/MenteeCoverageGrid';
 import ExportBar from './components/ExportBar';
+import InstitutionReportTable from './components/InstitutionReportTable';
 
 function buildQueryString(filters: FilterState): string {
   const params = new URLSearchParams();
@@ -49,6 +51,7 @@ export default function AnalyticsPage() {
   const [summary, setSummary] = useState<SessionCompletionSummary | null>(null);
   const [perMentor, setPerMentor] = useState<PerMentorRow[]>([]);
   const [pairing, setPairing] = useState<PairingRow[]>([]);
+  const [byInstitution, setByInstitution] = useState<InstitutionSummaryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +63,11 @@ export default function AnalyticsPage() {
       accessInfo.isSuperAdmin ||
       accessInfo.isMentorIncharge
     );
+  }, [accessInfo, accessLoading]);
+
+  const isSuperAdmin = useMemo(() => {
+    if (accessLoading || !accessInfo) return false;
+    return accessInfo.role === 'super_admin' || accessInfo.isSuperAdmin;
   }, [accessInfo, accessLoading]);
 
   // Stable key for triggering refetch on filter change.
@@ -84,6 +92,12 @@ export default function AnalyticsPage() {
       const qs = buildQueryString(filters);
       const suffix = qs ? `?${qs}` : '';
 
+      // Date-only params (no institution/dept) for the cross-college endpoint.
+      const dateQs = new URLSearchParams();
+      if (filters.startDate) dateQs.append('dateFrom', filters.startDate);
+      if (filters.endDate) dateQs.append('dateTo', filters.endDate);
+      const dateSuffix = dateQs.toString() ? `?${dateQs.toString()}` : '';
+
       const headers = {
         Authorization: `Bearer ${accessToken}`,
       } as const;
@@ -92,14 +106,27 @@ export default function AnalyticsPage() {
         credentials: 'include',
       };
 
-      const [summaryRes, perMentorRes, pairingRes] = await Promise.all([
+      const fetches: Promise<Response>[] = [
         fetchWithAuthRetry(`/api/mentor/session-analytics/summary${suffix}`, init),
         fetchWithAuthRetry(`/api/mentor/session-analytics/per-mentor${suffix}`, init),
         fetchWithAuthRetry(
           `/api/mentor/session-analytics/pairing-coverage${suffix}`,
           init,
         ),
-      ]);
+      ];
+
+      // Only fetch the cross-college breakdown when the user is a super_admin.
+      if (isSuperAdmin) {
+        fetches.push(
+          fetchWithAuthRetry(
+            `/api/mentor/session-analytics/by-institution${dateSuffix}`,
+            init,
+          ),
+        );
+      }
+
+      const results = await Promise.all(fetches);
+      const [summaryRes, perMentorRes, pairingRes, byInstRes] = results;
 
       if (!summaryRes.ok || !perMentorRes.ok || !pairingRes.ok) {
         const code = summaryRes.status || perMentorRes.status || pairingRes.status;
@@ -120,13 +147,18 @@ export default function AnalyticsPage() {
       setSummary((summaryJson?.data as SessionCompletionSummary) ?? null);
       setPerMentor((perMentorJson?.data as PerMentorRow[]) ?? []);
       setPairing((pairingJson?.data as PairingRow[]) ?? []);
+
+      if (byInstRes?.ok) {
+        const byInstJson = await byInstRes.json();
+        setByInstitution((byInstJson?.data as InstitutionSummaryRow[]) ?? []);
+      }
     } catch (err) {
       console.error('[AnalyticsPage] fetch error', err);
       setError('An unexpected error occurred while loading analytics.');
     } finally {
       setLoading(false);
     }
-  }, [accessToken, filters]);
+  }, [accessToken, filters, isSuperAdmin]);
 
   useEffect(() => {
     if (authLoading || accessLoading) return;
@@ -171,7 +203,7 @@ export default function AnalyticsPage() {
       )}
 
       {/* Export bar */}
-      <ExportBar filters={filters} isAdmin={isAdmin} />
+      <ExportBar filters={filters} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
 
       {/* Filters */}
       <AnalyticsFilters
@@ -179,6 +211,11 @@ export default function AnalyticsPage() {
         onChange={setFilters}
         isAdmin={isAdmin}
       />
+
+      {/* Cross-college report (super_admin only) */}
+      {isSuperAdmin && (
+        <InstitutionReportTable rows={byInstitution} loading={loading} />
+      )}
 
       {/* Coverage funnel (hero) + secondary KPIs */}
       <CoverageFunnelCard summary={summary} loading={loading} />

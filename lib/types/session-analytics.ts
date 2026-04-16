@@ -56,3 +56,26 @@ export interface PairingRow {
   completedCount: number;
   lastSessionDate: string | null;
 }
+
+/**
+ * One row per institution — the cross-college summary shared as a report.
+ * Only super_admin can retrieve this view.
+ */
+export interface InstitutionSummaryRow {
+  institutionId: string;
+  institutionName: string;
+  totalMentors: number;
+  mentorsWithFirstSession: number; // mentors who completed ≥1 session
+  totalAssignedMentees: number; // unique students assigned
+  menteesWithFirstSession: number; // unique students who had ≥1 completed session
+  totalEnrolledStudents: number; // from jkkn_students cache
+  totalCompletedSessions: number;
+  totalScheduledSessions: number;
+  totalCancelledSessions: number;
+  /** mentorsWithFirstSession / totalMentors × 100 */
+  mentorStartRate: number;
+  /** menteesWithFirstSession / totalAssignedMentees × 100 */
+  menteeMetRate: number;
+  /** completed / (completed + cancelled) × 100 — excludes future sessions */
+  completionRate: number;
+}

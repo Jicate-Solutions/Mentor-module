@@ -17,6 +17,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import type {
   AnalyticsFilters,
+  InstitutionSummaryRow,
   PairingRow,
   PerMentorRow,
   SessionCompletionSummary,
@@ -455,6 +456,151 @@ export async function getPairingCoverage(
     }
     return (a.mentorName || '').localeCompare(b.mentorName || '');
   });
+
+  return rows;
+}
+
+// ── Public: By-Institution Breakdown (super_admin only) ──────────────────────
+
+/**
+ * Aggregates session analytics across ALL institutions.
+ * Intended for super_admin cross-college reporting.
+ *
+ * Strategy:
+ *  1. Fetch all assignments (no institution filter) — each row carries institution_id
+ *     via the mentors join.
+ *  2. Fetch all sessions (no institution filter).
+ *  3. Fetch institution names from the jkkn_institutions cache table.
+ *  4. Fetch enrolled student counts per institution from jkkn_students.
+ *  5. Group everything by institution_id in TypeScript.
+ */
+export async function getByInstitutionBreakdown(
+  filters: Pick<AnalyticsFilters, 'dateFrom' | 'dateTo'>
+): Promise<InstitutionSummaryRow[]> {
+  const supabase = createAdminClient();
+
+  // Pass date filters only; institution/department intentionally omitted (we want ALL).
+  const broadFilters: AnalyticsFilters = {
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+  };
+
+  const [assignments, sessions, institutionRows, enrolledRows] = await Promise.all([
+    fetchAssignments(broadFilters),
+    fetchSessions(broadFilters),
+    // institution name lookup
+    supabase
+      .from('jkkn_institutions')
+      .select('id, name')
+      .eq('is_active', true)
+      .then(({ data }) => (data || []) as { id: string; name: string }[]),
+    // enrolled counts per institution
+    supabase
+      .from('jkkn_students')
+      .select('institution_id')
+      .eq('is_active', true)
+      .then(({ data }) => (data || []) as { institution_id: string }[]),
+  ]);
+
+  // Build name map from institution cache.
+  const nameMap = new Map<string, string>(institutionRows.map((r) => [r.id, r.name]));
+
+  // Build enrolled count map: institution_id → count
+  const enrolledByInst = new Map<string, number>();
+  for (const r of enrolledRows) {
+    if (!r.institution_id) continue;
+    enrolledByInst.set(r.institution_id, (enrolledByInst.get(r.institution_id) ?? 0) + 1);
+  }
+
+  // Accumulator shape per institution.
+  interface InstAccum {
+    mentorIds: Set<string>;
+    mentorsWithCompleted: Set<string>;
+    assignedStudentIds: Set<string>;
+    studentsWithCompleted: Set<string>;
+    completed: number;
+    scheduled: number;
+    cancelled: number;
+  }
+
+  const byInst = new Map<string, InstAccum>();
+
+  const ensureInst = (id: string): InstAccum => {
+    let acc = byInst.get(id);
+    if (!acc) {
+      acc = {
+        mentorIds: new Set(),
+        mentorsWithCompleted: new Set(),
+        assignedStudentIds: new Set(),
+        studentsWithCompleted: new Set(),
+        completed: 0,
+        scheduled: 0,
+        cancelled: 0,
+      };
+      byInst.set(id, acc);
+    }
+    return acc;
+  };
+
+  // Accumulate assignments (gives us mentor list + assigned student list per inst).
+  for (const a of assignments) {
+    const instId = a.mentor?.institution_id;
+    if (!instId) continue;
+    const acc = ensureInst(instId);
+    acc.mentorIds.add(a.mentor_id);
+    acc.assignedStudentIds.add(a.student_id);
+  }
+
+  // Accumulate sessions (gives us completed counts + "who was met" per inst).
+  // We need to know which institution a mentor belongs to for the session.
+  // Build a mentor→institution map from the assignments we already have.
+  const mentorToInst = new Map<string, string>();
+  for (const a of assignments) {
+    if (a.mentor?.institution_id) mentorToInst.set(a.mentor_id, a.mentor.institution_id);
+  }
+
+  for (const s of sessions) {
+    const instId = mentorToInst.get(s.mentor_id);
+    if (!instId) continue; // session for a mentor not in our assignments universe — skip
+    const acc = ensureInst(instId);
+    if (s.status === 'completed') {
+      acc.completed++;
+      acc.mentorsWithCompleted.add(s.mentor_id);
+      if (s.student_id && acc.assignedStudentIds.has(s.student_id)) {
+        acc.studentsWithCompleted.add(s.student_id);
+      }
+    } else if (s.status === 'scheduled') {
+      acc.scheduled++;
+    } else if (s.status === 'cancelled') {
+      acc.cancelled++;
+    }
+  }
+
+  const pct = (num: number, denom: number): number =>
+    denom === 0 ? 0 : Math.round((num / denom) * 1000) / 10;
+
+  const rows: InstitutionSummaryRow[] = [];
+  for (const [instId, acc] of byInst.entries()) {
+    const resolved = acc.completed + acc.cancelled;
+    rows.push({
+      institutionId: instId,
+      institutionName: nameMap.get(instId) ?? instId,
+      totalMentors: acc.mentorIds.size,
+      mentorsWithFirstSession: acc.mentorsWithCompleted.size,
+      totalAssignedMentees: acc.assignedStudentIds.size,
+      menteesWithFirstSession: acc.studentsWithCompleted.size,
+      totalEnrolledStudents: enrolledByInst.get(instId) ?? 0,
+      totalCompletedSessions: acc.completed,
+      totalScheduledSessions: acc.scheduled,
+      totalCancelledSessions: acc.cancelled,
+      mentorStartRate: pct(acc.mentorsWithCompleted.size, acc.mentorIds.size),
+      menteeMetRate: pct(acc.studentsWithCompleted.size, acc.assignedStudentIds.size),
+      completionRate: pct(acc.completed, resolved),
+    });
+  }
+
+  // Sort by most assigned mentees (largest institutions) first.
+  rows.sort((a, b) => b.totalAssignedMentees - a.totalAssignedMentees);
 
   return rows;
 }

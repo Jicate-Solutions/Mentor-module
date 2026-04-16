@@ -9,9 +9,10 @@ import type { FilterState } from './AnalyticsFilters';
 interface ExportBarProps {
   filters: FilterState;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
 }
 
-type CsvView = 'summary' | 'per-mentor' | 'pairing';
+type CsvView = 'summary' | 'per-mentor' | 'pairing' | 'by-institution';
 type PdfView = 'summary' | 'full';
 
 function buildQueryString(filters: FilterState): string {
@@ -28,7 +29,7 @@ function filename(prefix: string, view: string, ext: string): string {
   return `${prefix}-${view}-${today}.${ext}`;
 }
 
-export default function ExportBar({ filters, isAdmin: _isAdmin }: ExportBarProps) {
+export default function ExportBar({ filters, isAdmin: _isAdmin, isSuperAdmin = false }: ExportBarProps) {
   const { accessToken } = useAuth();
   const [csvOpen, setCsvOpen] = useState(false);
   const [pdfOpen, setPdfOpen] = useState(false);
@@ -56,7 +57,16 @@ export default function ExportBar({ filters, isAdmin: _isAdmin }: ExportBarProps
     const key = `${format}-${view}`;
     try {
       setBusy(key);
-      const qs = buildQueryString(filters);
+      // Cross-college report uses date-only params (no institution/dept filter).
+      const qs =
+        view === 'by-institution'
+          ? (() => {
+              const p = new URLSearchParams();
+              if (filters.startDate) p.append('dateFrom', filters.startDate);
+              if (filters.endDate) p.append('dateTo', filters.endDate);
+              return p.toString();
+            })()
+          : buildQueryString(filters);
       const url = `/api/mentor/session-analytics/export?format=${format}&view=${view}${
         qs ? '&' + qs : ''
       }`;
@@ -125,10 +135,16 @@ export default function ExportBar({ filters, isAdmin: _isAdmin }: ExportBarProps
           <ChevronDown className="w-4 h-4" />
         </button>
         {csvOpen && (
-          <div className="absolute right-0 mt-1 w-48 bg-white border border-neutral-200 rounded-lg shadow-lg z-20 overflow-hidden">
+          <div className="absolute right-0 mt-1 w-52 bg-white border border-neutral-200 rounded-lg shadow-lg z-20 overflow-hidden">
             <CsvItem value="summary" label="Summary" />
             <CsvItem value="per-mentor" label="Per-Mentor" />
             <CsvItem value="pairing" label="Pairing Coverage" />
+            {isSuperAdmin && (
+              <>
+                <div className="border-t border-neutral-100 my-0.5" />
+                <CsvItem value="by-institution" label="Cross-College Report" />
+              </>
+            )}
           </div>
         )}
       </div>

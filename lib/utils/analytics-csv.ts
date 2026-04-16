@@ -12,6 +12,7 @@
  */
 
 import type {
+  InstitutionSummaryRow,
   PairingRow,
   PerMentorRow,
   SessionCompletionSummary,
@@ -81,6 +82,28 @@ export function pairingToCSV(rows: PairingRow[]): string {
     { key: 'hasCompletedSession', label: 'Has Completed Session' },
     { key: 'completedCount', label: 'Completed Sessions' },
     { key: 'lastSessionDate', label: 'Last Session Date' },
+  ];
+  return toCSV(
+    rows as unknown as Record<string, unknown>[],
+    columns as { key: string; label: string }[]
+  );
+}
+
+export function byInstitutionToCSV(rows: InstitutionSummaryRow[]): string {
+  const columns: { key: keyof InstitutionSummaryRow; label: string }[] = [
+    { key: 'institutionName', label: 'Institution' },
+    { key: 'institutionId', label: 'Institution ID' },
+    { key: 'totalMentors', label: 'Total Mentors' },
+    { key: 'mentorsWithFirstSession', label: 'Mentors Started' },
+    { key: 'totalAssignedMentees', label: 'Assigned Mentees' },
+    { key: 'menteesWithFirstSession', label: 'Mentees Met' },
+    { key: 'totalEnrolledStudents', label: 'Total Enrolled Students' },
+    { key: 'totalCompletedSessions', label: 'Completed Sessions' },
+    { key: 'totalScheduledSessions', label: 'Scheduled Sessions' },
+    { key: 'totalCancelledSessions', label: 'Cancelled Sessions' },
+    { key: 'mentorStartRate', label: 'Mentor Start Rate (%)' },
+    { key: 'menteeMetRate', label: 'Mentee Met Rate (%)' },
+    { key: 'completionRate', label: 'Completion Rate (%)' },
   ];
   return toCSV(
     rows as unknown as Record<string, unknown>[],

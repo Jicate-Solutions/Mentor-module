@@ -62,7 +62,7 @@ export async function getUserAccess(): Promise<UserAccess | null> {
     // permission check, filter, and hardcoded `role === 'faculty'` branch
     // treats them identically. Keeping this at the auth boundary means no
     // downstream code needs to know about alias names like 'coe_office'.
-    const normalizedRole = (user.role === 'coe_office' ? 'faculty' : user.role) as AccessLevel;
+    const normalizedRole = (['coe_office', 'mentor'].includes(user.role) ? 'faculty' : user.role) as AccessLevel;
 
     return {
       userId: user.id,

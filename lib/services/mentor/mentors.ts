@@ -394,7 +394,7 @@ export async function getMentorById(mentorJkknId: string): Promise<Mentor | null
         jkkn_user_id: mentorJkknId,
         email: staff.email || staff.institution_email || `${mentorJkknId}@jkkn.ac.in`,
         full_name: fullName || 'Unknown',
-        role: 'mentor',
+        role: 'faculty',
         department_id: departmentId,
         institution_id: institutionId,
       }, { onConflict: 'jkkn_user_id' })
@@ -587,11 +587,24 @@ export async function getMentorList(
       designation: staff.designation || staff.position || 'Staff',
       department: staff.department || 'Unknown Department',
       institution: staff.institution || 'Unknown Institution',
+      // Capture active status — MyJKKN API may use is_active, isActive, or status
+      is_active: staff.is_active ?? staff.isActive ?? (
+        staff.status !== 'Inactive' && staff.status !== 'inactive' && staff.status !== 'in_active'
+      ),
     };
   });
 
+  // Filter out inactive staff from the MyJKKN API before any further processing
+  const activeStaffMembers = staffMembers.filter((staff: any) => staff.is_active !== false);
+  if (staffMembers.length !== activeStaffMembers.length) {
+    console.log(
+      `[getMentorList] Filtered out ${staffMembers.length - activeStaffMembers.length} inactive staff members ` +
+      `(${activeStaffMembers.length} active remain)`
+    );
+  }
+
   // Filter to mentor-designated staff only
-  let allMentors = staffMembers.filter(
+  let allMentors = activeStaffMembers.filter(
     (staff: any) => staff.designation && isMentorDesignation(staff.designation)
   );
 

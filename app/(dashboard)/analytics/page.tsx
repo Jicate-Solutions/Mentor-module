@@ -1,12 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, BarChart3 } from 'lucide-react';
+import { AlertCircle, BarChart3, Users, TrendingUp, CheckCircle2, CalendarClock } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useUserAccess } from '@/hooks/useUserAccess';
 import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 import PageContainer from '@/components/ui/PageContainer';
-import PageHeader from '@/components/ui/PageHeader';
 import type {
   SessionCompletionSummary,
   PerMentorRow,
@@ -18,7 +17,6 @@ import AnalyticsFilters, {
   getAnalyticsDateRange,
 } from './components/AnalyticsFilters';
 import CoverageFunnelCard from './components/CoverageFunnelCard';
-import SecondaryKPIRow from './components/SecondaryKPIRow';
 import CompletionDonutChart from './components/CompletionDonutChart';
 import MentorCompletionTable from './components/MentorCompletionTable';
 import MenteeCoverageGrid from './components/MenteeCoverageGrid';
@@ -34,6 +32,13 @@ function buildQueryString(filters: FilterState): string {
   return params.toString();
 }
 
+function buildDateQueryString(filters: FilterState): string {
+  const params = new URLSearchParams();
+  if (filters.startDate) params.append('dateFrom', filters.startDate);
+  if (filters.endDate) params.append('dateTo', filters.endDate);
+  return params.toString();
+}
+
 function initialFilters(): FilterState {
   const range = getAnalyticsDateRange('month');
   return {
@@ -42,6 +47,100 @@ function initialFilters(): FilterState {
     endDate: range?.endDate.toISOString(),
   };
 }
+
+// ── Inline KPI strip ─────────────────────────────────────────────────────────
+
+function KPIStrip({
+  summary,
+  loading,
+}: {
+  summary: SessionCompletionSummary | null;
+  loading: boolean;
+}) {
+  const s = summary;
+
+  const cards = [
+    {
+      icon: <Users className="w-4 h-4" />,
+      label: 'Mentors Started',
+      value: s ? `${s.mentorsWithFirstSession} / ${s.totalMentors}` : '— / —',
+      sub: s ? `${s.mentorFirstSessionRate}% active` : '—',
+      accent: 'text-[#0b6d41] bg-[#0b6d41]/10',
+    },
+    {
+      icon: <CheckCircle2 className="w-4 h-4" />,
+      label: 'Mentees Met',
+      value: s ? `${s.menteesWithFirstSession} / ${s.totalAssignedMentees}` : '— / —',
+      sub: s ? `${s.menteeMetRate}% coverage` : '—',
+      accent: 'text-emerald-700 bg-emerald-100',
+    },
+    {
+      icon: <CalendarClock className="w-4 h-4" />,
+      label: 'Sessions Done',
+      value: s ? s.totalCompletedSessions.toLocaleString() : '—',
+      sub: s ? `${s.totalScheduledSessions.toLocaleString()} scheduled` : '—',
+      accent: 'text-blue-700 bg-blue-100',
+    },
+    {
+      icon: <TrendingUp className="w-4 h-4" />,
+      label: 'Completion Rate',
+      value: s ? `${s.completionRate}%` : '—',
+      sub: s ? `${s.totalCancelledSessions} cancelled` : 'of resolved sessions',
+      accent: 'text-amber-700 bg-amber-100',
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {cards.map((_, i) => (
+          <div key={i} className="bg-white border border-neutral-200 rounded-xl p-4 animate-pulse">
+            <div className="w-8 h-8 bg-neutral-100 rounded-lg mb-3" />
+            <div className="w-20 h-3 bg-neutral-100 rounded mb-2" />
+            <div className="w-28 h-6 bg-neutral-100 rounded mb-1" />
+            <div className="w-16 h-3 bg-neutral-100 rounded" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {cards.map((c) => (
+        <div
+          key={c.label}
+          className="bg-white border border-neutral-200 rounded-xl p-4 flex flex-col gap-2"
+        >
+          <span className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${c.accent}`}>
+            {c.icon}
+          </span>
+          <div>
+            <p className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">{c.label}</p>
+            <p className="text-xl font-semibold text-neutral-900 tabular-nums leading-tight mt-0.5">{c.value}</p>
+            <p className="text-xs text-neutral-500 mt-0.5">{c.sub}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Section divider ───────────────────────────────────────────────────────────
+
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="flex items-end gap-3 pt-2">
+      <div>
+        <h2 className="text-sm font-semibold text-neutral-900 uppercase tracking-wider">{title}</h2>
+        {subtitle && <p className="text-xs text-neutral-500 mt-0.5">{subtitle}</p>}
+      </div>
+      <div className="flex-1 h-px bg-neutral-200 mb-1" />
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
   const { user, loading: authLoading, accessToken } = useAuth();
@@ -70,7 +169,6 @@ export default function AnalyticsPage() {
     return accessInfo.role === 'super_admin' || accessInfo.isSuperAdmin;
   }, [accessInfo, accessLoading]);
 
-  // Stable key for triggering refetch on filter change.
   const filterKey = useMemo(
     () =>
       JSON.stringify({
@@ -92,34 +190,22 @@ export default function AnalyticsPage() {
       const qs = buildQueryString(filters);
       const suffix = qs ? `?${qs}` : '';
 
-      // Date-only params (no institution/dept) for the cross-college endpoint.
-      const dateQs = new URLSearchParams();
-      if (filters.startDate) dateQs.append('dateFrom', filters.startDate);
-      if (filters.endDate) dateQs.append('dateTo', filters.endDate);
-      const dateSuffix = dateQs.toString() ? `?${dateQs.toString()}` : '';
-
       const headers = {
         Authorization: `Bearer ${accessToken}`,
       } as const;
-      const init: RequestInit = {
-        headers,
-        credentials: 'include',
-      };
+      const init: RequestInit = { headers, credentials: 'include' };
 
       const fetches: Promise<Response>[] = [
         fetchWithAuthRetry(`/api/mentor/session-analytics/summary${suffix}`, init),
         fetchWithAuthRetry(`/api/mentor/session-analytics/per-mentor${suffix}`, init),
-        fetchWithAuthRetry(
-          `/api/mentor/session-analytics/pairing-coverage${suffix}`,
-          init,
-        ),
+        fetchWithAuthRetry(`/api/mentor/session-analytics/pairing-coverage${suffix}`, init),
       ];
 
-      // Only fetch the cross-college breakdown when the user is a super_admin.
       if (isSuperAdmin) {
+        const dateQs = buildDateQueryString(filters);
         fetches.push(
           fetchWithAuthRetry(
-            `/api/mentor/session-analytics/by-institution${dateSuffix}`,
+            `/api/mentor/session-analytics/by-institution${dateQs ? `?${dateQs}` : ''}`,
             init,
           ),
         );
@@ -164,37 +250,46 @@ export default function AnalyticsPage() {
     if (authLoading || accessLoading) return;
     if (!user || !accessToken) return;
     fetchAll();
-    // fetchAll depends on accessToken + filters; filterKey is used to re-run on filter change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, accessToken, authLoading, accessLoading, filterKey]);
 
   if (authLoading || accessLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0b6d41]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0b6d41]" />
       </div>
     );
   }
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Session Analytics"
-        description="Mentor–mentee session completion report"
-        icon={<BarChart3 className="w-5 h-5" />}
-      />
 
-      {/* Error banner */}
+      {/* ── Header + Export ─────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div className="flex items-center gap-2 text-[#0b6d41] mb-1">
+            <BarChart3 className="w-5 h-5" />
+            <span className="text-xs font-semibold uppercase tracking-widest">Analytics</span>
+          </div>
+          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Session Report</h1>
+          <p className="text-sm text-neutral-500 mt-0.5">Mentor–mentee session completion across all colleges</p>
+        </div>
+        <div className="flex-shrink-0">
+          <ExportBar filters={filters} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
+        </div>
+      </div>
+
+      {/* ── Error banner ────────────────────────────────────────────────── */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
           <div className="p-1 bg-red-100 rounded-lg">
             <AlertCircle className="w-4 h-4 text-red-600" />
           </div>
           <div className="flex-1">
-            <p className="text-red-700 font-medium">{error}</p>
+            <p className="text-red-700 font-medium text-sm">{error}</p>
             <button
               onClick={() => fetchAll()}
-              className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+              className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 transition-colors"
             >
               Retry
             </button>
@@ -202,33 +297,51 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Export bar */}
-      <ExportBar filters={filters} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
+      {/* ── Filters ─────────────────────────────────────────────────────── */}
+      <AnalyticsFilters filters={filters} onChange={setFilters} isAdmin={isAdmin} />
 
-      {/* Filters */}
-      <AnalyticsFilters
-        filters={filters}
-        onChange={setFilters}
-        isAdmin={isAdmin}
-      />
+      {/* ── KPI strip ───────────────────────────────────────────────────── */}
+      <KPIStrip summary={summary} loading={loading} />
 
-      {/* Cross-college report (super_admin only) */}
+      {/* ── Overview: Funnel + Donut ─────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <CoverageFunnelCard summary={summary} loading={loading} />
+        </div>
+        <div>
+          <CompletionDonutChart summary={summary} loading={loading} />
+        </div>
+      </div>
+
+      {/* ── Cross-College Report (super_admin) ───────────────────────────── */}
       {isSuperAdmin && (
-        <InstitutionReportTable rows={byInstitution} loading={loading} />
+        <div className="space-y-3">
+          <SectionHeader
+            title="Cross-College Report"
+            subtitle="All institutions — mentor engagement & first-cycle coverage"
+          />
+          <InstitutionReportTable rows={byInstitution} loading={loading} />
+        </div>
       )}
 
-      {/* Coverage funnel (hero) + secondary KPIs */}
-      <CoverageFunnelCard summary={summary} loading={loading} />
-      <SecondaryKPIRow summary={summary} loading={loading} />
-
-      {/* Donut chart + Mentor table */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
-        <CompletionDonutChart summary={summary} loading={loading} />
+      {/* ── Per-Mentor Breakdown ─────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <SectionHeader
+          title="Per-Mentor Breakdown"
+          subtitle="Session completion status grouped by college"
+        />
         <MentorCompletionTable rows={perMentor} loading={loading} />
       </div>
 
-      {/* Mentee coverage */}
-      <MenteeCoverageGrid rows={pairing} loading={loading} />
+      {/* ── Mentee Coverage Detail ───────────────────────────────────────── */}
+      <div className="space-y-3">
+        <SectionHeader
+          title="Mentee Coverage Detail"
+          subtitle="Expand each mentor to see which mentees have been met"
+        />
+        <MenteeCoverageGrid rows={pairing} loading={loading} />
+      </div>
+
     </PageContainer>
   );
 }

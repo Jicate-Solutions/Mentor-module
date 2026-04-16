@@ -60,13 +60,7 @@ export default function InstitutionReportTable({ rows, loading }: Props) {
   return (
     <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
-        <div>
-          <h3 className="text-base font-semibold text-neutral-900">Cross-College Report</h3>
-          <p className="text-xs text-neutral-500 mt-0.5">
-            All institutions — mentor engagement &amp; first-cycle coverage
-          </p>
-        </div>
+      <div className="px-6 py-3 border-b border-neutral-100 flex items-center justify-end">
         <span className="text-xs text-neutral-400 bg-neutral-100 px-2 py-1 rounded-full">
           {rows.length} college{rows.length !== 1 ? 's' : ''}
         </span>
@@ -82,15 +76,6 @@ export default function InstitutionReportTable({ rows, loading }: Props) {
               </th>
               <th className="text-right px-4 py-3 font-medium text-neutral-600 whitespace-nowrap">
                 Mentors
-              </th>
-              <th className="text-right px-4 py-3 font-medium text-neutral-600 whitespace-nowrap">
-                Started
-              </th>
-              <th className="text-right px-4 py-3 font-medium text-neutral-600 whitespace-nowrap">
-                Assigned Mentees
-              </th>
-              <th className="text-right px-4 py-3 font-medium text-neutral-600 whitespace-nowrap">
-                Enrolled
               </th>
               <th className="text-right px-4 py-3 font-medium text-neutral-600 whitespace-nowrap">
                 Sessions Done
@@ -115,41 +100,15 @@ export default function InstitutionReportTable({ rows, loading }: Props) {
                 }`}
               >
                 {/* Institution name */}
-                <td className="px-4 py-3 max-w-[200px]">
+                <td className="px-4 py-3 max-w-[220px]">
                   <p className="font-medium text-neutral-900 truncate" title={row.institutionName}>
                     {row.institutionName}
-                  </p>
-                  <p className="text-[11px] text-neutral-400 truncate font-mono">
-                    {row.institutionId}
                   </p>
                 </td>
 
                 {/* Total mentors */}
                 <td className="px-4 py-3 text-right">
                   <span className="font-semibold text-neutral-800">{row.totalMentors}</span>
-                </td>
-
-                {/* Mentors who started */}
-                <td className="px-4 py-3 text-right">
-                  <span className="font-semibold text-emerald-700">
-                    {row.mentorsWithFirstSession}
-                  </span>
-                  <span className="text-neutral-400 text-xs"> / {row.totalMentors}</span>
-                </td>
-
-                {/* Assigned mentees */}
-                <td className="px-4 py-3 text-right">
-                  <span className="font-semibold text-neutral-800">{row.totalAssignedMentees}</span>
-                  <span className="text-xs text-neutral-400 block">
-                    met: {row.menteesWithFirstSession}
-                  </span>
-                </td>
-
-                {/* Enrolled students */}
-                <td className="px-4 py-3 text-right">
-                  <span className="text-neutral-600">
-                    {row.totalEnrolledStudents > 0 ? row.totalEnrolledStudents.toLocaleString() : '—'}
-                  </span>
                 </td>
 
                 {/* Completed sessions */}
@@ -182,15 +141,6 @@ export default function InstitutionReportTable({ rows, loading }: Props) {
               <td className="px-4 py-3 font-semibold text-neutral-700">Total</td>
               <td className="px-4 py-3 text-right font-bold text-neutral-900">
                 {rows.reduce((s, r) => s + r.totalMentors, 0)}
-              </td>
-              <td className="px-4 py-3 text-right font-bold text-emerald-700">
-                {rows.reduce((s, r) => s + r.mentorsWithFirstSession, 0)}
-              </td>
-              <td className="px-4 py-3 text-right font-bold text-neutral-900">
-                {rows.reduce((s, r) => s + r.totalAssignedMentees, 0)}
-              </td>
-              <td className="px-4 py-3 text-right font-semibold text-neutral-700">
-                {rows.reduce((s, r) => s + r.totalEnrolledStudents, 0).toLocaleString()}
               </td>
               <td className="px-4 py-3 text-right font-bold text-neutral-900">
                 {rows.reduce((s, r) => s + r.totalCompletedSessions, 0)}

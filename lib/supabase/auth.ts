@@ -318,6 +318,7 @@ const ROLE_PRIORITY = [
  */
 const ROLE_ALIASES: Record<string, string> = {
   'coe_office': 'faculty',  // COE office staff — treated as faculty
+  'mentor': 'faculty',       // JKKN sends 'mentor' for faculty members — treat identically
 };
 
 /**

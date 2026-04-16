@@ -169,6 +169,55 @@ async function fetchSessions(filters: AnalyticsFilters): Promise<SessionRow[]> {
   }));
 }
 
+// ── Shared fetch helpers (continued) ────────────────────────────────────────
+
+/**
+ * Fetches ALL active mentors for the given scope directly from the `mentors`
+ * table (joined with users for the name). Used to surface mentors who have
+ * NO student assignments — they never appear in `fetchAssignments` because
+ * that query starts from `mentor_students`.
+ */
+async function fetchAllMentorsInScope(
+  filters: AnalyticsFilters
+): Promise<Array<{ id: string; name: string | null; departmentId: string | null; institutionId: string | null }>> {
+  const supabase = createAdminClient();
+
+  let query = supabase
+    .from('mentors')
+    .select(
+      `
+      id,
+      department_id,
+      institution_id,
+      user:users!inner ( full_name )
+    `
+    )
+    .eq('is_active', true);
+
+  if (filters.scopedMentorId) {
+    query = query.eq('id', filters.scopedMentorId);
+  }
+  if (filters.departmentId) {
+    query = query.eq('department_id', filters.departmentId);
+  }
+  if (filters.institutionId) {
+    query = query.eq('institution_id', filters.institutionId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(`Failed to fetch mentors in scope: ${error.message}`);
+
+  return (data || []).map((row: any) => {
+    const userObj = Array.isArray(row.user) ? row.user[0] : row.user;
+    return {
+      id: row.id,
+      name: userObj?.full_name ?? null,
+      departmentId: row.department_id ?? null,
+      institutionId: row.institution_id ?? null,
+    };
+  });
+}
+
 // ── Public: Summary ──────────────────────────────────────────────────────────
 
 /**
@@ -198,45 +247,54 @@ async function fetchEnrolledStudentCount(filters: AnalyticsFilters): Promise<num
 export async function getSessionCompletionSummary(
   filters: AnalyticsFilters
 ): Promise<SessionCompletionSummary> {
-  const [assignments, sessions, totalEnrolledStudents] = await Promise.all([
-    fetchAssignments(filters),
-    fetchSessions(filters),
-    fetchEnrolledStudentCount(filters),
-  ]);
+  // Coverage (who-started, who-was-met) must be all-time so mentors who completed
+  // sessions BEFORE the current date filter aren't wrongly shown as "Not Started".
+  const hasDates = !!(filters.dateFrom || filters.dateTo);
+  const coverageFilters: AnalyticsFilters = hasDates
+    ? { ...filters, dateFrom: undefined, dateTo: undefined }
+    : filters;
+
+  const [assignments, allSessions, filteredSessions, totalEnrolledStudents, allMentorsInScope] =
+    await Promise.all([
+      fetchAssignments(filters),
+      fetchSessions(coverageFilters),
+      hasDates ? fetchSessions(filters) : Promise.resolve<SessionRow[]>([]),
+      fetchEnrolledStudentCount(filters),
+      // Fetch ALL active mentors in scope so unassigned mentors are counted in totalMentors.
+      fetchAllMentorsInScope(filters),
+    ]);
+
+  const countSessions = hasDates ? filteredSessions : allSessions;
+
+  // All active mentors in scope (includes those with no student assignments).
+  const allMentorIds = new Set<string>(allMentorsInScope.map((m) => m.id));
 
   // Mentors present in the scoped universe (from assignments).
-  const mentorIds = new Set<string>();
   const assignedStudentIds = new Set<string>(); // unique students (a student may have >1 mentor)
   for (const a of assignments) {
-    mentorIds.add(a.mentor_id);
     assignedStudentIds.add(a.student_id);
   }
-  // Only sessions with a student_id assigned to someone in our scoped universe
-  // should count — prevents ad-hoc sessions from inflating the "met" count.
-  const assignedStudentIdsArr = assignedStudentIds; // alias for readability in loop
 
+  // All-time: who has started, who has been met (cumulative status — unaffected by date filter).
   const mentorsWithCompleted = new Set<string>();
   const studentsWithCompleted = new Set<string>();
+  for (const s of allSessions) {
+    if (s.status === 'completed') {
+      mentorsWithCompleted.add(s.mentor_id);
+      if (s.student_id && assignedStudentIds.has(s.student_id)) {
+        studentsWithCompleted.add(s.student_id);
+      }
+    }
+  }
+
+  // Date-filtered: session counts for the selected period.
   let totalCompletedSessions = 0;
   let totalScheduledSessions = 0;
   let totalCancelledSessions = 0;
 
-  for (const s of sessions) {
-    // TODO(user-contribution): first-session definition
-    // Current rule: any row with status='completed' counts toward "first session done".
-    // Open questions for the team:
-    //   - Should sessions back-dated BEFORE the mentor_students.assigned_at count?
-    //   - If a session was cancelled then rescheduled and completed, does the
-    //     original cancellation still count against the pair?
-    //   - Do we need a minimum duration / notes-present check before a session
-    //     qualifies as a "real" first meeting?
-    // Default behavior below: any status='completed' row counts.
+  for (const s of countSessions) {
     if (s.status === 'completed') {
       totalCompletedSessions++;
-      mentorsWithCompleted.add(s.mentor_id);
-      if (s.student_id && assignedStudentIdsArr.has(s.student_id)) {
-        studentsWithCompleted.add(s.student_id);
-      }
     } else if (s.status === 'scheduled') {
       totalScheduledSessions++;
     } else if (s.status === 'cancelled') {
@@ -244,7 +302,8 @@ export async function getSessionCompletionSummary(
     }
   }
 
-  const totalMentors = mentorIds.size;
+  // Use the full mentor count from the mentors table (not just those with assignments).
+  const totalMentors = allMentorIds.size;
   const totalAssignedMentees = assignedStudentIds.size; // unique students, not pairs
   const mentorsWithFirstSession = mentorsWithCompleted.size;
   const menteesWithFirstSession = studentsWithCompleted.size;
@@ -287,10 +346,20 @@ export async function getSessionCompletionSummary(
 export async function getPerMentorBreakdown(
   filters: AnalyticsFilters
 ): Promise<PerMentorRow[]> {
-  const [assignments, sessions] = await Promise.all([
+  const hasDates = !!(filters.dateFrom || filters.dateTo);
+  const coverageFilters: AnalyticsFilters = hasDates
+    ? { ...filters, dateFrom: undefined, dateTo: undefined }
+    : filters;
+
+  const [assignments, allSessions, filteredSessions, allMentorsInScope] = await Promise.all([
     fetchAssignments(filters),
-    fetchSessions(filters),
+    fetchSessions(coverageFilters),
+    hasDates ? fetchSessions(filters) : Promise.resolve<SessionRow[]>([]),
+    // Fetch ALL active mentors so those with no assignments still appear in the table.
+    fetchAllMentorsInScope(filters),
   ]);
+
+  const countSessions = hasDates ? filteredSessions : allSessions;
 
   interface Accum {
     mentorId: string;
@@ -346,20 +415,32 @@ export async function getPerMentorBreakdown(
     acc.assignedMenteeSet.add(a.student_id);
   }
 
-  for (const s of sessions) {
+  // All-time: who was met, first/last session dates (cumulative coverage — unaffected by date filter).
+  for (const s of allSessions) {
     const acc = ensure(s.mentor_id);
     if (s.status === 'completed') {
-      acc.completedSessions++;
       if (s.student_id) acc.uniqueMenteesMetSet.add(s.student_id);
       if (s.date) {
         if (!acc.firstSessionDate || s.date < acc.firstSessionDate) acc.firstSessionDate = s.date;
         if (!acc.lastSessionDate || s.date > acc.lastSessionDate) acc.lastSessionDate = s.date;
       }
-    } else if (s.status === 'scheduled') {
-      acc.scheduledSessions++;
-    } else if (s.status === 'cancelled') {
-      acc.cancelledSessions++;
     }
+  }
+
+  // Date-filtered: session counts for the selected period.
+  for (const s of countSessions) {
+    const acc = byMentor.get(s.mentor_id);
+    if (!acc) continue;
+    if (s.status === 'completed') acc.completedSessions++;
+    else if (s.status === 'scheduled') acc.scheduledSessions++;
+    else if (s.status === 'cancelled') acc.cancelledSessions++;
+  }
+
+  // Ensure ALL active mentors in scope appear, even those with zero assignments.
+  // Mentors not yet in byMentor (no assignments, no sessions) are added via ensure()
+  // and will show as "No Assignment" in the UI.
+  for (const m of allMentorsInScope) {
+    ensure(m.id, { name: m.name, departmentId: m.departmentId, institutionId: m.institutionId });
   }
 
   const rows: PerMentorRow[] = [];
@@ -480,14 +561,19 @@ export async function getByInstitutionBreakdown(
   const supabase = createAdminClient();
 
   // Pass date filters only; institution/department intentionally omitted (we want ALL).
+  const hasDates = !!(filters.dateFrom || filters.dateTo);
   const broadFilters: AnalyticsFilters = {
     dateFrom: filters.dateFrom,
     dateTo: filters.dateTo,
   };
+  // Coverage always all-time — mentors who completed sessions before the filter window
+  // should still count as "started" in the Cross-College Report.
+  const coverageFilters: AnalyticsFilters = {};
 
-  const [assignments, sessions, institutionRows, enrolledRows] = await Promise.all([
+  const [assignments, allSessions, filteredSessions, institutionRows, enrolledRows] = await Promise.all([
     fetchAssignments(broadFilters),
-    fetchSessions(broadFilters),
+    fetchSessions(coverageFilters),
+    hasDates ? fetchSessions(broadFilters) : Promise.resolve<SessionRow[]>([]),
     // institution name lookup
     supabase
       .from('jkkn_institutions')
@@ -502,8 +588,24 @@ export async function getByInstitutionBreakdown(
       .then(({ data }) => (data || []) as { institution_id: string }[]),
   ]);
 
-  // Build name map from institution cache.
+  // Build name map from the live jkkn_institutions cache.
   const nameMap = new Map<string, string>(institutionRows.map((r) => [r.id, r.name]));
+
+  // Fallback: resolve by UUID prefix when the cache table is empty.
+  const INST_PREFIX_NAMES: Record<string, string> = {
+    e8fbe8aa: 'JKKN Dental College and Hospital',
+    '70e54e51': 'JKKN College of Nursing and Research',
+    '5736d86f': 'JKKN College of Pharmacy',
+    '5de4fba1': 'JKKN College of Engineering and Technology',
+    b0b8a724: 'JKKN College of Arts and Science (Self)',
+    a33138b6: 'JKKN College of Arts and Science (Aided)',
+    '9c1554e8': 'JKKN College of Allied Health Sciences',
+  };
+  function resolveInstName(id: string): string {
+    if (nameMap.has(id)) return nameMap.get(id)!;
+    const prefix = id.replace(/-/g, '').slice(0, 8).toLowerCase();
+    return INST_PREFIX_NAMES[prefix] ?? id;
+  }
 
   // Build enrolled count map: institution_id → count
   const enrolledByInst = new Map<string, number>();
@@ -559,21 +661,29 @@ export async function getByInstitutionBreakdown(
     if (a.mentor?.institution_id) mentorToInst.set(a.mentor_id, a.mentor.institution_id);
   }
 
-  for (const s of sessions) {
+  const countSessions = hasDates ? filteredSessions : allSessions;
+
+  // All-time: who started, who was met (cumulative status — unaffected by date filter).
+  for (const s of allSessions) {
     const instId = mentorToInst.get(s.mentor_id);
-    if (!instId) continue; // session for a mentor not in our assignments universe — skip
+    if (!instId) continue;
     const acc = ensureInst(instId);
     if (s.status === 'completed') {
-      acc.completed++;
       acc.mentorsWithCompleted.add(s.mentor_id);
       if (s.student_id && acc.assignedStudentIds.has(s.student_id)) {
         acc.studentsWithCompleted.add(s.student_id);
       }
-    } else if (s.status === 'scheduled') {
-      acc.scheduled++;
-    } else if (s.status === 'cancelled') {
-      acc.cancelled++;
     }
+  }
+
+  // Date-filtered: session counts for the selected period.
+  for (const s of countSessions) {
+    const instId = mentorToInst.get(s.mentor_id);
+    if (!instId) continue;
+    const acc = ensureInst(instId);
+    if (s.status === 'completed') acc.completed++;
+    else if (s.status === 'scheduled') acc.scheduled++;
+    else if (s.status === 'cancelled') acc.cancelled++;
   }
 
   const pct = (num: number, denom: number): number =>
@@ -581,10 +691,10 @@ export async function getByInstitutionBreakdown(
 
   const rows: InstitutionSummaryRow[] = [];
   for (const [instId, acc] of byInst.entries()) {
-    const resolved = acc.completed + acc.cancelled;
+    const totalSessions = acc.completed + acc.scheduled + acc.cancelled;
     rows.push({
       institutionId: instId,
-      institutionName: nameMap.get(instId) ?? instId,
+      institutionName: resolveInstName(instId),
       totalMentors: acc.mentorIds.size,
       mentorsWithFirstSession: acc.mentorsWithCompleted.size,
       totalAssignedMentees: acc.assignedStudentIds.size,
@@ -595,7 +705,7 @@ export async function getByInstitutionBreakdown(
       totalCancelledSessions: acc.cancelled,
       mentorStartRate: pct(acc.mentorsWithCompleted.size, acc.mentorIds.size),
       menteeMetRate: pct(acc.studentsWithCompleted.size, acc.assignedStudentIds.size),
-      completionRate: pct(acc.completed, resolved),
+      completionRate: pct(acc.completed, totalSessions),
     });
   }
 

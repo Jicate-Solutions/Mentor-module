@@ -190,7 +190,9 @@ export async function GET(request: NextRequest) {
         let pageQuery = supabaseAdmin
           .from('jkkn_students')
           .select('id, roll_number, name, email, department_id, institution_id, year')
-          .eq('is_active', true)
+          // Include students marked active OR whose lifecycle_status is 'active'
+          // (JKKN sometimes returns is_active:false for enrolled students)
+          .or('is_active.eq.true,lifecycle_status.eq.active')
           .order('name')
           .range(pageFrom, pageFrom + PAGE_SIZE - 1);
 
@@ -379,7 +381,7 @@ export async function GET(request: NextRequest) {
             let cfPage = supabaseAdmin
               .from('jkkn_students')
               .select('id, roll_number, name, email, department_id, institution_id, year')
-              .eq('is_active', true)
+              .or('is_active.eq.true,lifecycle_status.eq.active')
               .order('name')
               .range(cfFrom, cfFrom + CF_PAGE - 1);
 
@@ -404,7 +406,7 @@ export async function GET(request: NextRequest) {
           let dbQuery = supabaseAdmin
             .from('jkkn_students')
             .select('id, roll_number, name, email, department_id, institution_id, year')
-            .eq('is_active', true)
+            .or(`is_active.eq.true,lifecycle_status.eq.active`)
             .or(`name.ilike.%${query}%,roll_number.ilike.%${query}%,email.ilike.%${query}%`)
             .order('name')
             .limit(200);

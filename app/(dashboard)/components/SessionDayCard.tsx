@@ -29,7 +29,8 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function formatTime(timeStr: string): string {
+function formatTime(timeStr: string | null | undefined): string {
+  if (!timeStr) return '—';
   // timeStr is "HH:MM" or "HH:MM:SS"
   const [h, m] = timeStr.split(':').map(Number);
   const ampm = h >= 12 ? 'PM' : 'AM';

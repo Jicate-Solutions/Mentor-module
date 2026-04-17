@@ -252,6 +252,12 @@ export async function syncStudents(): Promise<SyncResult> {
         ? `JKKN-${(r.id || r.student_id || '').substring(0, 8).toUpperCase()}`
         : String(rawRoll);
 
+      // lifecycle_status is the authoritative active indicator from JKKN.
+      // JKKN sometimes returns is_active:false for actively enrolled students,
+      // so treat lifecycle_status='active' as always active regardless of the flag.
+      const lifecycleStatus = r.lifecycle_status || r.lifecycleStatus || '';
+      const isActive = lifecycleStatus === 'active' ? true : (r.is_active ?? r.isActive ?? true);
+
       return {
         id: r.id || r.student_id,
         roll_number: rollNumber,
@@ -262,8 +268,8 @@ export async function syncStudents(): Promise<SyncResult> {
         year: r.year || r.current_year || r.admission_year ? String(r.year || r.current_year || r.admission_year || '') : null,
         section: r.section || null,
         academic_year: r.academic_year || null,
-        lifecycle_status: r.lifecycle_status || r.lifecycleStatus || null,
-        is_active: r.is_active ?? r.isActive ?? true,
+        lifecycle_status: lifecycleStatus || null,
+        is_active: isActive,
         synced_at: new Date().toISOString(),
       };
     }).filter((r: any) => {

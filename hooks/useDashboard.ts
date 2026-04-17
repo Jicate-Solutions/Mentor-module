@@ -187,7 +187,7 @@ export function useDashboard() {
             setDepartmentData(departmentDataResult);
 
             const colors = ['#0b6d41', '#ffde59', '#84efc2', '#48dfa0', '#1ec481'];
-            departmentProgressResult = departmentDataResult.slice(0, 5).map((dept: any, index: number) => ({
+            departmentProgressResult = departmentDataResult.map((dept: any, index: number) => ({
               name: dept.name,
               completed: dept.completed || 0,
               total: dept.total || 0,

@@ -646,7 +646,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by name or roll number..."
-                  className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green"
+                  className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-neutral-900"
                 />
               </div>
             </div>
@@ -752,7 +752,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                     value={formData.sessionName}
                     onChange={(e) => handleInputChange('sessionName', e.target.value)}
                     placeholder="e.g., Academic Progress Review, Career Guidance"
-                    className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green"
+                    className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-neutral-900"
                     required
                   />
                 </div>
@@ -768,7 +768,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                     type="date"
                     value={formData.date}
                     onChange={(e) => handleInputChange('date', e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                    className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-neutral-900"
                     required
                   />
                 </div>
@@ -799,7 +799,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                             const h = to24(h12, period);
                             handleInputChange('time', `${String(h).padStart(2, '0')}:${storedMin || '00'}`);
                           }}
-                          className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                          className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-neutral-900"
                           required
                         >
                           <option value="">Hour</option>
@@ -813,7 +813,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                             const hour = h24 >= 0 ? h24 : 9;
                             handleInputChange('time', `${String(hour).padStart(2, '0')}:${e.target.value}`);
                           }}
-                          className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                          className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-neutral-900"
                           required
                         >
                           <option value="">Min</option>
@@ -829,7 +829,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                             const h = to24(curH12, e.target.value);
                             handleInputChange('time', `${String(h).padStart(2, '0')}:${storedMin || '00'}`);
                           }}
-                          className="w-20 px-2 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green font-medium"
+                          className="w-20 px-2 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-neutral-900 font-medium"
                         >
                           <option value="AM">AM</option>
                           <option value="PM">PM</option>
@@ -862,7 +862,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   onChange={(e) => handleInputChange('notes', e.target.value)}
                   placeholder="Add any notes, agenda items, or discussion topics for this session..."
                   rows={4}
-                  className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green resize-none"
+                  className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-neutral-900 resize-none"
                 />
               </div>
 
@@ -953,7 +953,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                       }}
                       placeholder="https://example.com/document.pdf"
                       disabled={!!formData.attachmentFile}
-                      className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green disabled:bg-neutral-100 disabled:cursor-not-allowed"
+                      className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-neutral-900 disabled:bg-neutral-100 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -1287,7 +1287,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 value={editFormData.sessionName}
                 onChange={(e) => setEditFormData(prev => ({ ...prev, sessionName: e.target.value }))}
                 placeholder="e.g., Academic Progress Review, Career Guidance"
-                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green"
+                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-neutral-900"
                 required
               />
             </div>
@@ -1302,7 +1302,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                   type="date"
                   value={editFormData.date}
                   onChange={(e) => setEditFormData(prev => ({ ...prev, date: e.target.value }))}
-                  className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                  className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-neutral-900"
                   required
                 />
               </div>
@@ -1322,7 +1322,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                       if (currentPeriod === 'AM' && hour24 === 12) hour24 = 0;
                       setEditFormData(prev => ({ ...prev, time: `${hour24.toString().padStart(2, '0')}:${currentMin}` }));
                     }}
-                    className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                    className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-neutral-900"
                     required
                   >
                     <option value="">Hour</option>
@@ -1336,7 +1336,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                       const currentHour = editFormData.time ? editFormData.time.split(':')[0] : '09';
                       setEditFormData(prev => ({ ...prev, time: `${currentHour}:${e.target.value}` }));
                     }}
-                    className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                    className="flex-1 px-3 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-neutral-900"
                     required
                   >
                     <option value="">Min</option>
@@ -1355,7 +1355,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                       if (e.target.value === 'AM' && hour24 >= 12) hour24 = hour12 === 12 ? 0 : hour12;
                       setEditFormData(prev => ({ ...prev, time: `${hour24.toString().padStart(2, '0')}:${min}` }));
                     }}
-                    className="w-20 px-2 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green font-medium"
+                    className="w-20 px-2 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-neutral-900 font-medium"
                   >
                     <option value="AM">AM</option>
                     <option value="PM">PM</option>
@@ -1372,7 +1372,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
               <select
                 value={editFormData.status}
                 onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value as 'scheduled' | 'completed' | 'cancelled' }))}
-                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-brand-green"
+                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all text-neutral-900"
               >
                 <option value="scheduled">Scheduled</option>
                 <option value="completed">Completed</option>
@@ -1390,7 +1390,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 onChange={(e) => setEditFormData(prev => ({ ...prev, notes: e.target.value }))}
                 placeholder="Add any notes, agenda items, or discussion topics for this session..."
                 rows={4}
-                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green resize-none"
+                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-neutral-900 resize-none"
               />
             </div>
 
@@ -1404,7 +1404,7 @@ export default function CounselingTab({ mentorId }: CounselingTabProps) {
                 value={editFormData.attachment}
                 onChange={(e) => setEditFormData(prev => ({ ...prev, attachment: e.target.value }))}
                 placeholder="https://example.com/document.pdf"
-                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-brand-green"
+                className="w-full px-4 py-3.5 rounded-xl border-2 border-brand-green/20 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all placeholder:text-neutral-400 text-neutral-900"
               />
             </div>
 

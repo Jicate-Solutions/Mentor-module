@@ -27,7 +27,7 @@ async function fetchInstitutionsFromCache(filterById: string | null) {
 
 /**
  * Fetch institutions from local Supabase database as fallback
- * Extracts unique institution IDs from students table since no dedicated institutions table exists
+ * Extracts unique institution IDs from students and mentors tables
  */
 async function fetchInstitutionsFromSupabase(userAccess: any) {
   console.log('[Institutions API] Falling back to local Supabase database...');
@@ -35,24 +35,34 @@ async function fetchInstitutionsFromSupabase(userAccess: any) {
   const supabase = createAdminClient();
 
   // Get unique institution IDs from students table
-  const { data: students, error } = await supabase
+  const { data: students, error: studentsError } = await supabase
     .from('students')
     .select('institution_id')
     .not('institution_id', 'is', null);
 
-  if (error) {
-    console.error('[Institutions API] Supabase error:', error);
-    throw new Error(`Database error: ${error.message}`);
+  if (studentsError) {
+    console.error('[Institutions API] Supabase students error:', studentsError);
+    throw new Error(`Database error: ${studentsError.message}`);
   }
 
-  // Extract unique IDs and create minimal institution objects
-  const uniqueInstitutions = [...new Set(students?.map(s => s.institution_id) || [])];
+  // Also get unique institution IDs from mentors table for better coverage
+  const { data: mentors } = await supabase
+    .from('mentors')
+    .select('institution_id')
+    .not('institution_id', 'is', null);
+
+  // Merge and deduplicate institution IDs from both tables
+  const allIds = [
+    ...(students?.map(s => s.institution_id) || []),
+    ...(mentors?.map(m => m.institution_id) || []),
+  ];
+  const uniqueInstitutions = [...new Set(allIds)];
 
   console.log(`[Institutions API] Found ${uniqueInstitutions.length} unique institutions in local database`);
 
   return uniqueInstitutions.map(id => ({
     id: id,
-    name: id, // Use ID as name since we don't have full details
+    name: id, // Use ID as name since we don't have full details from JKKN API
     counselling_code: 'N/A',
     category: 'Uncategorized',
     institution_type: 'Not Specified',
@@ -159,27 +169,25 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      // If JKKN API returns 404, fall back to local Supabase data
-      if (response.status === 404) {
-        console.log('[Institutions API] JKKN API returned 404, falling back to local database');
-        try {
-          const localInstitutions = await fetchInstitutionsFromSupabase(userAccess);
+      // If JKKN API fails for any reason, fall back to local Supabase data
+      console.log(`[Institutions API] JKKN API returned ${response.status}, falling back to local database`);
+      try {
+        const localInstitutions = await fetchInstitutionsFromSupabase(userAccess);
 
-          return NextResponse.json({
-            success: true,
-            data: localInstitutions,
-            metadata: {
-              page: 1,
-              totalPages: 1,
-              total: localInstitutions.length,
-            },
-            source: 'local_database',
-            accessLevel: userAccess.role,
-          });
-        } catch (fallbackError) {
-          console.error('[Institutions API] Supabase fallback failed:', fallbackError);
-          // Continue to return original error below
-        }
+        return NextResponse.json({
+          success: true,
+          data: localInstitutions,
+          metadata: {
+            page: 1,
+            totalPages: 1,
+            total: localInstitutions.length,
+          },
+          source: 'local_database',
+          accessLevel: userAccess.role,
+        });
+      } catch (fallbackError) {
+        console.error('[Institutions API] Supabase fallback failed:', fallbackError);
+        // Fall through to return the original JKKN API error
       }
 
       const errorData = await response.json().catch(() => ({}));
@@ -209,6 +217,29 @@ export async function GET(request: NextRequest) {
     };
 
     console.log('Transformed institution data:', JSON.stringify(transformedData.data[0], null, 2));
+
+    // Auto-populate jkkn_institutions cache so future requests use the fast cache path
+    if (transformedData.data.length > 0) {
+      const supabase = createAdminClient();
+      const now = new Date().toISOString();
+      const upsertRows = transformedData.data.map((inst: any) => ({
+        id: inst.id,
+        name: inst.name,
+        counselling_code: inst.counselling_code || 'N/A',
+        category: inst.category || 'Uncategorized',
+        institution_type: inst.institution_type || 'Not Specified',
+        is_active: inst.is_active ?? true,
+        synced_at: now,
+      }));
+      const { error: upsertError } = await supabase
+        .from('jkkn_institutions')
+        .upsert(upsertRows, { onConflict: 'id' });
+      if (upsertError) {
+        console.warn('[Institutions API] Cache upsert failed (non-fatal):', upsertError.message);
+      } else {
+        console.log(`[Institutions API] Cached ${upsertRows.length} institutions in jkkn_institutions`);
+      }
+    }
 
     // Apply access control filtering (institutionFilter declared above)
     if (institutionFilter !== null) {

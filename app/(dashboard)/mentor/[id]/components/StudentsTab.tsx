@@ -25,6 +25,7 @@ interface StudentsTabProps {
 export default function StudentsTab({ mentorId }: StudentsTabProps) {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'super_admin';
+  const canRefresh = ['super_admin', 'institution_admin', 'mentor_incharge'].includes(user?.role ?? '');
   const toast = useToast();
   const { ConfirmationDialog, confirm } = useConfirm();
 
@@ -61,7 +62,25 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
     searching,
     error: searchError,
     clearSearch,
+    refetch: refetchStudents,
   } = useStudentSearch(assignedStudentIds, mentorId);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetchWithAuthRetry('/api/students/refresh', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Refresh failed');
+      await refetchStudents();
+      toast.success('Student list refreshed', `${json.data?.totalRecords ?? 'All'} students loaded`);
+    } catch (e: any) {
+      toast.error('Refresh failed', e.message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (searchError) {
@@ -405,13 +424,39 @@ export default function StudentsTab({ mentorId }: StudentsTabProps) {
             />
           )}
 
-          {/* Search Input */}
-          <SearchInput
-            placeholder="Search by name, roll number, or email..."
-            value={searchQuery}
-            onChange={setSearchQuery}
-            loading={searching}
-          />
+          {/* Search Input + Refresh */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <SearchInput
+                placeholder="Search by name, roll number, or email..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+                loading={searching}
+              />
+            </div>
+            {canRefresh && (
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                title="Sync latest students from JKKN"
+                className="flex-shrink-0 p-2.5 rounded-lg border border-neutral-200 text-neutral-500 hover:text-brand-green hover:border-brand-green disabled:opacity-50 transition-colors"
+              >
+                <svg
+                  className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
 
           {/* Filter Status - Super Admin only */}
           {isSuperAdmin && searchResults.length > 0 && activeFiltersCount > 0 && (

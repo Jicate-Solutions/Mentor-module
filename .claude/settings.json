@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(sed 's/\\\\r//')"
+      "Bash(sed 's/\\\\r//')",
+      "Bash(set NODE_OPTIONS=--max-http-header-size=32768)",
+      "Bash(npx next *)"
     ]
   }
 }

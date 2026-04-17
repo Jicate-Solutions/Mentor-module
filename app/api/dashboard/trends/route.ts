@@ -133,45 +133,45 @@ export async function GET(request: NextRequest) {
 
     const { data: departmentSessions } = await deptSessionsQuery;
 
-    // Collect unique department IDs from sessions
-    const deptIds = new Set<string>();
-    departmentSessions?.forEach((session: any) => {
-      const deptId = session.mentors?.department_id;
-      if (deptId) deptIds.add(deptId);
+    // Fetch ALL departments for the institution — ensures zero-session departments are shown
+    let allDeptsQuery = supabase
+      .from('jkkn_departments')
+      .select('id, name')
+      .eq('is_active', true);
+    if (institutionFilter) {
+      allDeptsQuery = allDeptsQuery.eq('institution_id', institutionFilter);
+    }
+    const { data: allDepts } = await allDeptsQuery;
+
+    // Seed counts map with all departments (0 baseline so they always appear)
+    const deptNameMap: Record<string, string> = {};
+    const departmentCounts: { [key: string]: { total: number; completed: number } } = {};
+    allDepts?.forEach((dept: any) => {
+      deptNameMap[dept.id] = dept.name;
+      departmentCounts[dept.name] = { total: 0, completed: 0 };
     });
 
-    // Fetch department names from jkkn_departments
-    const deptNameMap: Record<string, string> = {};
-    if (deptIds.size > 0) {
-      const { data: departments } = await supabase
-        .from('jkkn_departments')
-        .select('id, name')
-        .in('id', Array.from(deptIds));
-
-      departments?.forEach((dept: any) => {
-        deptNameMap[dept.id] = dept.name;
-      });
-    }
-
-    const departmentCounts: { [key: string]: { total: number; completed: number } } = {};
+    // Also collect department IDs that appear in sessions but aren't in allDepts
+    // (edge case: mentor assigned to a dept from a different institution)
+    departmentSessions?.forEach((session: any) => {
+      const deptId = session.mentors?.department_id;
+      if (deptId && !deptNameMap[deptId]) {
+        deptNameMap[deptId] = 'Unknown';
+      }
+    });
 
     departmentSessions?.forEach((session: any) => {
       const deptId = session.mentors?.department_id;
       const deptName = (deptId && deptNameMap[deptId]) || 'Unknown';
-
-      if (!departmentCounts[deptName]) {
-        departmentCounts[deptName] = { total: 0, completed: 0 };
-      }
+      if (deptName === 'Unknown') return; // skip unmapped
 
       departmentCounts[deptName].total++;
-
       if (session.status === 'completed') {
         departmentCounts[deptName].completed++;
       }
     });
 
     const departmentDistribution = Object.entries(departmentCounts)
-      .filter(([name]) => name !== 'Unknown')
       .map(([name, counts]) => ({
         name,
         value: counts.total,

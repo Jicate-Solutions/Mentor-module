@@ -137,26 +137,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     },
     {
-      label: 'Mentor Activity',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-        </svg>
-      ),
-      items: [
-        {
-          label: 'Mentor Activity',
-          href: '/mentor-activity',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-          ),
-        }
-      ]
-    },
-    {
-      label: 'Session Analytics',
+      label: 'Mentor Monitor',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -164,8 +145,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ),
       items: [
         {
-          label: 'Session Analytics',
-          href: '/analytics',
+          label: 'Mentor Monitor',
+          href: '/mentor-monitor',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -314,7 +295,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     if (href === '/dashboard') {
       return pathname === '/dashboard';
     }
-    return pathname?.startsWith(href);
+    // Match exact path OR sub-paths separated by '/' to prevent
+    // '/mentor' from matching '/mentor-monitor', '/mentor-activity', etc.
+    return pathname === href || pathname?.startsWith(href + '/');
   };
 
   return (
@@ -332,7 +315,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       <aside
         className={`
           fixed top-0 left-0 z-50 h-full
-          ${isCollapsed ? 'lg:w-16' : 'w-56'}
+          w-56 ${isCollapsed ? 'lg:w-16' : ''}
           bg-white border-r border-neutral-100
           transform transition-all duration-300 ease-in-out
           lg:translate-x-0 lg:fixed

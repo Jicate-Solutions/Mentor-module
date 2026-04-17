@@ -276,10 +276,11 @@ export async function getSessionCompletionSummary(
   }
 
   // All-time: who has started, who has been met (cumulative status — unaffected by date filter).
+  // Restrict to active mentors only so inactive mentors' sessions don't inflate the counts.
   const mentorsWithCompleted = new Set<string>();
   const studentsWithCompleted = new Set<string>();
   for (const s of allSessions) {
-    if (s.status === 'completed') {
+    if (s.status === 'completed' && allMentorIds.has(s.mentor_id)) {
       mentorsWithCompleted.add(s.mentor_id);
       if (s.student_id && assignedStudentIds.has(s.student_id)) {
         studentsWithCompleted.add(s.student_id);
@@ -443,8 +444,14 @@ export async function getPerMentorBreakdown(
     ensure(m.id, { name: m.name, departmentId: m.departmentId, institutionId: m.institutionId });
   }
 
+  // Only emit rows for active mentors. Inactive mentors can leak into byMentor
+  // via fetchAssignments (no is_active filter on the join) or via the allSessions
+  // loop's bare ensure() call. Restricting to activeMentorIds fixes both paths.
+  const activeMentorIds = new Set(allMentorsInScope.map((m) => m.id));
+
   const rows: PerMentorRow[] = [];
   for (const acc of byMentor.values()) {
+    if (!activeMentorIds.has(acc.mentorId)) continue; // skip inactive
     rows.push({
       mentorId: acc.mentorId,
       mentorName: acc.mentorName,

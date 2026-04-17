@@ -18,7 +18,7 @@ import type { AnalyticsFilters } from '@/lib/types/session-analytics';
 export const dynamic = 'force-dynamic';
 
 type ExportFormat = 'csv' | 'pdf';
-type ExportView = 'summary' | 'per-mentor' | 'pairing' | 'by-institution';
+type ExportView = 'summary' | 'per-mentor' | 'pairing' | 'by-institution' | 'full';
 
 /**
  * Build a short human-readable description of the active filters for the PDF
@@ -67,12 +67,18 @@ export async function GET(request: Request) {
       (view !== 'summary' &&
         view !== 'per-mentor' &&
         view !== 'pairing' &&
-        view !== 'by-institution')
+        view !== 'by-institution' &&
+        view !== 'full')
     ) {
       return err(
-        'Invalid or missing `view` query param (expected summary|per-mentor|pairing|by-institution)',
+        'Invalid or missing `view` query param (expected summary|per-mentor|pairing|by-institution|full)',
         400
       );
+    }
+
+    // 'full' is PDF-only (renders all sections); block CSV with this view.
+    if (view === 'full' && format === 'csv') {
+      return err('`view=full` is only supported for PDF exports', 400);
     }
 
     const resolution = await resolveAnalyticsScope(sp);

@@ -60,7 +60,8 @@ export async function GET(request: NextRequest) {
         const { data: mentorsInInstitution } = await supabaseAdmin
           .from('mentors')
           .select('id')
-          .eq('institution_id', institutionFilter);
+          .eq('institution_id', institutionFilter)
+          .eq('is_active', true);
         mentorIdsInInstitution = (mentorsInInstitution || []).map(m => m.id);
       }
     }

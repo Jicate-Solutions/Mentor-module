@@ -42,12 +42,22 @@ function isStale(isoDate: string | null): boolean {
   return diff > 7 * 24 * 60 * 60 * 1000; // 7 days
 }
 
+interface MentorSyncResult {
+  created: number;
+  updated: number;
+  deactivated: number;
+  skipped: number;
+}
+
 export default function DataSyncTab() {
   const { user } = useAuth();
   const [status, setStatus] = useState<SyncStatusMap | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [syncingEntity, setSyncingEntity] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mentorSyncing, setMentorSyncing] = useState(false);
+  const [mentorSyncResult, setMentorSyncResult] = useState<MentorSyncResult | null>(null);
+  const [mentorSyncError, setMentorSyncError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -92,6 +102,29 @@ export default function DataSyncTab() {
     } finally {
       setSyncingEntity(null);
       await fetchStatus();
+    }
+  };
+
+  const handleMentorSync = async () => {
+    setMentorSyncing(true);
+    setMentorSyncError(null);
+    setMentorSyncResult(null);
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch('/api/admin/mentors/sync', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setMentorSyncError(json.error || 'Mentor sync failed');
+      } else {
+        setMentorSyncResult(json.stats);
+      }
+    } catch (e: any) {
+      setMentorSyncError(e.message || 'Mentor sync failed');
+    } finally {
+      setMentorSyncing(false);
     }
   };
 
@@ -197,9 +230,55 @@ export default function DataSyncTab() {
         )}
       </div>
 
+      {/* Mentor sync */}
+      <div className="bg-white rounded-xl border border-neutral-200/50 p-5 shadow-sm">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">👨‍🏫</span>
+            <div>
+              <h2 className="text-[15px] font-medium text-neutral-900">Mentor Sync</h2>
+              <p className="text-[12px] text-neutral-500 mt-0.5">
+                Sync staff from JKKN API to local mentors table. Deactivates mentors
+                no longer listed in JKKN.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleMentorSync}
+            disabled={mentorSyncing}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white text-sm font-medium rounded-lg
+                       hover:bg-brand-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+          >
+            {mentorSyncing ? (
+              <>
+                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Syncing...
+              </>
+            ) : (
+              'Sync Mentors'
+            )}
+          </button>
+        </div>
+
+        {mentorSyncError && (
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {mentorSyncError}
+          </div>
+        )}
+
+        {mentorSyncResult && (
+          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+            <span className="font-medium">Sync complete —</span>{' '}
+            {mentorSyncResult.created} created · {mentorSyncResult.updated} updated ·{' '}
+            {mentorSyncResult.deactivated} deactivated · {mentorSyncResult.skipped} skipped
+          </div>
+        )}
+      </div>
+
       <p className="text-[11px] text-neutral-400 px-1">
         ⚠ Stale badge appears when data is older than 7 days or has never been synced.
         Student sync may take 30–60 seconds for large datasets.
+        Mentor sync may take up to 2 minutes for large staff lists.
       </p>
     </div>
   );

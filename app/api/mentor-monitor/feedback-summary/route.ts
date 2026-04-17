@@ -28,6 +28,7 @@ export async function GET(request: Request) {
     let mentorQuery = supabase
       .from('mentors')
       .select('id, department_id, institution_id, user:users!inner(full_name)')
+      .eq('is_active', true)
       .order('id');
 
     if (filters.scopedMentorId) {

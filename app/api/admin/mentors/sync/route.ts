@@ -39,7 +39,12 @@ export async function POST(request: NextRequest) {
     let created = 0;
     let updated = 0;
     let skipped = 0;
+    let deactivated = 0;
     const errors: string[] = [];
+
+    // Track local user IDs of every JKKN-sourced staff member seen in this sync.
+    // Used for reconciliation after the loop.
+    const syncedUserIds = new Set<string>();
 
     for (const s of staff) {
       try {
@@ -119,6 +124,9 @@ export async function POST(request: NextRequest) {
           userId = newUser.id;
         }
 
+        // Mark this local user ID as seen in the current JKKN response
+        syncedUserIds.add(userId);
+
         // Check if mentor record exists
         const { data: existingMentor } = await supabase
           .from('mentors')
@@ -127,13 +135,14 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (existingMentor) {
-          // Update existing mentor
+          // Update existing mentor — also reactivate if they were previously deactivated
           await supabase
             .from('mentors')
             .update({
               institution_id: institutionId,
               department_id: departmentId,
               designation: s.designation || 'Faculty',
+              is_active: true,
               updated_at: new Date().toISOString(),
             })
             .eq('user_id', userId);
@@ -167,7 +176,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[Sync] Complete - Created: ${created}, Updated: ${updated}, Skipped: ${skipped}`);
+    // ── Reconciliation: deactivate mentors no longer in JKKN ─────────────────
+    // Only run when we actually processed staff (guards against empty-API edge case).
+    if (syncedUserIds.size > 0) {
+      // Find all JKKN-sourced users (have a jkkn_user_id) that were NOT in this sync
+      const { data: jkknUsers } = await supabase
+        .from('users')
+        .select('id')
+        .not('jkkn_user_id', 'is', null);
+
+      const jkknUserIds = new Set((jkknUsers || []).map((u: any) => u.id));
+
+      // Active mentors whose user_id is JKKN-sourced but not seen in this sync
+      const { data: activeMentors } = await supabase
+        .from('mentors')
+        .select('id, user_id')
+        .eq('is_active', true);
+
+      const toDeactivate = (activeMentors || [])
+        .filter((m: any) => jkknUserIds.has(m.user_id) && !syncedUserIds.has(m.user_id))
+        .map((m: any) => m.id);
+
+      if (toDeactivate.length > 0) {
+        const chunkSize = 100;
+        for (let i = 0; i < toDeactivate.length; i += chunkSize) {
+          const chunk = toDeactivate.slice(i, i + chunkSize);
+          await supabase
+            .from('mentors')
+            .update({ is_active: false, updated_at: new Date().toISOString() })
+            .in('id', chunk);
+        }
+        deactivated = toDeactivate.length;
+        console.log(`[Sync] Reconciled: deactivated ${deactivated} mentors not in JKKN API`);
+      }
+    }
+
+    console.log(`[Sync] Complete - Created: ${created}, Updated: ${updated}, Skipped: ${skipped}, Deactivated: ${deactivated}`);
 
     return NextResponse.json({
       success: true,
@@ -176,9 +220,10 @@ export async function POST(request: NextRequest) {
         created,
         updated,
         skipped,
+        deactivated,
         errors: errors.length,
       },
-      message: `Sync complete: ${created} created, ${updated} updated, ${skipped} skipped`,
+      message: `Sync complete: ${created} created, ${updated} updated, ${skipped} skipped, ${deactivated} deactivated`,
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error: any) {

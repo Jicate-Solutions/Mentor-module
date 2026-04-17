@@ -347,7 +347,8 @@ export default function MentorMonitorPage() {
       }
       if (statsRes.ok) {
         const d = await statsRes.json();
-        setActivityStats(d?.data ?? d ?? null);
+        // Stats API returns { success, stats } — also handle d.data for forward compat
+        setActivityStats(d?.data ?? d?.stats ?? d ?? null);
       }
     } catch (e) {
       console.error('[MentorMonitor] activity fetch', e);

@@ -98,9 +98,12 @@ export default function MentorInchargePage() {
 
       if (response.ok && data.success) {
         console.log('[Background Sync] ✓ Complete:', data.stats);
-        // Only show toast if new mentors were created
-        if (data.stats.created > 0) {
-          toast.success('Mentors Updated', `${data.stats.created} new faculty members synced`);
+        // Show toast when mentors are created or deactivated
+        if (data.stats.created > 0 || data.stats.deactivated > 0) {
+          const parts: string[] = [];
+          if (data.stats.created > 0) parts.push(`${data.stats.created} new`);
+          if (data.stats.deactivated > 0) parts.push(`${data.stats.deactivated} deactivated`);
+          toast.success('Mentors Synced', parts.join(', ') + ' — refresh page to update list');
         }
       } else if (response.status === 403 && retryCount < 2) {
         // Auth issue - retry once after a delay (token might not be fully validated yet)

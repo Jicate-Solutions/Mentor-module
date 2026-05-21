@@ -88,6 +88,9 @@ const DEFAULT_STATS: DashboardStats = {
 export function useDashboard() {
   const cachedData = useRef(readCache<DashboardData>(CACHE_KEY, CACHE_TTL));
   const isColdLoad = !cachedData.current;
+  // Tracks whether we've completed at least one fetch — drives "show skeletons only on cold load"
+  // Separate from cachedData (which is read-once initial cache) so background refetches don't re-trigger skeletons.
+  const hasLoadedRef = useRef(false);
 
   const [stats, setStats] = useState<DashboardStats>(cachedData.current?.stats ?? DEFAULT_STATS);
   const [activities, setActivities] = useState<Activity[]>(cachedData.current?.activities ?? []);
@@ -109,8 +112,9 @@ export function useDashboard() {
 
     const authHeaders = { Authorization: `Bearer ${token}` };
 
-    // Only show skeletons on cold load (no cache = stale-while-revalidate)
-    if (!cachedData.current) {
+    // Only show skeletons on cold load (no cache AND no prior successful fetch).
+    // Background refetches (e.g., from realtime) silently update — no skeleton flash.
+    if (!cachedData.current && !hasLoadedRef.current) {
       setStatsLoading(true);
       setActivityLoading(true);
       setTrendsLoading(true);
@@ -238,6 +242,7 @@ export function useDashboard() {
         notifications: notifs,
       });
       cachedData.current = null;
+      hasLoadedRef.current = true;
     });
   }, []);
 

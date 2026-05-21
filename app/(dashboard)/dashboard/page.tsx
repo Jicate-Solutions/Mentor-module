@@ -28,23 +28,24 @@ export default function DashboardPage() {
     clearNotifications,
   } = useDashboard();
 
-  // Debounced realtime refresh — batch rapid changes into a single data fetch
+  // Debounced realtime refresh — batch rapid changes into a single data fetch.
+  // Window kept generous (8s) so JKKN sync bursts collapse into a single refetch.
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debouncedRefresh = useCallback(() => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     refreshTimerRef.current = setTimeout(() => {
       refetch();
-    }, 2000);
+    }, 8000);
   }, [refetch]);
 
-  // Set up real-time subscriptions for live dashboard updates
+  // Real-time subscriptions limited to user-driven tables only.
+  // `mentors` and `students` are excluded — they're populated by JKKN batch sync, which
+  // would otherwise fire realtime events constantly and make the dashboard flash refresh.
   useEffect(() => {
     const tables = [
       'counseling_sessions',
       'mentor_students',
       'session_feedback',
-      'mentors',
-      'students',
     ];
 
     const channels = tables.map((table) =>

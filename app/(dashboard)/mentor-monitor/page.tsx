@@ -197,9 +197,11 @@ function DepartmentProgressCard({ perMentor }: { perMentor: PerMentorRow[] }) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+// Realtime tables — INTENTIONALLY EXCLUDES mentors, mentor_students, mentor_activity_log
+// because JKKN sync writes to them continuously, which caused refresh loops in production.
+// Only tables that change from user actions (not background sync) belong here.
 const REALTIME_TABLES = [
-  'counseling_sessions', 'mentor_students', 'session_feedback',
-  'mentors', 'mentor_activity_log', 'individual_development_plans',
+  'counseling_sessions', 'session_feedback', 'individual_development_plans',
 ] as const;
 
 export default function MentorMonitorPage() {
@@ -420,7 +422,9 @@ export default function MentorMonitorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, accessToken, authLoading, accessLoading, filterKey, mentorId]);
 
-  // ── Real-time subscriptions (debounced 1000ms) ────────────────────────────
+  // ── Real-time subscriptions (debounced 5000ms, INSERT only) ───────────────
+  // 5s debounce batches rapid changes; INSERT-only ignores UPDATE chatter
+  // (e.g. status flips that don't add new data the UI cares about).
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refresh = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -430,7 +434,7 @@ export default function MentorMonitorPage() {
       fetchIdps();
       fetchFeedback();
       fetchCounseling();
-    }, 1000);
+    }, 5000);
   }, [fetchAnalytics, fetchActivity, fetchIdps, fetchFeedback, fetchCounseling]);
 
   useEffect(() => {
@@ -438,7 +442,7 @@ export default function MentorMonitorPage() {
     const channels = REALTIME_TABLES.map((table) =>
       supabase
         .channel(`mentor-monitor-${table}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table }, refresh)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table }, refresh)
         .subscribe(),
     );
     return () => {

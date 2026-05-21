@@ -51,11 +51,13 @@ export async function GET(request: Request) {
     if (filters.dateFrom) dateFilters.gte = filters.dateFrom;
     if (filters.dateTo) dateFilters.lte = filters.dateTo;
 
-    // Fetch session feedback (student-submitted ratings)
+    // Fetch student feedback (student-submitted ratings via feedback token)
+    // NOTE: This is student_feedback (token-based, has ratings), NOT session_feedback
+    // (mentor's queries/actions log). They are different tables.
     let feedbackQuery = supabase
-      .from('session_feedback')
+      .from('student_feedback')
       .select(
-        'mentor_id, submitted_at, session_helpfulness_rating, mentor_approachability_rating'
+        'mentor_id, session_id, submitted_at, session_helpfulness_rating, mentor_approachability_rating'
       )
       .in('mentor_id', mentorIds);
 
@@ -98,7 +100,7 @@ export async function GET(request: Request) {
 
     // Session IDs that have feedback submitted
     const feedbackSessionIds = new Set(
-      feedbackRows.filter((f) => f.submitted_at).map((f) => (f as any).session_id)
+      feedbackRows.filter((f) => f.submitted_at).map((f) => f.session_id)
     );
 
     // Build per-mentor maps

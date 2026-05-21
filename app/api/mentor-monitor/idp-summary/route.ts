@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     // Fetch all IDPs for these mentors
     const { data: idps, error: idpErr } = await supabase
       .from('individual_development_plans')
-      .select('mentor_id, status, due_date, created_at')
+      .select('mentor_id, status, target_date, created_at')
       .in('mentor_id', mentorIds);
 
     if (idpErr) return err(idpErr.message, 500);
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
       const status = (idp.status ?? '').toLowerCase();
       if (status === 'completed') {
         entry.completed += 1;
-      } else if (idp.due_date && idp.due_date < now && status !== 'completed') {
+      } else if (idp.target_date && idp.target_date < now && status !== 'completed') {
         entry.overdue += 1;
       } else {
         entry.active += 1;

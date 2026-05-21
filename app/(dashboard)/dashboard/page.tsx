@@ -1,7 +1,5 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { useDashboard } from '@/hooks/useDashboard';
 import { StatsGrid } from './components/StatsGrid';
 import { ProgressCard } from './components/ProgressCard';
@@ -24,42 +22,14 @@ export default function DashboardPage() {
     activityLoading,
     trendsLoading,
     sessionsLoading,
-    refetch,
     clearNotifications,
   } = useDashboard();
 
-  // Debounced realtime refresh — batch rapid changes into a single data fetch.
-  // Window kept generous (8s) so JKKN sync bursts collapse into a single refetch.
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debouncedRefresh = useCallback(() => {
-    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    refreshTimerRef.current = setTimeout(() => {
-      refetch();
-    }, 8000);
-  }, [refetch]);
-
-  // Real-time subscriptions limited to user-driven tables only.
-  // `mentors` and `students` are excluded — they're populated by JKKN batch sync, which
-  // would otherwise fire realtime events constantly and make the dashboard flash refresh.
-  useEffect(() => {
-    const tables = [
-      'counseling_sessions',
-      'mentor_students',
-      'session_feedback',
-    ];
-
-    const channels = tables.map((table) =>
-      supabase
-        .channel(`dashboard-${table}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table }, debouncedRefresh)
-        .subscribe()
-    );
-
-    return () => {
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-      channels.forEach((ch) => supabase.removeChannel(ch));
-    };
-  }, [debouncedRefresh]);
+  // Realtime subscriptions removed — this is a summary view, not an ops console.
+  // Previously subscribed to postgres_changes on multiple tables, which under
+  // production load (JKKN sync writes, many concurrent users) caused continuous
+  // refetches and skeleton flash. Users see fresh data on page navigation;
+  // that's sufficient for a dashboard. Refetch on demand via useDashboard().refetch.
 
   return (
     <div className="min-h-screen bg-neutral-50/50 p-4 lg:p-6 space-y-4 lg:space-y-5">

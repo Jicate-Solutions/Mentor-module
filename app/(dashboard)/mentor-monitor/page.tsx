@@ -60,11 +60,11 @@ function buildDateQS(filters: FilterState): string {
 }
 
 function initialFilters(): FilterState {
-  const range = getAnalyticsDateRange('month');
+  // Default to All Time so users see the full cycle without having to widen
+  // the filter manually. A "This Month" default hid completed cycles that ran
+  // in prior months and made KPIs look like 0/0 when data existed.
   return {
-    timePeriod: 'month',
-    startDate: range?.startDate.toISOString(),
-    endDate: range?.endDate.toISOString(),
+    timePeriod: 'all',
   };
 }
 

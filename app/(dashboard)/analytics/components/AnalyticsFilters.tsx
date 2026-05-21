@@ -5,7 +5,7 @@ import { Filter, X, Calendar as CalendarIcon, Building2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { fetchWithAuthRetry } from '@/lib/utils/fetch-with-auth-retry';
 
-export type AnalyticsTimePeriod = 'week' | 'month' | 'semester' | 'custom';
+export type AnalyticsTimePeriod = 'week' | 'month' | 'semester' | 'all' | 'custom';
 
 export interface FilterState {
   timePeriod: AnalyticsTimePeriod;
@@ -32,9 +32,10 @@ interface InstitutionOption {
 }
 
 const TIME_PERIOD_OPTIONS: { value: AnalyticsTimePeriod; label: string }[] = [
-  { value: 'week', label: 'This Week' },
-  { value: 'month', label: 'This Month' },
+  { value: 'all', label: 'All Time' },
   { value: 'semester', label: 'This Semester' },
+  { value: 'month', label: 'This Month' },
+  { value: 'week', label: 'This Week' },
   { value: 'custom', label: 'Custom Range' },
 ];
 
@@ -67,6 +68,9 @@ export function getAnalyticsDateRange(
       const start = new Date(now.getFullYear(), now.getMonth() - 6, 1);
       return { startDate: start, endDate: now };
     }
+    case 'all':
+      // No date filter — return null so dateFrom/dateTo stay undefined
+      return null;
     case 'custom':
     default:
       return null;
@@ -166,6 +170,11 @@ export default function AnalyticsFilters({
       if (range) {
         next.startDate = range.startDate.toISOString();
         next.endDate = range.endDate.toISOString();
+      } else {
+        // 'all' (or any preset returning null) → clear date bounds so the
+        // API treats this as no-date-filter instead of inheriting stale values.
+        next.startDate = undefined;
+        next.endDate = undefined;
       }
     }
     setDraft(next);

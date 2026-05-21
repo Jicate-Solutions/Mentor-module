@@ -39,3 +39,6 @@ next-env.d.ts
 # MCP configuration
 mcp.json
 .mcp.json
+
+# Claude Code local permissions (per-user, auto-managed)
+.claude/settings.local.json

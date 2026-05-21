@@ -77,6 +77,27 @@ interface DashboardData {
 
 const CACHE_KEY = 'dashboard_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+// sessionStorage flag — survives DashboardPage remounts within the same tab session
+// so we never re-flash skeletons after the first successful load in this session.
+const HAS_LOADED_KEY = 'dashboard_has_loaded';
+
+function readHasLoaded(): boolean {
+  if (typeof sessionStorage === 'undefined') return false;
+  try {
+    return sessionStorage.getItem(HAS_LOADED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeHasLoaded() {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(HAS_LOADED_KEY, 'true');
+  } catch {
+    // ignore
+  }
+}
 
 const DEFAULT_STATS: DashboardStats = {
   totalMentors: 0,
@@ -90,7 +111,16 @@ export function useDashboard() {
   const router = useRouter();
   const redirecting = useRef(false);
   const cachedData = useRef(readCache<DashboardData>(CACHE_KEY, CACHE_TTL));
-  const isColdLoad = !cachedData.current;
+  // hasLoadedRef seeded from sessionStorage so it survives DashboardPage remounts
+  // (which would otherwise reset useRef(false) and re-trigger the skeleton flash).
+  const hasLoadedRef = useRef<boolean>(readHasLoaded());
+  // Concurrency guard — without this, two near-simultaneous fetches can race
+  // and clobber loading states (one sets true, another sets false out-of-order).
+  const isFetchingRef = useRef<boolean>(false);
+
+  // Skeletons only fire on a TRUE cold load: no in-memory cache AND no prior
+  // successful load in this tab session. This is the single source of truth.
+  const showInitialSkeletons = !cachedData.current && !hasLoadedRef.current;
 
   const [stats, setStats] = useState<DashboardStats>(cachedData.current?.stats ?? DEFAULT_STATS);
   const [activities, setActivities] = useState<Activity[]>(cachedData.current?.activities ?? []);
@@ -101,10 +131,10 @@ export function useDashboard() {
   const [notifications, setNotifications] = useState<Notification[]>(cachedData.current?.notifications ?? []);
 
   // Per-section loading — each section renders independently as its data arrives
-  const [statsLoading, setStatsLoading] = useState(isColdLoad);
-  const [activityLoading, setActivityLoading] = useState(isColdLoad);
-  const [trendsLoading, setTrendsLoading] = useState(isColdLoad);
-  const [sessionsLoading, setSessionsLoading] = useState(isColdLoad);
+  const [statsLoading, setStatsLoading] = useState(showInitialSkeletons);
+  const [activityLoading, setActivityLoading] = useState(showInitialSkeletons);
+  const [trendsLoading, setTrendsLoading] = useState(showInitialSkeletons);
+  const [sessionsLoading, setSessionsLoading] = useState(showInitialSkeletons);
 
   const fetchDashboardData = useCallback(async () => {
     const token = localStorage.getItem('access_token');
@@ -117,10 +147,18 @@ export function useDashboard() {
       router.push('/login');
     };
 
+    // Concurrency guard: drop redundant overlapping fetches (e.g., realtime burst
+    // that fires while the previous fetch is still in flight). Without this, two
+    // overlapping runs can race the loading-state setters and flash skeletons.
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
     const authHeaders = { Authorization: `Bearer ${token}` };
 
-    // Only show skeletons on cold load (no cache = stale-while-revalidate)
-    if (!cachedData.current) {
+    // Skeletons ONLY on a true cold load — never on background refetches.
+    // hasLoadedRef is sessionStorage-backed, so a DashboardPage remount in the
+    // same tab session does NOT re-show skeletons.
+    if (!cachedData.current && !hasLoadedRef.current) {
       setStatsLoading(true);
       setActivityLoading(true);
       setTrendsLoading(true);
@@ -256,6 +294,9 @@ export function useDashboard() {
         notifications: notifs,
       });
       cachedData.current = null;
+      hasLoadedRef.current = true;
+      writeHasLoaded();
+      isFetchingRef.current = false;
     });
   }, [router]);
 

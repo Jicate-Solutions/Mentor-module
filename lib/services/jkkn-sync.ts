@@ -18,6 +18,26 @@ function getApiCredentials() {
 }
 
 /**
+ * Retry a flaky network operation (JKKN page timeout, transient "fetch failed").
+ * Backoff: 1s, 2s between attempts.
+ */
+async function withRetry<T>(label: string, fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts) {
+        console.warn(`[jkkn-sync] ${label} failed (attempt ${i}/${attempts}), retrying:`, (e as Error)?.message);
+        await new Promise(r => setTimeout(r, i * 1000));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+/**
  * Generic JKKN API paginator.
  * Fetches pages 1..maxPages with the given endpoint (which should include query params except page).
  * Stops early when a page returns fewer results than the limit.
@@ -34,18 +54,20 @@ async function paginateAll<T>(
 
   for (let page = 1; page <= maxPages; page++) {
     const url = `${baseUrl}${endpoint}${endpoint.includes('?') ? '&' : '?'}page=${page}&limit=${limit}`;
-    const res = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(10000),
+    const result = await withRetry(`GET ${endpoint} page ${page}`, async () => {
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.status === 404) return null;
+      // 5xx is worth retrying; 4xx (bad key etc.) is not, but retrying is harmless
+      if (!res.ok) throw new Error(`JKKN API error ${res.status} for ${endpoint}`);
+      return res.json();
     });
 
-    if (!res.ok) {
-      if (res.status === 404) break;
-      throw new Error(`JKKN API error ${res.status} for ${endpoint}`);
-    }
-
-    const json = await res.json();
+    if (result === null) break; // 404 → no more pages
+    const json = result;
     const pageData: T[] = json.data || [];
     results.push(...pageData);
 
@@ -233,6 +255,9 @@ export async function syncStudents(): Promise<SyncResult> {
       200,
       75
     );
+    // Captured BEFORE rows are stamped, so the post-upsert prune can tell this
+    // run's rows (synced_at >= runStartedAt) from rows JKKN no longer returns.
+    const runStartedAt = new Date().toISOString();
 
     const rows = records.map((r: any) => {
       const firstName = r.first_name || r.firstName || '';
@@ -294,18 +319,63 @@ export async function syncStudents(): Promise<SyncResult> {
     }
     const dedupedRows = Array.from(rollMap.values());
 
-    // Clear and re-populate jkkn_students cache (safe — pure cache table)
+    // Upsert-then-prune (NOT delete-then-insert): the cache stays fully populated
+    // while the sync runs, and a mid-sync failure leaves the previous data intact
+    // instead of a half-empty table that hides students from search.
     const supabase = createAdminClient();
-    await supabase.from('jkkn_students').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
     const chunkSize = 500;
-    for (let i = 0; i < dedupedRows.length; i += chunkSize) {
-      const chunk = dedupedRows.slice(i, i + chunkSize);
-      const { error } = await supabase
-        .from('jkkn_students')
-        .upsert(chunk, { onConflict: 'id', ignoreDuplicates: true });
-      if (error) throw new Error(`Chunk ${i / chunkSize + 1} failed: ${error.message}`);
+    const chunks: (typeof dedupedRows)[] = [];
+    for (let i = 0; i < dedupedRows.length; i += chunkSize) chunks.push(dedupedRows.slice(i, i + chunkSize));
+
+    // roll_number is UNIQUE: an existing row holding one of the new roll numbers
+    // under a DIFFERENT JKKN id (re-issued id / roll moved) would make the upsert
+    // fail with 23505. Find those clashes in memory and delete them up front.
+    const newRollToId = new Map(dedupedRows.map(r => [r.roll_number, r.id]));
+    const clashIds: string[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await withRetry('read jkkn_students', async () => {
+        const res = await supabase.from('jkkn_students').select('id, roll_number').range(from, from + 999);
+        if (res.error) throw new Error(res.error.message);
+        return res;
+      });
+      if (error || !data?.length) break;
+      for (const row of data) {
+        const newId = newRollToId.get(row.roll_number);
+        if (newId && newId !== row.id) clashIds.push(row.id);
+      }
+      if (data.length < 1000) break;
     }
+    for (let i = 0; i < clashIds.length; i += 100) {
+      const batch = clashIds.slice(i, i + 100); // small batches keep the URL short
+      await withRetry('delete roll clashes', async () => {
+        const { error } = await supabase.from('jkkn_students').delete().in('id', batch);
+        if (error) throw new Error(error.message);
+      });
+    }
+    if (clashIds.length) console.log(`[syncStudents] Removed ${clashIds.length} cache rows with re-assigned roll numbers`);
+
+    const upsertChunk = async (chunk: typeof dedupedRows, n: number) => {
+      await withRetry(`jkkn_students chunk ${n}`, async () => {
+        const { error } = await supabase
+          .from('jkkn_students')
+          .upsert(chunk, { onConflict: 'id' }); // update existing rows, insert new ones
+        if (error) throw new Error(error.message);
+      });
+    };
+
+    // 3 chunks in flight at a time keeps the run well inside the route's maxDuration
+    const CONCURRENCY = 3;
+    for (let i = 0; i < chunks.length; i += CONCURRENCY) {
+      await Promise.all(chunks.slice(i, i + CONCURRENCY).map((c, j) => upsertChunk(c, i + j + 1)));
+    }
+
+    // Every row written above has synced_at >= runStartedAt; anything older is a
+    // learner JKKN no longer returns. Prune only after ALL chunks succeeded.
+    const { error: pruneErr } = await supabase
+      .from('jkkn_students')
+      .delete()
+      .lt('synced_at', runStartedAt);
+    if (pruneErr) console.warn('[syncStudents] prune of stale cache rows failed:', pruneErr.message);
 
     // ── Reconcile local `students` table with synced JKKN data ──────────────
     // Deactivate local students whose roll_number does NOT appear in jkkn_students
